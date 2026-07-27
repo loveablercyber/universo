@@ -1,0 +1,68 @@
+@theme {
+  --color-cream: #fbf6f1;
+  --color-beige: #f6eee7;
+  --color-warm-white: #fffdfc;
+  --color-brown-dark: #4a2b1f;
+  --color-brown-mid: #6a4637;
+  --color-copper: #c97a4b;
+  --color-rose-gold: #d18b60;
+  --color-rose-gold-soft: #d99c78;
+  --color-peach: #e7b08f;
+  --color-text-soft: #6f5a50;
+  --color-border-soft: rgba(201, 122, 75, 0.18);
+  --color-line-soft: rgba(201, 122, 75, 0.28);
+
+  --font-serif: "Cormorant Garamond", "Playfair Display", Georgia, serif;
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-script: "Great Vibes", "Allura", cursive;
+
+  --gradient-copper: linear-gradient(135deg, #c97b53 0%, #e1a986 100%);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-brown-dark);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@utility font-serif {
+  font-family: var(--font-serif);
+}
+@utility font-sans-brand {
+  font-family: var(--font-sans);
+}
+@utility font-script {
+  font-family: var(--font-script);
+}
+@utility bg-gradient-copper {
+  background-image: var(--gradient-copper);
+}
+
+@utility divider-heart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--color-copper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

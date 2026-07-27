@@ -1,0 +1,76 @@
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-serif: "Cormorant Garamond", "Bodoni Moda", "Playfair Display", serif;
+  --font-sans: "Montserrat", "Poppins", ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: var(--ink);
+  --color-ink-deep: var(--ink-deep);
+  --color-ink-mid: var(--ink-mid);
+  --color-cream: var(--cream);
+  --color-blush: var(--blush);
+  --color-warm-white: var(--warm-white);
+  --color-rose-gold: var(--rose-gold);
+  --color-copper: var(--copper);
+  --color-copper-light: var(--copper-light);
+  --color-gold-soft: var(--gold-soft);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-line: var(--line);
+  --color-whatsapp: var(--whatsapp);
+
+  --color-background: var(--cream);
+  --color-foreground: var(--text-primary);
+  --color-border: var(--line);
+}
+
+:root {
+  --ink: #160b04;
+  --ink-deep: #241208;
+  --ink-mid: #57301d;
+  --cream: #fcf5ee;
+  --blush: #f8ede5;
+  --warm-white: #fffdfc;
+  --rose-gold: #c9825c;
+  --copper: #b96e43;
+  --copper-light: #d89a70;
+  --gold-soft: #c89352;
+  --text-primary: #241711;
+  --text-secondary: #64524a;
+  --line: rgba(185, 110, 67, 0.2);
+  --whatsapp: #5d9b42;
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--cream);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+}
+
+@utility container-shell {
+  width: 100%;
+  max-width: 1360px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .container-shell {
+    padding-inline: 2rem;
+  }
+}

@@ -1,0 +1,121 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+@import "./themes/elo-hopeful-beginnings-main.css";
+@import "./themes/invisible-academy-showcase-main.css";
+@import "./themes/sol-hair-closet-elevated-main.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-cream: var(--cream);
+  --color-cream-soft: var(--cream-soft);
+  --color-warm-white: var(--warm-white);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-brown: var(--brown);
+  --color-copper: var(--copper);
+  --color-rose-gold: var(--rose-gold);
+  --color-copper-light: var(--copper-light);
+  --color-whatsapp: var(--whatsapp);
+  --color-border-copper: var(--border-copper);
+  --color-primary: var(--copper);
+  --color-primary-foreground: var(--warm-white);
+  --color-muted: var(--cream-soft);
+  --color-muted-foreground: var(--brown);
+  --color-card: var(--warm-white);
+  --color-card-foreground: var(--brown);
+  --color-border: var(--border-copper);
+  --color-ring: var(--copper);
+  --font-serif: "Cormorant Garamond", "Playfair Display", serif;
+  --font-sans: "Montserrat", "Poppins", sans-serif;
+  --font-script: "Allura", "Great Vibes", cursive;
+  --radius-lg: 8px;
+}
+
+:root {
+  --background: #fbf4ee;
+  --foreground: #3d2920;
+  --cream: #fbf4ee;
+  --cream-soft: #f6eae1;
+  --warm-white: #fffdfc;
+  --ink: #080604;
+  --ink-soft: #160e09;
+  --brown: #3d2920;
+  --copper: #b76e50;
+  --rose-gold: #c78668;
+  --copper-light: #dda080;
+  --whatsapp: #5d9e3d;
+  --border-copper: rgba(183, 110, 80, 0.28);
+  --radius: 8px;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-brown);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+  }
+}
+
+@utility container-cs {
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@utility text-copper-gradient {
+  background: linear-gradient(135deg, #b76e50 0%, #dda080 50%, #b76e50 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-copper-gradient {
+  background: linear-gradient(135deg, #b76e50 0%, #c78668 50%, #b76e50 100%);
+}
+
+@utility divider-copper {
+  background: linear-gradient(90deg, transparent, rgba(183, 110, 80, 0.4), transparent);
+  height: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fadeUp 0.7s ease-out both;
+}
