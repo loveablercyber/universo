@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Award, Heart, ShieldCheck, Sparkles } from "lucide-react";
 import { InstitutionalLayout, InstitutionalSection } from "@/components/carol/InstitutionalLayout";
+import { defaultCmsPages } from "@/data/cms-defaults";
 import { siteLinks } from "@/lib/site-links";
-import { getCmsPage } from "@/lib/cms.server";
 import { CmsSectionRenderer } from "@/lib/cms-sections";
 
 export const Route = createFileRoute("/sobre")({
-  loader: async () => {
-    return await getCmsPage("sobre");
-  },
+  loader: () => ({
+    slug: "sobre",
+    status: "published",
+    ...defaultCmsPages.sobre,
+  }),
   head: ({ loaderData }) => ({
     meta: [
       { title: loaderData?.seo?.title || "Carol Sol | Perfil profissional" },

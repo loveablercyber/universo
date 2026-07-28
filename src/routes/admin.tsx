@@ -92,7 +92,8 @@ function AdminPage() {
     if (nextSection === "media") return; // O componente MediaLibrary gerencia seu próprio fetch
     setSectionLoading(true);
     try {
-      const endpoint = nextSection === "pages" ? "/api/admin/cms" : `/api/admin/data?section=${nextSection}`;
+      const endpoint =
+        nextSection === "pages" ? "/api/admin/cms" : `/api/admin/data?section=${nextSection}`;
       const response = await fetch(endpoint);
       const payload = await readPayload(response);
       if (!response.ok) throw new Error(payload.message);
