@@ -93,8 +93,16 @@ export function Footer() {
 
       <div className="border-t border-copper/20">
         <div className="container-cs py-5 flex flex-col md:flex-row items-center justify-between gap-2 text-[11px] text-warm-white/60">
-          <span>© 2024 Universo Carol Sol. Todos os direitos reservados.</span>
-          <span>Política de Privacidade &nbsp;|&nbsp; Termos de Uso</span>
+          <span>© 2026 Universo Carol Sol. Todos os direitos reservados.</span>
+          <span>
+            <a href="/politica-de-privacidade" className="hover:text-copper-light">
+              Política de Privacidade
+            </a>
+            &nbsp;|&nbsp;
+            <a href="/termos-de-uso" className="hover:text-copper-light">
+              Termos de Uso
+            </a>
+          </span>
         </div>
       </div>
     </footer>

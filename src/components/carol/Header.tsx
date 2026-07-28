@@ -9,7 +9,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 bg-ink text-warm-white">
       <div className="container-cs flex h-[72px] items-center justify-between gap-4">
-        <a href="#inicio" className="shrink-0">
+        <a href="/" className="shrink-0">
           <Logo dark />
         </a>
 

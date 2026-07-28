@@ -33,7 +33,7 @@ export function PurposeSection() {
             da sua autoestima em cada detalhe.
           </p>
           <a
-            href="#proposito"
+            href="/sobre"
             className="mt-6 inline-flex h-10 items-center px-5 rounded-md border border-copper/60 text-[10px] tracking-[0.2em] text-brown hover:bg-copper/5 transition"
           >
             CONHEÇA NOSSA HISTÓRIA

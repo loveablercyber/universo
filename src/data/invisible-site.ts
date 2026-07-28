@@ -107,30 +107,30 @@ export const courses: Course[] = [
 void curso1;
 
 export const stats = [
-  { icon: "cap" as const, value: "+15.000", label: "ALUNAS FORMADAS" },
-  { icon: "heart" as const, value: "+8 ANOS", label: "TRANSFORMANDO VIDAS" },
-  { icon: "globe" as const, value: "TODO O BRASIL", label: "ALUNAS EM TODO O PAÍS" },
-  { icon: "star" as const, value: "4,9/5", label: "AVALIAÇÃO DAS ALUNAS" },
+  { icon: "cap" as const, value: "MÉTODO", label: "CONHECIMENTO APLICÁVEL" },
+  { icon: "heart" as const, value: "PRÁTICA", label: "TÉCNICA COM PROPÓSITO" },
+  { icon: "globe" as const, value: "COMUNIDADE", label: "CONEXÃO PROFISSIONAL" },
+  { icon: "star" as const, value: "EVOLUÇÃO", label: "CARREIRA E GESTÃO" },
 ];
 
 export const testimonials = [
   {
     photo: "/images/aluna-1.jpg",
-    text: "\u201cO curso mudou completamente a minha carreira. Hoje vivo do que amo!\u201d",
-    name: "Juliana S.",
-    city: "São Paulo – SP",
+    text: "Conteúdo construído para transformar conhecimento técnico em segurança na prática.",
+    name: "Aprendizado prático",
+    city: "Metodologia Carol Sol",
   },
   {
     photo: "/images/aluna-2.jpg",
-    text: "\u201cA didática da Carol é incrível. Cada detalhe faz a diferença no resultado final.\u201d",
-    name: "Patricia M.",
-    city: "Curitiba – PR",
+    text: "Uma jornada que une técnica de mega hair, atendimento premium e visão de negócio.",
+    name: "Trilha contínua",
+    city: "Técnica e gestão",
   },
   {
     photo: "/images/aluna-3.jpg",
-    text: "\u201cTécnicas exclusivas que me destacam no mercado. Super recomendo!\u201d",
-    name: "Vanessa L.",
-    city: "Belo Horizonte – MG",
+    text: "Troca de experiências e desenvolvimento para profissionais que desejam evoluir juntas.",
+    name: "Comunidade",
+    city: "Conexão profissional",
   },
 ];
 
@@ -148,7 +148,7 @@ export const footerNav = [
 
 export const contactInfo = {
   whatsapp: "(14) 99837-3935",
-  email: "academia@carolsol.com.br",
+  email: "ola@carolsol.com.br",
   location: "Bauru – SP",
 };
 

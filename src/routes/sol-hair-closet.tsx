@@ -366,7 +366,7 @@ function CategoriesSection() {
           Categorias
         </h2>
         <a
-          href="#"
+          href="https://loja.carolsol.com.br"
           className="hidden sm:inline-flex items-center gap-2 text-[11px] tracking-[0.2em] text-ink-mid hover:text-copper"
         >
           VER TODAS <ArrowRight size={14} />
@@ -374,7 +374,11 @@ function CategoriesSection() {
       </div>
       <div className="flex gap-6 lg:gap-10 overflow-x-auto lg:justify-between pb-4 lg:pb-0 -mx-5 px-5 lg:mx-0 lg:px-0 snap-x">
         {categories.map((c) => (
-          <a key={c.id} href="#" className="group flex flex-col items-center shrink-0 snap-start">
+          <a
+            key={c.id}
+            href="https://loja.carolsol.com.br"
+            className="group flex flex-col items-center shrink-0 snap-start"
+          >
             <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-full overflow-hidden border border-copper/30 bg-blush transition-transform group-hover:scale-105">
               <img
                 src={c.image}
@@ -389,7 +393,7 @@ function CategoriesSection() {
           </a>
         ))}
         <a
-          href="#"
+          href="https://loja.carolsol.com.br"
           className="hidden lg:flex flex-col justify-center shrink-0 text-[11px] tracking-[0.2em] text-ink-mid hover:text-copper"
         >
           <span className="inline-flex items-center gap-2">
@@ -436,7 +440,7 @@ function PromoBanner() {
               APROVEITE
             </button>
             <p className="text-[10px] tracking-[0.1em] text-copper-light italic">
-              Promoção por tempo limitado!
+              Condições apresentadas nesta vitrine demonstrativa.
             </p>
           </div>
         </div>
@@ -462,7 +466,7 @@ function ProductsSection({
           Mais Vendidos
         </h2>
         <a
-          href="#"
+          href="https://loja.carolsol.com.br"
           className="inline-flex items-center gap-2 text-[11px] tracking-[0.2em] text-ink-mid hover:text-copper"
         >
           VER TODOS <ArrowRight size={14} />
@@ -665,22 +669,42 @@ function Footer() {
         </div>
         <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[10px] tracking-[0.25em] py-4 md:py-0">
           {links.map((l) => (
-            <a key={l} href="#" className="hover:text-warm-white transition-colors">
+            <a
+              key={l}
+              href="https://loja.carolsol.com.br"
+              className="hover:text-warm-white transition-colors"
+            >
               {l}
             </a>
           ))}
         </nav>
         <div className="flex md:justify-end justify-center gap-5 text-copper-light">
-          <a href="#" aria-label="Instagram" className="hover:text-warm-white">
+          <a
+            href="https://www.instagram.com/carolsolhair/"
+            aria-label="Instagram"
+            className="hover:text-warm-white"
+          >
             <Instagram size={18} strokeWidth={1.4} />
           </a>
-          <a href="#" aria-label="YouTube" className="hover:text-warm-white">
+          <a
+            href="https://loja.carolsol.com.br"
+            aria-label="Loja Carol Sol"
+            className="hover:text-warm-white"
+          >
             <Youtube size={18} strokeWidth={1.4} />
           </a>
-          <a href="#" aria-label="TikTok" className="hover:text-warm-white">
+          <a
+            href="https://loja.carolsol.com.br"
+            aria-label="Loja Carol Sol"
+            className="hover:text-warm-white"
+          >
             <Sparkles size={18} strokeWidth={1.4} />
           </a>
-          <a href="#" aria-label="WhatsApp" className="hover:text-warm-white">
+          <a
+            href="https://wa.me/5514998373935"
+            aria-label="WhatsApp"
+            className="hover:text-warm-white"
+          >
             <MessageCircle size={18} strokeWidth={1.4} />
           </a>
         </div>
@@ -735,7 +759,7 @@ function CategoryDrawer({ open, onClose }: { open: boolean; onClose: () => void 
         {drawerCategories.map((c) => (
           <li key={c}>
             <a
-              href="#"
+              href="https://loja.carolsol.com.br"
               className="block px-5 py-3 text-[13px] text-ink-deep hover:bg-blush hover:text-copper transition-colors border-b border-line"
             >
               {c}
@@ -772,7 +796,7 @@ function SearchDrawer({ open, onClose }: { open: boolean; onClose: () => void })
           {results.map((r) => (
             <a
               key={r.id}
-              href="#"
+              href="https://loja.carolsol.com.br"
               className="flex items-center gap-3 rounded-lg p-2 hover:bg-blush"
             >
               <img src={r.image} alt="" className="h-12 w-12 rounded-md object-cover" />

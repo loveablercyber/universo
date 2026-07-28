@@ -329,7 +329,7 @@ function ImpactSection() {
 
         <div className="mt-12 flex justify-center">
           <a
-            href="#"
+            href="#transparencia"
             className="inline-flex items-center gap-3 rounded-full bg-gradient-copper px-7 py-3.5 font-sans-brand text-[11px] tracking-[0.25em] text-white"
           >
             ACOMPANHAR RESULTADOS <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -394,7 +394,7 @@ function StoriesSection() {
                 <div className="p-6 pt-8">
                   <p className="font-serif text-lg italic text-brown-mid">{s.text}</p>
                   <a
-                    href="#"
+                    href="#como-doar"
                     className="mt-4 inline-flex items-center gap-2 font-sans-brand text-[11px] tracking-[0.25em] text-copper"
                   >
                     VER HISTÓRIA <ArrowRight className="h-3 w-3" strokeWidth={1.5} />
@@ -472,7 +472,7 @@ function CommunityCTA() {
           </p>
         </div>
         <a
-          href="#"
+          href="https://wa.me/5514998373935?text=Ol%C3%A1%2C%20quero%20conhecer%20e%20apoiar%20o%20Projeto%20Elo."
           className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/70 bg-white/10 px-7 py-3.5 font-sans-brand text-[11px] tracking-[0.25em] text-white backdrop-blur hover:bg-white/20"
         >
           QUERO FAZER PARTE <Heart className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -505,7 +505,7 @@ function SocialGallerySection() {
             {socials.map((s) => (
               <a
                 key={s.label}
-                href="#"
+                href="https://www.instagram.com/carolsolhair/"
                 aria-label={s.label}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-copper/40 bg-warm-white text-copper transition hover:bg-copper hover:text-white"
               >
@@ -558,7 +558,7 @@ function Footer() {
           <ul className="mt-5 space-y-2 font-sans-brand text-sm">
             {footerLinks.navigation.map((l) => (
               <li key={l}>
-                <a href="#" className="text-white/75 hover:text-white">
+                <a href="#inicio" className="text-white/75 hover:text-white">
                   {l}
                 </a>
               </li>
@@ -589,7 +589,7 @@ function Footer() {
           <ul className="mt-5 space-y-2 font-sans-brand text-sm">
             {footerLinks.transparency.map((l) => (
               <li key={l}>
-                <a href="#" className="text-white/75 hover:text-white">
+                <a href="#transparencia" className="text-white/75 hover:text-white">
                   {l}
                 </a>
               </li>

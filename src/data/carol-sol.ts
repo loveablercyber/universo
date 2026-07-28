@@ -12,12 +12,12 @@ export const brand = {
 };
 
 export const nav = [
-  { label: "INÍCIO", href: "#inicio", active: true },
-  { label: "ACADEMIA", href: siteLinks.academy },
-  { label: "APLICATIVO", href: siteLinks.app },
-  { label: "LOJA", href: siteLinks.store },
+  { label: "INÍCIO", href: "/", active: true },
+  { label: "PROFISSIONAL", href: "/sobre" },
+  { label: "SALÃO", href: "/salao" },
+  { label: "SERVIÇOS", href: "/servicos" },
   { label: "PROJETO ELO", href: "/projeto-elo" },
-  { label: "CONTATO", href: "#contato" },
+  { label: "CONTATO", href: "/contato" },
 ];
 
 export const possibilities = [
@@ -110,9 +110,12 @@ export const stats = [
 ] as const;
 
 export const footerLinks = [
+  { label: "Carol Sol", href: "/sobre" },
+  { label: "Salão", href: "/salao" },
+  { label: "Serviços", href: "/servicos" },
   { label: "Academia", href: siteLinks.academy },
   { label: "Aplicativo", href: siteLinks.app },
   { label: "Loja", href: siteLinks.store },
   { label: "Projeto Elo", href: "/projeto-elo" },
-  { label: "Contato", href: "#contato" },
+  { label: "Contato", href: "/contato" },
 ];

@@ -323,7 +323,10 @@ function CoursesSection() {
                   </span>
                 </div>
                 <div className="mt-5 flex justify-center">
-                  <a href="#" className="btn-copper btn-copper-hover text-[10px] px-5 py-2.5">
+                  <a
+                    href="https://academy.carolsol.com.br"
+                    className="btn-copper btn-copper-hover text-[10px] px-5 py-2.5"
+                  >
                     SAIBA MAIS <ArrowRight size={12} />
                   </a>
                 </div>
@@ -333,7 +336,7 @@ function CoursesSection() {
         </div>
 
         <div className="mt-10 flex justify-center">
-          <a href="#" className="btn-ghost">
+          <a href="https://academy.carolsol.com.br" className="btn-ghost">
             VER TODOS OS CURSOS <ArrowRight size={13} className="text-[#C97945]" />
           </a>
         </div>
@@ -385,7 +388,7 @@ function TestimonialsSection() {
       <div className="container-max">
         <div className="text-center">
           <h2 className="text-[13px] tracking-[0.32em] font-semibold text-[#C97945]">
-            ALUNAS QUE SE TORNARAM REFERÊNCIAS
+            PILARES DA EXPERIÊNCIA ACADEMY
           </h2>
           <div className="flex items-center justify-center gap-2 mt-3">
             <span className="h-px w-10 bg-[rgba(201,121,69,0.4)]" />
@@ -536,7 +539,7 @@ function Footer() {
               {footerNav.flat().map((l) => (
                 <a
                   key={l}
-                  href="#"
+                  href="https://academy.carolsol.com.br"
                   className="text-[12px] text-[#E0A37F] hover:text-white transition"
                 >
                   {l}
@@ -571,7 +574,7 @@ function Footer() {
               {[Instagram, Facebook, Youtube].map((Ico, i) => (
                 <a
                   key={i}
-                  href="#"
+                  href="https://www.instagram.com/carolsolhair/"
                   aria-label="Social"
                   className="w-10 h-10 rounded-full border border-[rgba(201,121,69,0.4)] flex items-center justify-center text-[#E0A37F] hover:bg-[#C97945] hover:text-white hover:border-transparent transition"
                 >
@@ -579,7 +582,7 @@ function Footer() {
                 </a>
               ))}
               <a
-                href="#"
+                href="https://wa.me/5514998373935"
                 aria-label="TikTok"
                 className="w-10 h-10 rounded-full border border-[rgba(201,121,69,0.4)] flex items-center justify-center text-[#E0A37F] hover:bg-[#C97945] hover:text-white hover:border-transparent transition text-[13px] font-bold"
               >

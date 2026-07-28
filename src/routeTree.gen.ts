@@ -10,13 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as InvisibleAcademyRouteImport } from './routes/invisible-academy'
+import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as ProjetoEloRouteImport } from './routes/projeto-elo'
+import { Route as SalaoRouteImport } from './routes/salao'
+import { Route as ServicosRouteImport } from './routes/servicos'
+import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as SolHairClosetRouteImport } from './routes/sol-hair-closet'
+import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContatoRoute = ContatoRouteImport.update({
+  id: '/contato',
+  path: '/contato',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvisibleAcademyRoute = InvisibleAcademyRouteImport.update({
@@ -24,9 +35,29 @@ const InvisibleAcademyRoute = InvisibleAcademyRouteImport.update({
   path: '/invisible-academy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
+  id: '/politica-de-privacidade',
+  path: '/politica-de-privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjetoEloRoute = ProjetoEloRouteImport.update({
   id: '/projeto-elo',
   path: '/projeto-elo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalaoRoute = SalaoRouteImport.update({
+  id: '/salao',
+  path: '/salao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicosRoute = ServicosRouteImport.update({
+  id: '/servicos',
+  path: '/servicos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SobreRoute = SobreRouteImport.update({
+  id: '/sobre',
+  path: '/sobre',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SolHairClosetRoute = SolHairClosetRouteImport.update({
@@ -34,44 +65,99 @@ const SolHairClosetRoute = SolHairClosetRouteImport.update({
   path: '/sol-hair-closet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermosDeUsoRoute = TermosDeUsoRouteImport.update({
+  id: '/termos-de-uso',
+  path: '/termos-de-uso',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/contato': typeof ContatoRoute
   '/invisible-academy': typeof InvisibleAcademyRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
+  '/salao': typeof SalaoRoute
+  '/servicos': typeof ServicosRoute
+  '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRoute
+  '/termos-de-uso': typeof TermosDeUsoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/contato': typeof ContatoRoute
   '/invisible-academy': typeof InvisibleAcademyRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
+  '/salao': typeof SalaoRoute
+  '/servicos': typeof ServicosRoute
+  '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRoute
+  '/termos-de-uso': typeof TermosDeUsoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/contato': typeof ContatoRoute
   '/invisible-academy': typeof InvisibleAcademyRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
+  '/salao': typeof SalaoRoute
+  '/servicos': typeof ServicosRoute
+  '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRoute
+  '/termos-de-uso': typeof TermosDeUsoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/invisible-academy' | '/projeto-elo' | '/sol-hair-closet'
+  fullPaths:
+    | '/'
+    | '/contato'
+    | '/invisible-academy'
+    | '/politica-de-privacidade'
+    | '/projeto-elo'
+    | '/salao'
+    | '/servicos'
+    | '/sobre'
+    | '/sol-hair-closet'
+    | '/termos-de-uso'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/invisible-academy' | '/projeto-elo' | '/sol-hair-closet'
+  to:
+    | '/'
+    | '/contato'
+    | '/invisible-academy'
+    | '/politica-de-privacidade'
+    | '/projeto-elo'
+    | '/salao'
+    | '/servicos'
+    | '/sobre'
+    | '/sol-hair-closet'
+    | '/termos-de-uso'
   id:
     | '__root__'
     | '/'
+    | '/contato'
     | '/invisible-academy'
+    | '/politica-de-privacidade'
     | '/projeto-elo'
+    | '/salao'
+    | '/servicos'
+    | '/sobre'
     | '/sol-hair-closet'
+    | '/termos-de-uso'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContatoRoute: typeof ContatoRoute
   InvisibleAcademyRoute: typeof InvisibleAcademyRoute
+  PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   ProjetoEloRoute: typeof ProjetoEloRoute
+  SalaoRoute: typeof SalaoRoute
+  ServicosRoute: typeof ServicosRoute
+  SobreRoute: typeof SobreRoute
   SolHairClosetRoute: typeof SolHairClosetRoute
+  TermosDeUsoRoute: typeof TermosDeUsoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -83,11 +169,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contato': {
+      id: '/contato'
+      path: '/contato'
+      fullPath: '/contato'
+      preLoaderRoute: typeof ContatoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invisible-academy': {
       id: '/invisible-academy'
       path: '/invisible-academy'
       fullPath: '/invisible-academy'
       preLoaderRoute: typeof InvisibleAcademyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/politica-de-privacidade': {
+      id: '/politica-de-privacidade'
+      path: '/politica-de-privacidade'
+      fullPath: '/politica-de-privacidade'
+      preLoaderRoute: typeof PoliticaDePrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projeto-elo': {
@@ -97,6 +197,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjetoEloRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/salao': {
+      id: '/salao'
+      path: '/salao'
+      fullPath: '/salao'
+      preLoaderRoute: typeof SalaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/servicos': {
+      id: '/servicos'
+      path: '/servicos'
+      fullPath: '/servicos'
+      preLoaderRoute: typeof ServicosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sobre': {
+      id: '/sobre'
+      path: '/sobre'
+      fullPath: '/sobre'
+      preLoaderRoute: typeof SobreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sol-hair-closet': {
       id: '/sol-hair-closet'
       path: '/sol-hair-closet'
@@ -104,14 +225,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SolHairClosetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/termos-de-uso': {
+      id: '/termos-de-uso'
+      path: '/termos-de-uso'
+      fullPath: '/termos-de-uso'
+      preLoaderRoute: typeof TermosDeUsoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContatoRoute: ContatoRoute,
   InvisibleAcademyRoute: InvisibleAcademyRoute,
+  PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   ProjetoEloRoute: ProjetoEloRoute,
+  SalaoRoute: SalaoRoute,
+  ServicosRoute: ServicosRoute,
+  SobreRoute: SobreRoute,
   SolHairClosetRoute: SolHairClosetRoute,
+  TermosDeUsoRoute: TermosDeUsoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

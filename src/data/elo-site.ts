@@ -50,11 +50,11 @@ export const helpCards = [
 ];
 
 export const impactStats = [
-  { icon: Scissors, value: "2.350", label: ["DOAÇÕES", "RECEBIDAS"] },
-  { icon: Heart, value: "1.890", label: ["CABELOS", "ENTREGUES"] },
-  { icon: Package, value: "1.420", label: ["KITS E ITENS", "DOADOS"] },
-  { icon: Users, value: "980", label: ["PESSOAS", "BENEFICIADAS"] },
-  { icon: HandHeart, value: "+300", label: ["VOLUNTÁRIOS E", "PARCEIROS"] },
+  { icon: Scissors, value: "DOAÇÃO", label: ["UM GESTO QUE", "INICIA A MUDANÇA"] },
+  { icon: Heart, value: "CUIDADO", label: ["PREPARO FEITO", "COM RESPEITO"] },
+  { icon: Package, value: "ENTREGA", label: ["APOIO PARA", "NOVOS COMEÇOS"] },
+  { icon: Users, value: "REDE", label: ["PESSOAS QUE", "SOMAM FORÇAS"] },
+  { icon: HandHeart, value: "IMPACTO", label: ["AUTOESTIMA E", "ACOLHIMENTO"] },
 ];
 
 export const stories = [
@@ -99,7 +99,7 @@ export const footerLinks = {
   ],
   contact: [
     { label: "WhatsApp", value: "(14) 99837-3935" },
-    { label: "E-mail", value: "projetoelo@carolsol.com.br" },
+    { label: "E-mail", value: "ola@carolsol.com.br" },
     { label: "Localização", value: "Bauru - SP" },
   ],
   transparency: ["Prestação de Contas", "Relatórios", "Resultados"],
