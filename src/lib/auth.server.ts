@@ -56,7 +56,18 @@ export function clearSessionCookie(request: Request) {
 
 export function assertSameOrigin(request: Request) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) {
+  if (!origin) return;
+
+  const requestUrl = new URL(request.url);
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const publicOrigin = process.env.APP_URL
+    ? new URL(process.env.APP_URL).origin
+    : forwardedHost
+      ? `${forwardedProto || requestUrl.protocol.replace(":", "")}://${forwardedHost}`
+      : requestUrl.origin;
+
+  if (origin !== publicOrigin) {
     throw new Response("Origem não autorizada.", { status: 403 });
   }
 }

@@ -61,23 +61,30 @@ function AdminPage() {
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "login",
-        email: form.get("email"),
-        password: form.get("password"),
-      }),
-    });
-    const payload = await response.json();
-    if (!response.ok) {
-      setError(payload.message ?? "Não foi possível entrar.");
-      return;
+    try {
+      const form = new FormData(event.currentTarget);
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "login",
+          email: form.get("email"),
+          password: form.get("password"),
+        }),
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      const payload = contentType.includes("application/json")
+        ? await response.json()
+        : { message: await response.text() };
+      if (!response.ok) {
+        setError(payload.message ?? "Não foi possível entrar.");
+        return;
+      }
+      setUser(payload.user);
+      await loadSummary();
+    } catch {
+      setError("Não foi possível conectar ao painel. Tente novamente.");
     }
-    setUser(payload.user);
-    await loadSummary();
   }
 
   async function logout() {
