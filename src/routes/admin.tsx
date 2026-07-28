@@ -1,12 +1,50 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FormEvent, useEffect, useState } from "react";
-import { Activity, Database, LogOut, ShieldCheck, Users } from "lucide-react";
+import {
+  Activity,
+  BookOpen,
+  Database,
+  FileText,
+  HeartHandshake,
+  LayoutDashboard,
+  LogOut,
+  Save,
+  Settings,
+  ShieldCheck,
+  ShoppingBag,
+  Users,
+} from "lucide-react";
 
 type User = { id: string; email: string; fullName: string; role: string };
 type Summary = {
   users: { total: number; active: number };
   sessions: { active: number };
   audit: { total: number };
+};
+type Section = "overview" | "pages" | "elo" | "modules" | "settings" | "audit";
+type Page = {
+  id: string;
+  slug: string;
+  title: string;
+  status: "draft" | "published" | "archived";
+  content: Record<string, unknown>;
+  seo: Record<string, unknown>;
+};
+type Participant = {
+  id: string;
+  kind: "donor" | "beneficiary" | "volunteer" | "partner";
+  fullName: string;
+  email?: string;
+  phone?: string;
+  status: "new" | "reviewing" | "approved" | "active" | "completed" | "rejected";
+  notes?: string;
+};
+type Module = {
+  key: "site" | "elo" | "store" | "academy";
+  name: string;
+  description?: string;
+  status: "planned" | "development" | "active" | "paused";
+  baseUrl?: string;
 };
 
 export const Route = createFileRoute("/admin")({
@@ -19,42 +57,76 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
+async function readPayload(response: Response) {
+  const type = response.headers.get("content-type") ?? "";
+  return type.includes("application/json")
+    ? response.json()
+    : { ok: false, message: await response.text() };
+}
+
 function AdminPage() {
   const [user, setUser] = useState<User | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [section, setSection] = useState<Section>("overview");
+  const [sectionData, setSectionData] = useState<Record<string, unknown>>({});
+  const [sectionLoading, setSectionLoading] = useState(false);
+  const [notice, setNotice] = useState("");
 
   async function loadSummary() {
     const response = await fetch("/api/admin/summary");
-    if (!response.ok) {
-      setSummary(null);
-      return;
-    }
+    if (!response.ok) return setSummary(null);
     const payload = await response.json();
     setSummary(payload.summary);
+  }
+
+  async function loadSection(nextSection: Section) {
+    setSection(nextSection);
+    setNotice("");
+    if (nextSection === "overview") return loadSummary();
+    setSectionLoading(true);
+    try {
+      const response = await fetch(`/api/admin/data?section=${nextSection}`);
+      const payload = await readPayload(response);
+      if (!response.ok) throw new Error(payload.message);
+      setSectionData(payload);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error ? loadError.message : "Não foi possível carregar os dados.",
+      );
+    } finally {
+      setSectionLoading(false);
+    }
+  }
+
+  async function save(body: Record<string, unknown>) {
+    setNotice("");
+    const response = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = await readPayload(response);
+    if (!response.ok) throw new Error(payload.message ?? "Não foi possível salvar.");
+    setNotice("Alterações salvas com segurança.");
+    await loadSection(section);
+    return payload;
   }
 
   useEffect(() => {
     async function initialize() {
       try {
         const response = await fetch("/api/auth");
-        const payload = await response.json();
+        const payload = await readPayload(response);
         setUser(payload.user ?? null);
-        if (payload.user) {
-          const summaryResponse = await fetch("/api/admin/summary");
-          if (summaryResponse.ok) {
-            const summaryPayload = await summaryResponse.json();
-            setSummary(summaryPayload.summary);
-          }
-        }
+        if (payload.user) await loadSummary();
       } catch {
         setError("O backend ainda não está conectado ao PostgreSQL.");
       } finally {
         setLoading(false);
       }
     }
-
     void initialize();
   }, []);
 
@@ -72,14 +144,8 @@ function AdminPage() {
           password: form.get("password"),
         }),
       });
-      const contentType = response.headers.get("content-type") ?? "";
-      const payload = contentType.includes("application/json")
-        ? await response.json()
-        : { message: await response.text() };
-      if (!response.ok) {
-        setError(payload.message ?? "Não foi possível entrar.");
-        return;
-      }
+      const payload = await readPayload(response);
+      if (!response.ok) return setError(payload.message ?? "Não foi possível entrar.");
       setUser(payload.user);
       await loadSummary();
     } catch {
@@ -97,9 +163,8 @@ function AdminPage() {
     setSummary(null);
   }
 
-  if (loading) {
+  if (loading)
     return <main className="grid min-h-screen place-items-center bg-cream">Carregando…</main>;
-  }
 
   if (!user) {
     return (
@@ -108,32 +173,22 @@ function AdminPage() {
           <p className="text-[10px] tracking-[0.3em] text-copper">UNIVERSO CAROL SOL</p>
           <h1 className="mt-3 font-serif text-4xl text-brown">Painel administrativo</h1>
           <p className="mt-3 text-sm leading-relaxed text-brown/70">
-            Entre com a conta administrativa criada na configuração do banco.
+            Acesse a gestão segura do ecossistema Carol Sol.
           </p>
           <form className="mt-8 space-y-4" onSubmit={login}>
-            <label className="block text-xs font-medium text-brown">
-              E-mail
-              <input
-                name="email"
-                type="email"
-                required
-                autoComplete="username"
-                className="mt-2 h-12 w-full rounded-xl border border-copper/25 bg-cream/40 px-4 outline-none focus:border-copper"
-              />
-            </label>
-            <label className="block text-xs font-medium text-brown">
-              Senha
-              <input
-                name="password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="current-password"
-                className="mt-2 h-12 w-full rounded-xl border border-copper/25 bg-cream/40 px-4 outline-none focus:border-copper"
-              />
-            </label>
+            <Field label="E-mail" name="email" type="email" autoComplete="username" required />
+            <Field
+              label="Senha"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+            />
             {error && <p className="text-sm text-red-700">{error}</p>}
-            <button className="h-12 w-full rounded-xl bg-copper text-xs font-semibold tracking-[0.18em] text-white">
+            <button
+              type="submit"
+              className="h-12 w-full rounded-xl bg-copper text-xs font-semibold tracking-[0.18em] text-white"
+            >
               ENTRAR
             </button>
           </form>
@@ -142,47 +197,482 @@ function AdminPage() {
     );
   }
 
-  const cards = [
-    { label: "Usuários", value: summary?.users.total ?? "—", icon: Users },
-    { label: "Usuários ativos", value: summary?.users.active ?? "—", icon: ShieldCheck },
-    { label: "Sessões ativas", value: summary?.sessions.active ?? "—", icon: Activity },
-    { label: "Registros de auditoria", value: summary?.audit.total ?? "—", icon: Database },
+  const navigation = [
+    { key: "overview" as const, label: "Visão geral", icon: LayoutDashboard },
+    { key: "pages" as const, label: "Conteúdo do site", icon: FileText },
+    { key: "elo" as const, label: "Projeto Elo", icon: HeartHandshake },
+    { key: "modules" as const, label: "Módulos", icon: Database },
+    { key: "settings" as const, label: "Configurações", icon: Settings },
+    { key: "audit" as const, label: "Auditoria", icon: ShieldCheck },
   ];
 
   return (
-    <main className="min-h-screen bg-cream">
-      <header className="border-b border-copper/15 bg-ink text-white">
-        <div className="container-cs flex min-h-20 items-center justify-between gap-4">
-          <div>
-            <p className="text-[9px] tracking-[0.28em] text-copper-light">UNIVERSO CAROL SOL</p>
-            <h1 className="font-serif text-2xl">Administração</h1>
-          </div>
-          <button onClick={logout} className="inline-flex items-center gap-2 text-xs text-white/80">
+    <main className="min-h-screen bg-[#f6f1eb] text-brown">
+      <div className="min-h-screen lg:grid lg:grid-cols-[270px_1fr]">
+        <aside className="bg-ink px-5 py-6 text-white lg:min-h-screen">
+          <p className="text-[9px] tracking-[0.28em] text-copper-light">UNIVERSO CAROL SOL</p>
+          <h1 className="mt-1 font-serif text-2xl">Administração</h1>
+          <nav className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
+            {navigation.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => void loadSection(item.key)}
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-left text-xs transition ${
+                  section === item.key ? "bg-copper text-white" : "text-white/70 hover:bg-white/10"
+                }`}
+              >
+                <item.icon size={17} /> {item.label}
+              </button>
+            ))}
+          </nav>
+          <button
+            onClick={logout}
+            className="mt-8 inline-flex items-center gap-2 text-xs text-white/60"
+          >
             <LogOut size={16} /> Sair
           </button>
+        </aside>
+        <div className="min-w-0 px-5 py-7 sm:px-8 lg:px-10">
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs text-brown/55">Olá, {user.fullName}</p>
+              <h2 className="font-serif text-3xl">
+                {navigation.find((item) => item.key === section)?.label}
+              </h2>
+            </div>
+            <span className="rounded-full border border-copper/20 bg-white px-4 py-2 text-[10px] uppercase tracking-wider">
+              {user.role}
+            </span>
+          </header>
+          {error && <Message tone="error">{error}</Message>}
+          {notice && <Message>{notice}</Message>}
+          <div className="mt-7">
+            {sectionLoading ? (
+              <div className="rounded-2xl bg-white p-8">Carregando dados…</div>
+            ) : (
+              <SectionContent section={section} summary={summary} data={sectionData} save={save} />
+            )}
+          </div>
         </div>
-      </header>
-      <div className="container-cs py-10">
-        <p className="text-sm text-brown/70">
-          Olá, {user.fullName}. Esta é a fundação administrativa dos novos módulos.
-        </p>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {cards.map((card) => (
-            <article key={card.label} className="rounded-2xl border border-copper/15 bg-white p-6">
-              <card.icon className="h-6 w-6 text-copper" strokeWidth={1.5} />
-              <p className="mt-5 font-serif text-4xl text-brown">{card.value}</p>
-              <p className="mt-1 text-[10px] tracking-[0.18em] text-brown/60">{card.label}</p>
-            </article>
-          ))}
-        </div>
-        <section className="mt-8 rounded-2xl border border-copper/15 bg-white p-6">
-          <h2 className="font-serif text-2xl text-brown">Próximos módulos</h2>
-          <p className="mt-2 text-sm leading-relaxed text-brown/70">
-            Catálogo e pedidos da Loja, cursos e matrículas da Academy e gestão de participantes do
-            Projeto Elo serão conectados a esta base.
-          </p>
-        </section>
       </div>
     </main>
   );
 }
+
+function SectionContent({
+  section,
+  summary,
+  data,
+  save,
+}: {
+  section: Section;
+  summary: Summary | null;
+  data: Record<string, unknown>;
+  save: (body: Record<string, unknown>) => Promise<unknown>;
+}) {
+  if (section === "overview") {
+    const cards = [
+      { label: "Usuários", value: summary?.users.total ?? "—", icon: Users },
+      { label: "Usuários ativos", value: summary?.users.active ?? "—", icon: ShieldCheck },
+      { label: "Sessões ativas", value: summary?.sessions.active ?? "—", icon: Activity },
+      { label: "Eventos auditados", value: summary?.audit.total ?? "—", icon: Database },
+    ];
+    return (
+      <>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {cards.map((card) => (
+            <article key={card.label} className="rounded-2xl border border-copper/10 bg-white p-6">
+              <card.icon className="h-6 w-6 text-copper" strokeWidth={1.5} />
+              <p className="mt-5 font-serif text-4xl">{card.value}</p>
+              <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-brown/55">
+                {card.label}
+              </p>
+            </article>
+          ))}
+        </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <StatusCard
+            icon={HeartHandshake}
+            title="Projeto Elo"
+            text="Gestão de participantes disponível."
+          />
+          <StatusCard
+            icon={ShoppingBag}
+            title="Loja"
+            text="Estrutura isolada preparada para evolução."
+          />
+          <StatusCard
+            icon={BookOpen}
+            title="Academy"
+            text="Estrutura isolada preparada para evolução."
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (section === "pages") {
+    const pages = (data.pages ?? []) as Page[];
+    return (
+      <div className="grid gap-4">
+        {pages.map((page) => (
+          <form
+            key={page.id}
+            className="rounded-2xl border border-copper/10 bg-white p-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              void save({
+                action: "save-page",
+                id: page.id,
+                title: form.get("title"),
+                status: form.get("status"),
+                content: { summary: form.get("summary") },
+                seo: { title: form.get("seoTitle"), description: form.get("seoDescription") },
+              });
+            }}
+          >
+            <div className="grid gap-4 lg:grid-cols-[1fr_180px]">
+              <Field
+                label={`Título · /${page.slug}`}
+                name="title"
+                defaultValue={page.title}
+                required
+              />
+              <Select
+                label="Status"
+                name="status"
+                defaultValue={page.status}
+                options={statusOptions}
+              />
+            </div>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <TextArea
+                label="Resumo/conteúdo principal"
+                name="summary"
+                defaultValue={String(page.content?.summary ?? "")}
+              />
+              <div className="grid gap-4">
+                <Field
+                  label="Título SEO"
+                  name="seoTitle"
+                  defaultValue={String(page.seo?.title ?? "")}
+                />
+                <Field
+                  label="Descrição SEO"
+                  name="seoDescription"
+                  defaultValue={String(page.seo?.description ?? "")}
+                />
+              </div>
+            </div>
+            <SaveButton />
+          </form>
+        ))}
+      </div>
+    );
+  }
+
+  if (section === "elo") {
+    const participants = (data.participants ?? []) as Participant[];
+    return (
+      <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
+        <ParticipantForm save={save} />
+        <div className="overflow-hidden rounded-2xl border border-copper/10 bg-white">
+          <div className="border-b border-copper/10 p-5">
+            <h3 className="font-serif text-2xl">Participantes</h3>
+          </div>
+          <div className="divide-y divide-copper/10">
+            {participants.length === 0 && (
+              <p className="p-5 text-sm text-brown/60">Nenhum cadastro ainda.</p>
+            )}
+            {participants.map((item) => (
+              <div key={item.id} className="grid gap-2 p-5 sm:grid-cols-[1fr_auto]">
+                <div>
+                  <p className="font-medium">{item.fullName}</p>
+                  <p className="text-xs text-brown/55">
+                    {item.email || item.phone || "Sem contato"}
+                  </p>
+                </div>
+                <div className="text-left sm:text-right">
+                  <p className="text-[10px] uppercase tracking-wider text-copper">{item.kind}</p>
+                  <p className="text-xs text-brown/60">{item.status}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (section === "modules") {
+    return (
+      <div className="grid gap-4 md:grid-cols-2">
+        {((data.modules ?? []) as Module[]).map((module) => (
+          <form
+            key={module.key}
+            className="rounded-2xl border border-copper/10 bg-white p-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              void save({
+                action: "save-module",
+                key: module.key,
+                status: form.get("status"),
+                baseUrl: form.get("baseUrl"),
+              });
+            }}
+          >
+            <h3 className="font-serif text-2xl">{module.name}</h3>
+            <p className="mt-1 min-h-10 text-sm text-brown/60">{module.description}</p>
+            <div className="mt-5 grid gap-4">
+              <Select
+                label="Fase"
+                name="status"
+                defaultValue={module.status}
+                options={moduleOptions}
+              />
+              <Field
+                label="Endereço do módulo"
+                name="baseUrl"
+                type="url"
+                defaultValue={module.baseUrl ?? ""}
+              />
+            </div>
+            <SaveButton />
+          </form>
+        ))}
+      </div>
+    );
+  }
+
+  if (section === "settings") {
+    return (
+      <div className="grid gap-4">
+        {(
+          (data.settings ?? []) as Array<{ key: string; value: unknown; description?: string }>
+        ).map((setting) => (
+          <form
+            key={setting.key}
+            className="rounded-2xl border border-copper/10 bg-white p-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              try {
+                void save({
+                  action: "save-setting",
+                  key: setting.key,
+                  value: JSON.parse(String(form.get("value"))),
+                });
+              } catch {
+                window.alert("O conteúdo precisa estar em formato JSON válido.");
+              }
+            }}
+          >
+            <h3 className="font-serif text-xl">{setting.key}</h3>
+            <p className="mt-1 text-xs text-brown/55">{setting.description}</p>
+            <TextArea
+              label="Configuração"
+              name="value"
+              defaultValue={JSON.stringify(setting.value, null, 2)}
+              className="font-mono"
+            />
+            <SaveButton />
+          </form>
+        ))}
+      </div>
+    );
+  }
+
+  const audit = (data.audit ?? []) as Array<{
+    id: string;
+    action: string;
+    entityType: string;
+    entityId?: string;
+    actorName?: string;
+    createdAt: string;
+  }>;
+  return (
+    <div className="overflow-hidden rounded-2xl border border-copper/10 bg-white">
+      <div className="divide-y divide-copper/10">
+        {audit.length === 0 && (
+          <p className="p-5 text-sm text-brown/60">Nenhum evento registrado.</p>
+        )}
+        {audit.map((event) => (
+          <div key={event.id} className="grid gap-2 p-5 md:grid-cols-[1fr_auto]">
+            <div>
+              <p className="font-medium">{event.action}</p>
+              <p className="text-xs text-brown/55">
+                {event.entityType} {event.entityId ? `· ${event.entityId}` : ""}
+              </p>
+            </div>
+            <p className="text-xs text-brown/55">
+              {event.actorName ?? "Sistema"} · {new Date(event.createdAt).toLocaleString("pt-BR")}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ParticipantForm({ save }: { save: (body: Record<string, unknown>) => Promise<unknown> }) {
+  return (
+    <form
+      className="h-fit rounded-2xl border border-copper/10 bg-white p-6"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        void save({
+          action: "save-participant",
+          kind: form.get("kind"),
+          fullName: form.get("fullName"),
+          email: form.get("email"),
+          phone: form.get("phone"),
+          status: form.get("status"),
+          notes: form.get("notes"),
+        }).then(() => event.currentTarget.reset());
+      }}
+    >
+      <h3 className="font-serif text-2xl">Novo cadastro</h3>
+      <div className="mt-5 grid gap-4">
+        <Select label="Tipo" name="kind" defaultValue="donor" options={kindOptions} />
+        <Field label="Nome completo" name="fullName" required />
+        <Field label="E-mail" name="email" type="email" />
+        <Field label="Telefone" name="phone" />
+        <Select label="Status" name="status" defaultValue="new" options={eloStatusOptions} />
+        <TextArea label="Observações internas" name="notes" />
+      </div>
+      <SaveButton label="CADASTRAR" />
+    </form>
+  );
+}
+
+function Field({
+  label,
+  className = "",
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  return (
+    <label className="block text-xs font-medium">
+      {label}
+      <input
+        {...props}
+        className={`mt-2 h-11 w-full rounded-xl border border-copper/20 bg-cream/30 px-4 outline-none focus:border-copper ${className}`}
+      />
+    </label>
+  );
+}
+
+function TextArea({
+  label,
+  className = "",
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }) {
+  return (
+    <label className="mt-4 block text-xs font-medium">
+      {label}
+      <textarea
+        {...props}
+        rows={5}
+        className={`mt-2 w-full rounded-xl border border-copper/20 bg-cream/30 p-4 outline-none focus:border-copper ${className}`}
+      />
+    </label>
+  );
+}
+
+function Select({
+  label,
+  options,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement> & {
+  label: string;
+  options: Array<{ value: string; label: string }>;
+}) {
+  return (
+    <label className="block text-xs font-medium">
+      {label}
+      <select
+        {...props}
+        className="mt-2 h-11 w-full rounded-xl border border-copper/20 bg-white px-3 outline-none focus:border-copper"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function SaveButton({ label = "SALVAR" }: { label?: string }) {
+  return (
+    <button
+      type="submit"
+      className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-copper px-5 text-[10px] font-semibold tracking-wider text-white"
+    >
+      <Save size={14} /> {label}
+    </button>
+  );
+}
+
+function Message({
+  children,
+  tone = "success",
+}: {
+  children: React.ReactNode;
+  tone?: "success" | "error";
+}) {
+  return (
+    <p
+      className={`mt-5 rounded-xl px-4 py-3 text-sm ${tone === "error" ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}
+    >
+      {children}
+    </p>
+  );
+}
+
+function StatusCard({
+  icon: Icon,
+  title,
+  text,
+}: {
+  icon: typeof Database;
+  title: string;
+  text: string;
+}) {
+  return (
+    <article className="rounded-2xl border border-copper/10 bg-white p-6">
+      <Icon className="text-copper" />
+      <h3 className="mt-4 font-serif text-xl">{title}</h3>
+      <p className="mt-1 text-sm text-brown/60">{text}</p>
+    </article>
+  );
+}
+
+const statusOptions = [
+  { value: "draft", label: "Rascunho" },
+  { value: "published", label: "Publicado" },
+  { value: "archived", label: "Arquivado" },
+];
+const moduleOptions = [
+  { value: "planned", label: "Planejado" },
+  { value: "development", label: "Em desenvolvimento" },
+  { value: "active", label: "Ativo" },
+  { value: "paused", label: "Pausado" },
+];
+const kindOptions = [
+  { value: "donor", label: "Doador(a)" },
+  { value: "beneficiary", label: "Beneficiário(a)" },
+  { value: "volunteer", label: "Voluntário(a)" },
+  { value: "partner", label: "Parceiro(a)" },
+];
+const eloStatusOptions = [
+  { value: "new", label: "Novo" },
+  { value: "reviewing", label: "Em análise" },
+  { value: "approved", label: "Aprovado" },
+  { value: "active", label: "Ativo" },
+  { value: "completed", label: "Concluído" },
+  { value: "rejected", label: "Recusado" },
+];

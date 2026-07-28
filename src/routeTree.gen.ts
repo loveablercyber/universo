@@ -22,6 +22,7 @@ import { Route as SolHairClosetRouteImport } from './routes/sol-hair-closet'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as ApiAuthRouteImport } from './routes/api.auth'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiAdminDataRouteImport } from './routes/api.admin.data'
 import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
 
 const IndexRoute = IndexRouteImport.update({
@@ -89,6 +90,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminDataRoute = ApiAdminDataRouteImport.update({
+  id: '/api/admin/data',
+  path: '/api/admin/data',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminSummaryRoute = ApiAdminSummaryRouteImport.update({
   id: '/api/admin/summary',
   path: '/api/admin/summary',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
 }
 export interface FileRoutesByTo {
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
 }
 export interface FileRoutesById {
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
 }
 export interface FileRouteTypes {
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/termos-de-uso'
     | '/api/auth'
     | '/api/health'
+    | '/api/admin/data'
     | '/api/admin/summary'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/termos-de-uso'
     | '/api/auth'
     | '/api/health'
+    | '/api/admin/data'
     | '/api/admin/summary'
   id:
     | '__root__'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/termos-de-uso'
     | '/api/auth'
     | '/api/health'
+    | '/api/admin/data'
     | '/api/admin/summary'
   fileRoutesById: FileRoutesById
 }
@@ -209,6 +221,7 @@ export interface RootRouteChildren {
   TermosDeUsoRoute: typeof TermosDeUsoRoute
   ApiAuthRoute: typeof ApiAuthRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiAdminDataRoute: typeof ApiAdminDataRoute
   ApiAdminSummaryRoute: typeof ApiAdminSummaryRoute
 }
 
@@ -305,6 +318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/data': {
+      id: '/api/admin/data'
+      path: '/api/admin/data'
+      fullPath: '/api/admin/data'
+      preLoaderRoute: typeof ApiAdminDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/summary': {
       id: '/api/admin/summary'
       path: '/api/admin/summary'
@@ -329,6 +349,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermosDeUsoRoute: TermosDeUsoRoute,
   ApiAuthRoute: ApiAuthRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiAdminDataRoute: ApiAdminDataRoute,
   ApiAdminSummaryRoute: ApiAdminSummaryRoute,
 }
 export const routeTree = rootRouteImport

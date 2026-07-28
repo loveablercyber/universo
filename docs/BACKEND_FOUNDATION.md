@@ -31,3 +31,16 @@ for criado, `ADMIN_PASSWORD` pode ser removida das variáveis de ambiente.
 - `POST /api/auth`: login e logout.
 - `GET /api/admin/summary`: resumo protegido para administradores.
 - `/admin`: painel administrativo inicial.
+
+## Plataforma administrativa
+
+As migrações da pasta `database` são aplicadas em ordem pelo comando
+`npm run db:setup`. A plataforma inclui configurações institucionais, CMS,
+biblioteca de mídias, participantes do Projeto Elo, módulos independentes e
+trilha de auditoria.
+
+- `GET /api/admin/data?section=...`: consulta protegida dos módulos.
+- `POST /api/admin/data`: gravação administrativa protegida e auditada.
+
+O banco do sistema de agendamento permanece independente e não é acessado por
+estas tabelas.

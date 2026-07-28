@@ -16,11 +16,14 @@ if (!connectionString) {
 const pool = new Pool({ connectionString });
 
 try {
-  const migration = await fs.readFile(
-    path.join(root, "database", "001_universe_foundation.sql"),
-    "utf8",
-  );
-  await pool.query(migration);
+  const migrationFiles = (await fs.readdir(path.join(root, "database")))
+    .filter((file) => /^\d+_.+\.sql$/.test(file))
+    .sort();
+  for (const migrationFile of migrationFiles) {
+    const migration = await fs.readFile(path.join(root, "database", migrationFile), "utf8");
+    await pool.query(migration);
+    console.log(`Migração aplicada: ${migrationFile}`);
+  }
 
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
