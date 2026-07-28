@@ -2,14 +2,20 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Award, Heart, ShieldCheck, Sparkles } from "lucide-react";
 import { InstitutionalLayout, InstitutionalSection } from "@/components/carol/InstitutionalLayout";
 import { siteLinks } from "@/lib/site-links";
+import { getCmsPage } from "@/lib/cms.server";
+import { CmsSectionRenderer } from "@/lib/cms-sections";
 
 export const Route = createFileRoute("/sobre")({
-  head: () => ({
+  loader: async () => {
+    return await getCmsPage("sobre");
+  },
+  head: ({ loaderData }) => ({
     meta: [
-      { title: "Carol Sol | Perfil profissional" },
+      { title: loaderData?.seo?.title || "Carol Sol | Perfil profissional" },
       {
         name: "description",
         content:
+          loaderData?.seo?.description ||
           "Conheça Carol Sol, especialista em mega hair há 15 anos, com atendimento humanizado e protocolos personalizados.",
       },
     ],
@@ -52,12 +58,17 @@ const specialties = [
 ];
 
 function SobrePage() {
+  const pageData = Route.useLoaderData();
+
   return (
     <InstitutionalLayout
       eyebrow="Perfil profissional"
       title="Técnica, cuidado e transformação em cada atendimento."
       description="Carol Sol é especialista em mega hair, com foco em resultados naturais, seguros e duradouros."
     >
+      <div className="container-cs my-8">
+        <CmsSectionRenderer content={pageData?.content} />
+      </div>
       <InstitutionalSection
         eyebrow="Carol Sol"
         title="Uma profissional dedicada à identidade de cada cliente."

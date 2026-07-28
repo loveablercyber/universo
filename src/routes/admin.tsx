@@ -21,7 +21,11 @@ type Summary = {
   sessions: { active: number };
   audit: { total: number };
 };
-type Section = "overview" | "pages" | "elo" | "modules" | "settings" | "audit";
+type Section = "overview" | "pages" | "media" | "elo" | "modules" | "settings" | "audit";
+import { CmsEditor } from "@/components/admin/CmsEditor";
+import { CmsVersionHistory } from "@/components/admin/CmsVersionHistory";
+import { MediaLibrary } from "@/components/admin/MediaLibrary";
+import { Image as ImageIcon } from "lucide-react";
 type Page = {
   id: string;
   slug: string;
@@ -200,6 +204,7 @@ function AdminPage() {
   const navigation = [
     { key: "overview" as const, label: "Visão geral", icon: LayoutDashboard },
     { key: "pages" as const, label: "Conteúdo do site", icon: FileText },
+    { key: "media" as const, label: "Mídias", icon: ImageIcon },
     { key: "elo" as const, label: "Projeto Elo", icon: HeartHandshake },
     { key: "modules" as const, label: "Módulos", icon: Database },
     { key: "settings" as const, label: "Configurações", icon: Settings },
@@ -311,65 +316,12 @@ function SectionContent({
     );
   }
 
+  if (section === "media") {
+    return <MediaLibrary />;
+  }
+
   if (section === "pages") {
-    const pages = (data.pages ?? []) as Page[];
-    return (
-      <div className="grid gap-4">
-        {pages.map((page) => (
-          <form
-            key={page.id}
-            className="rounded-2xl border border-copper/10 bg-white p-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              void save({
-                action: "save-page",
-                id: page.id,
-                title: form.get("title"),
-                status: form.get("status"),
-                content: { summary: form.get("summary") },
-                seo: { title: form.get("seoTitle"), description: form.get("seoDescription") },
-              });
-            }}
-          >
-            <div className="grid gap-4 lg:grid-cols-[1fr_180px]">
-              <Field
-                label={`Título · /${page.slug}`}
-                name="title"
-                defaultValue={page.title}
-                required
-              />
-              <Select
-                label="Status"
-                name="status"
-                defaultValue={page.status}
-                options={statusOptions}
-              />
-            </div>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <TextArea
-                label="Resumo/conteúdo principal"
-                name="summary"
-                defaultValue={String(page.content?.summary ?? "")}
-              />
-              <div className="grid gap-4">
-                <Field
-                  label="Título SEO"
-                  name="seoTitle"
-                  defaultValue={String(page.seo?.title ?? "")}
-                />
-                <Field
-                  label="Descrição SEO"
-                  name="seoDescription"
-                  defaultValue={String(page.seo?.description ?? "")}
-                />
-              </div>
-            </div>
-            <SaveButton />
-          </form>
-        ))}
-      </div>
-    );
+    return <CmsSectionView data={data} save={save} />;
   }
 
   if (section === "elo") {
@@ -648,6 +600,67 @@ function StatusCard({
       <h3 className="mt-4 font-serif text-xl">{title}</h3>
       <p className="mt-1 text-sm text-brown/60">{text}</p>
     </article>
+  );
+}
+
+function CmsSectionView({
+  data,
+  save,
+}: {
+  data: Record<string, unknown>;
+  save: (body: Record<string, unknown>) => Promise<unknown>;
+}) {
+  const pages = (data.pages ?? []) as Page[];
+  const [selectedPage, setSelectedPage] = useState<Page | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const activePage = selectedPage || pages[0];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        {pages.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setSelectedPage(p)}
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+              activePage?.id === p.id
+                ? "bg-copper text-white"
+                : "bg-white text-brown/70 hover:bg-cream/40"
+            }`}
+          >
+            {p.title} ({p.slug})
+          </button>
+        ))}
+      </div>
+
+      {activePage && (
+        <CmsEditor
+          key={activePage.id}
+          pageId={activePage.id}
+          initialTitle={activePage.title}
+          initialStatus={activePage.status}
+          initialContent={(activePage.content as Record<string, unknown>) || { sections: [] }}
+          initialSeo={activePage.seo || {}}
+          onSave={save}
+          onViewHistory={() => setShowHistory(true)}
+        />
+      )}
+
+      {showHistory && activePage && (
+        <CmsVersionHistory
+          pageId={activePage.id}
+          onClose={() => setShowHistory(false)}
+          onRestore={async (versionNumber) => {
+            await save({
+              action: "restore-version",
+              pageId: activePage.id,
+              versionId: versionNumber,
+            });
+          }}
+        />
+      )}
+    </div>
   );
 }
 

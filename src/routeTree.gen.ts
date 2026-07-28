@@ -21,8 +21,11 @@ import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as SolHairClosetRouteImport } from './routes/sol-hair-closet'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as ApiAuthRouteImport } from './routes/api.auth'
+import { Route as ApiCmsContentRouteImport } from './routes/api.cms-content'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiAdminCmsRouteImport } from './routes/api.admin.cms'
 import { Route as ApiAdminDataRouteImport } from './routes/api.admin.data'
+import { Route as ApiAdminMediaRouteImport } from './routes/api.admin.media'
 import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
 
 const IndexRoute = IndexRouteImport.update({
@@ -85,14 +88,29 @@ const ApiAuthRoute = ApiAuthRouteImport.update({
   path: '/api/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCmsContentRoute = ApiCmsContentRouteImport.update({
+  id: '/api/cms-content',
+  path: '/api/cms-content',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminCmsRoute = ApiAdminCmsRouteImport.update({
+  id: '/api/admin/cms',
+  path: '/api/admin/cms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminDataRoute = ApiAdminDataRouteImport.update({
   id: '/api/admin/data',
   path: '/api/admin/data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminMediaRoute = ApiAdminMediaRouteImport.update({
+  id: '/api/admin/media',
+  path: '/api/admin/media',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminSummaryRoute = ApiAdminSummaryRouteImport.update({
@@ -114,8 +132,11 @@ export interface FileRoutesByFullPath {
   '/sol-hair-closet': typeof SolHairClosetRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
+  '/api/cms-content': typeof ApiCmsContentRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
+  '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
 }
 export interface FileRoutesByTo {
@@ -131,8 +152,11 @@ export interface FileRoutesByTo {
   '/sol-hair-closet': typeof SolHairClosetRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
+  '/api/cms-content': typeof ApiCmsContentRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
+  '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
 }
 export interface FileRoutesById {
@@ -149,8 +173,11 @@ export interface FileRoutesById {
   '/sol-hair-closet': typeof SolHairClosetRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
+  '/api/cms-content': typeof ApiCmsContentRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
+  '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
 }
 export interface FileRouteTypes {
@@ -168,8 +195,11 @@ export interface FileRouteTypes {
     | '/sol-hair-closet'
     | '/termos-de-uso'
     | '/api/auth'
+    | '/api/cms-content'
     | '/api/health'
+    | '/api/admin/cms'
     | '/api/admin/data'
+    | '/api/admin/media'
     | '/api/admin/summary'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -185,8 +215,11 @@ export interface FileRouteTypes {
     | '/sol-hair-closet'
     | '/termos-de-uso'
     | '/api/auth'
+    | '/api/cms-content'
     | '/api/health'
+    | '/api/admin/cms'
     | '/api/admin/data'
+    | '/api/admin/media'
     | '/api/admin/summary'
   id:
     | '__root__'
@@ -202,8 +235,11 @@ export interface FileRouteTypes {
     | '/sol-hair-closet'
     | '/termos-de-uso'
     | '/api/auth'
+    | '/api/cms-content'
     | '/api/health'
+    | '/api/admin/cms'
     | '/api/admin/data'
+    | '/api/admin/media'
     | '/api/admin/summary'
   fileRoutesById: FileRoutesById
 }
@@ -220,8 +256,11 @@ export interface RootRouteChildren {
   SolHairClosetRoute: typeof SolHairClosetRoute
   TermosDeUsoRoute: typeof TermosDeUsoRoute
   ApiAuthRoute: typeof ApiAuthRoute
+  ApiCmsContentRoute: typeof ApiCmsContentRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiAdminCmsRoute: typeof ApiAdminCmsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
+  ApiAdminMediaRoute: typeof ApiAdminMediaRoute
   ApiAdminSummaryRoute: typeof ApiAdminSummaryRoute
 }
 
@@ -311,6 +350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cms-content': {
+      id: '/api/cms-content'
+      path: '/api/cms-content'
+      fullPath: '/api/cms-content'
+      preLoaderRoute: typeof ApiCmsContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -318,11 +364,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/cms': {
+      id: '/api/admin/cms'
+      path: '/api/admin/cms'
+      fullPath: '/api/admin/cms'
+      preLoaderRoute: typeof ApiAdminCmsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/data': {
       id: '/api/admin/data'
       path: '/api/admin/data'
       fullPath: '/api/admin/data'
       preLoaderRoute: typeof ApiAdminDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/media': {
+      id: '/api/admin/media'
+      path: '/api/admin/media'
+      fullPath: '/api/admin/media'
+      preLoaderRoute: typeof ApiAdminMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/summary': {
@@ -348,8 +408,11 @@ const rootRouteChildren: RootRouteChildren = {
   SolHairClosetRoute: SolHairClosetRoute,
   TermosDeUsoRoute: TermosDeUsoRoute,
   ApiAuthRoute: ApiAuthRoute,
+  ApiCmsContentRoute: ApiCmsContentRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiAdminCmsRoute: ApiAdminCmsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
+  ApiAdminMediaRoute: ApiAdminMediaRoute,
   ApiAdminSummaryRoute: ApiAdminSummaryRoute,
 }
 export const routeTree = rootRouteImport
