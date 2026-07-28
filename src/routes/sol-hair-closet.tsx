@@ -29,7 +29,25 @@ import {
 } from "lucide-react";
 import { products, categories, drawerCategories, type Product } from "@/lib/sol-data";
 
-export const Route = createFileRoute("/sol-hair-closet")({ component: HomePage });
+export const Route = createFileRoute("/sol-hair-closet")({
+  head: () => ({
+    meta: [
+      { title: "Sol Hair Closet | Universo Carol Sol" },
+      {
+        name: "description",
+        content:
+          "Conheça a experiência Sol Hair Closet: cabelos, fibras, acessórios e produtos selecionados.",
+      },
+      { property: "og:title", content: "Sol Hair Closet | Universo Carol Sol" },
+      {
+        property: "og:description",
+        content: "Cabelos, fibras, acessórios e produtos no Universo Carol Sol.",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://www.carolsol.com.br/sol-hair-closet" }],
+  }),
+  component: HomePage,
+});
 
 const FREE_SHIPPING = 299.9;
 const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

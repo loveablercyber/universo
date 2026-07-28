@@ -44,6 +44,22 @@ import {
 } from "../data/invisible-site";
 
 export const Route = createFileRoute("/invisible-academy")({
+  head: () => ({
+    meta: [
+      { title: "Invisible Academy | Universo Carol Sol" },
+      {
+        name: "description",
+        content:
+          "Formação profissional em mega hair, técnicas, gestão e desenvolvimento de carreira.",
+      },
+      { property: "og:title", content: "Invisible Academy | Universo Carol Sol" },
+      {
+        property: "og:description",
+        content: "Educação, técnica e transformação para profissionais da beleza.",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://www.carolsol.com.br/invisible-academy" }],
+  }),
   component: Index,
 });
 

@@ -28,7 +28,25 @@ import {
   universoNav,
 } from "../data/elo-site";
 
-export const Route = createFileRoute("/projeto-elo")({ component: Home });
+export const Route = createFileRoute("/projeto-elo")({
+  head: () => ({
+    meta: [
+      { title: "Projeto Elo | Universo Carol Sol" },
+      {
+        name: "description",
+        content:
+          "Projeto social que transforma doações de cabelo e cuidado em autoestima e novas histórias.",
+      },
+      { property: "og:title", content: "Projeto Elo | Universo Carol Sol" },
+      {
+        property: "og:description",
+        content: "Transformando doações em autoestima, acolhimento e novas histórias.",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://www.carolsol.com.br/projeto-elo" }],
+  }),
+  component: Home,
+});
 
 /* ---------------- Logo ---------------- */
 function Logo({ dark = false }: { dark?: boolean }) {
