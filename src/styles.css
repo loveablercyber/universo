@@ -58,8 +58,11 @@
   }
   html {
     scroll-behavior: smooth;
+    overflow-x: clip;
   }
   body {
+    min-width: 0;
+    overflow-x: clip;
     background-color: var(--color-cream);
     color: var(--color-brown);
     font-family: var(--font-sans);

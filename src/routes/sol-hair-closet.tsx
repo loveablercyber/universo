@@ -268,12 +268,12 @@ function Logo({ compact = false }: { compact?: boolean }) {
 function Hero() {
   return (
     <section className="relative overflow-hidden bg-blush">
-      <div className="grid lg:grid-cols-2 items-stretch">
-        <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-20 lg:py-16">
-          <p className="text-[11px] tracking-[0.3em] text-ink-mid flex items-center gap-2 mb-6">
+      <div className="grid min-w-0 items-stretch lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col justify-center px-5 py-10 sm:px-12 sm:py-12 lg:px-20 lg:py-16">
+          <p className="mb-6 flex min-w-0 items-center gap-2 text-[10px] tracking-[0.2em] text-ink-mid sm:text-[11px] sm:tracking-[0.3em]">
             A SUA MELHOR VERSÃO <span className="text-copper">✦</span>
           </p>
-          <h1 className="font-serif font-light text-ink-deep text-[54px] sm:text-[68px] lg:text-[76px] leading-[0.95] tracking-tight uppercase">
+          <h1 className="font-serif text-[42px] font-light uppercase leading-[0.95] tracking-tight text-ink-deep min-[360px]:text-[48px] sm:text-[68px] lg:text-[76px]">
             Cabelos que
             <br />
             transformam
@@ -289,7 +289,7 @@ function Hero() {
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
             </button>
           </div>
-          <div className="mt-12 grid grid-cols-3 gap-4 lg:gap-6 max-w-lg">
+          <div className="mt-10 grid max-w-lg grid-cols-1 gap-5 sm:mt-12 sm:grid-cols-3 sm:gap-4 lg:gap-6">
             <HeroBenefit icon={User} title="FIBRAS PREMIUM" text="Qualidade que impressiona" />
             <HeroBenefit icon={Diamond} title="CORES EXCLUSIVAS" text="Para todos os estilos" />
             <HeroBenefit icon={Wind} title="EFEITO NATURAL" text="Leveza e movimento" />

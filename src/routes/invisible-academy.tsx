@@ -210,7 +210,7 @@ function HeroSection() {
               className="w-full h-full object-cover"
             />
           </div>
-          <div className="absolute -bottom-6 -left-6 lg:bottom-6 lg:-right-4 lg:left-auto bg-[#FFFDFC] rounded-2xl px-5 py-4 shadow-[0_20px_40px_-20px_rgba(75,44,30,0.35)] border border-[rgba(201,121,69,0.15)] max-w-[220px]">
+          <div className="absolute -bottom-6 left-0 lg:bottom-6 lg:-right-4 lg:left-auto bg-[#FFFDFC] rounded-2xl px-5 py-4 shadow-[0_20px_40px_-20px_rgba(75,44,30,0.35)] border border-[rgba(201,121,69,0.15)] max-w-[220px]">
             <div className="flex items-start gap-3">
               <GraduationCap size={26} strokeWidth={1.4} className="text-[#C97945] mt-0.5" />
               <div>

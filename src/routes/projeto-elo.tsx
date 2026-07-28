@@ -172,16 +172,16 @@ function HeroSection() {
       <div className="mx-auto max-w-[1440px] px-6 py-12 lg:px-10 lg:py-16">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-8">
           {/* Left text */}
-          <div className="lg:col-span-4 flex flex-col justify-center">
-            <p className="font-sans-brand text-[11px] tracking-[0.28em] text-brown-mid">
+          <div className="flex min-w-0 flex-col justify-center lg:col-span-4">
+            <p className="font-sans-brand text-[10px] tracking-[0.18em] text-brown-mid sm:text-[11px] sm:tracking-[0.28em]">
               CABELOS QUE CONECTAM HISTÓRIAS
             </p>
-            <h1 className="mt-6 font-serif text-5xl leading-[1.05] text-brown-dark lg:text-[3.5rem]">
+            <h1 className="mt-6 font-serif text-[2rem] leading-[1.05] text-brown-dark min-[360px]:text-[2.35rem] sm:text-5xl lg:text-[3.5rem]">
               TRANSFORMAMOS
               <br />
               DOAÇÕES EM
               <br />
-              <span className="font-script text-6xl lg:text-7xl text-copper font-normal">
+              <span className="font-script text-[3.25rem] font-normal text-copper min-[360px]:text-6xl lg:text-7xl">
                 novos começos
               </span>
             </h1>
@@ -266,7 +266,7 @@ function HelpSection() {
         <p className="text-center font-sans-brand text-[11px] tracking-[0.3em] text-copper">
           COMO VOCÊ PODE AJUDAR
         </p>
-        <h2 className="mt-3 text-center font-serif text-3xl uppercase tracking-wide text-brown-dark lg:text-4xl">
+        <h2 className="mt-3 text-center font-serif text-2xl uppercase tracking-wide text-brown-dark sm:text-3xl lg:text-4xl">
           Pequenas Ações, Grandes Transformações
         </h2>
         <HeartDivider />
@@ -310,7 +310,7 @@ function ImpactSection() {
           Cada doação gera um recomeço. Cada gesto transforma histórias.
         </p>
 
-        <div className="mt-12 grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-12 grid grid-cols-1 gap-8 min-[380px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {impactStats.map((s, i) => (
             <div key={i} className="relative flex flex-col items-center text-center">
               <s.icon className="h-9 w-9 text-copper" strokeWidth={1.2} />
