@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as InvisibleAcademyRouteImport } from './routes/invisible-academy'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
@@ -19,10 +20,18 @@ import { Route as ServicosRouteImport } from './routes/servicos'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as SolHairClosetRouteImport } from './routes/sol-hair-closet'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
+import { Route as ApiAuthRouteImport } from './routes/api.auth'
+import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContatoRoute = ContatoRouteImport.update({
@@ -70,9 +79,25 @@ const TermosDeUsoRoute = TermosDeUsoRouteImport.update({
   path: '/termos-de-uso',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthRoute = ApiAuthRouteImport.update({
+  id: '/api/auth',
+  path: '/api/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSummaryRoute = ApiAdminSummaryRouteImport.update({
+  id: '/api/admin/summary',
+  path: '/api/admin/summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
   '/invisible-academy': typeof InvisibleAcademyRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
@@ -82,9 +107,13 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
+  '/api/auth': typeof ApiAuthRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/admin/summary': typeof ApiAdminSummaryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
   '/invisible-academy': typeof InvisibleAcademyRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
@@ -94,10 +123,14 @@ export interface FileRoutesByTo {
   '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
+  '/api/auth': typeof ApiAuthRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/admin/summary': typeof ApiAdminSummaryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
   '/invisible-academy': typeof InvisibleAcademyRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
@@ -107,11 +140,15 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
+  '/api/auth': typeof ApiAuthRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/admin/summary': typeof ApiAdminSummaryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/contato'
     | '/invisible-academy'
     | '/politica-de-privacidade'
@@ -121,9 +158,13 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/sol-hair-closet'
     | '/termos-de-uso'
+    | '/api/auth'
+    | '/api/health'
+    | '/api/admin/summary'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/contato'
     | '/invisible-academy'
     | '/politica-de-privacidade'
@@ -133,9 +174,13 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/sol-hair-closet'
     | '/termos-de-uso'
+    | '/api/auth'
+    | '/api/health'
+    | '/api/admin/summary'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/contato'
     | '/invisible-academy'
     | '/politica-de-privacidade'
@@ -145,10 +190,14 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/sol-hair-closet'
     | '/termos-de-uso'
+    | '/api/auth'
+    | '/api/health'
+    | '/api/admin/summary'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   ContatoRoute: typeof ContatoRoute
   InvisibleAcademyRoute: typeof InvisibleAcademyRoute
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
@@ -158,6 +207,9 @@ export interface RootRouteChildren {
   SobreRoute: typeof SobreRoute
   SolHairClosetRoute: typeof SolHairClosetRoute
   TermosDeUsoRoute: typeof TermosDeUsoRoute
+  ApiAuthRoute: typeof ApiAuthRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiAdminSummaryRoute: typeof ApiAdminSummaryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -167,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contato': {
@@ -232,11 +291,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosDeUsoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth': {
+      id: '/api/auth'
+      path: '/api/auth'
+      fullPath: '/api/auth'
+      preLoaderRoute: typeof ApiAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/summary': {
+      id: '/api/admin/summary'
+      path: '/api/admin/summary'
+      fullPath: '/api/admin/summary'
+      preLoaderRoute: typeof ApiAdminSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   ContatoRoute: ContatoRoute,
   InvisibleAcademyRoute: InvisibleAcademyRoute,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
@@ -246,6 +327,9 @@ const rootRouteChildren: RootRouteChildren = {
   SobreRoute: SobreRoute,
   SolHairClosetRoute: SolHairClosetRoute,
   TermosDeUsoRoute: TermosDeUsoRoute,
+  ApiAuthRoute: ApiAuthRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiAdminSummaryRoute: ApiAdminSummaryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
