@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ContatoRouteImport } from './routes/contato'
+import { Route as DoacaoRouteImport } from './routes/doacao'
 import { Route as InvisibleAcademyRouteImport } from './routes/invisible-academy'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as ProjetoEloRouteImport } from './routes/projeto-elo'
@@ -22,11 +23,15 @@ import { Route as SolHairClosetRouteImport } from './routes/sol-hair-closet'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as ApiAuthRouteImport } from './routes/api.auth'
 import { Route as ApiCmsContentRouteImport } from './routes/api.cms-content'
+import { Route as ApiDonationRouteImport } from './routes/api.donation'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as DoacaoRetornoRouteImport } from './routes/doacao.retorno'
 import { Route as ApiAdminCmsRouteImport } from './routes/api.admin.cms'
 import { Route as ApiAdminDataRouteImport } from './routes/api.admin.data'
+import { Route as ApiAdminEloRouteImport } from './routes/api.admin.elo'
 import { Route as ApiAdminMediaRouteImport } from './routes/api.admin.media'
 import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
+import { Route as ApiAdminUsersRouteImport } from './routes/api.admin.users'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -41,6 +46,11 @@ const AdminRoute = AdminRouteImport.update({
 const ContatoRoute = ContatoRouteImport.update({
   id: '/contato',
   path: '/contato',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DoacaoRoute = DoacaoRouteImport.update({
+  id: '/doacao',
+  path: '/doacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvisibleAcademyRoute = InvisibleAcademyRouteImport.update({
@@ -93,10 +103,20 @@ const ApiCmsContentRoute = ApiCmsContentRouteImport.update({
   path: '/api/cms-content',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDonationRoute = ApiDonationRouteImport.update({
+  id: '/api/donation',
+  path: '/api/donation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DoacaoRetornoRoute = DoacaoRetornoRouteImport.update({
+  id: '/retorno',
+  path: '/retorno',
+  getParentRoute: () => DoacaoRoute,
 } as any)
 const ApiAdminCmsRoute = ApiAdminCmsRouteImport.update({
   id: '/api/admin/cms',
@@ -106,6 +126,11 @@ const ApiAdminCmsRoute = ApiAdminCmsRouteImport.update({
 const ApiAdminDataRoute = ApiAdminDataRouteImport.update({
   id: '/api/admin/data',
   path: '/api/admin/data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminEloRoute = ApiAdminEloRouteImport.update({
+  id: '/api/admin/elo',
+  path: '/api/admin/elo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminMediaRoute = ApiAdminMediaRouteImport.update({
@@ -118,11 +143,17 @@ const ApiAdminSummaryRoute = ApiAdminSummaryRouteImport.update({
   path: '/api/admin/summary',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
+  id: '/api/admin/users',
+  path: '/api/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
+  '/doacao': typeof DoacaoRouteWithChildren
   '/invisible-academy': typeof InvisibleAcademyRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
@@ -133,16 +164,21 @@ export interface FileRoutesByFullPath {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
+  '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
+  '/doacao/retorno': typeof DoacaoRetornoRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
+  '/api/admin/elo': typeof ApiAdminEloRoute
   '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
+  '/api/admin/users': typeof ApiAdminUsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
+  '/doacao': typeof DoacaoRouteWithChildren
   '/invisible-academy': typeof InvisibleAcademyRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
@@ -153,17 +189,22 @@ export interface FileRoutesByTo {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
+  '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
+  '/doacao/retorno': typeof DoacaoRetornoRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
+  '/api/admin/elo': typeof ApiAdminEloRoute
   '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
+  '/api/admin/users': typeof ApiAdminUsersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
+  '/doacao': typeof DoacaoRouteWithChildren
   '/invisible-academy': typeof InvisibleAcademyRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
@@ -174,11 +215,15 @@ export interface FileRoutesById {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
+  '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
+  '/doacao/retorno': typeof DoacaoRetornoRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
+  '/api/admin/elo': typeof ApiAdminEloRoute
   '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
+  '/api/admin/users': typeof ApiAdminUsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -186,6 +231,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/contato'
+    | '/doacao'
     | '/invisible-academy'
     | '/politica-de-privacidade'
     | '/projeto-elo'
@@ -196,16 +242,21 @@ export interface FileRouteTypes {
     | '/termos-de-uso'
     | '/api/auth'
     | '/api/cms-content'
+    | '/api/donation'
     | '/api/health'
+    | '/doacao/retorno'
     | '/api/admin/cms'
     | '/api/admin/data'
+    | '/api/admin/elo'
     | '/api/admin/media'
     | '/api/admin/summary'
+    | '/api/admin/users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/contato'
+    | '/doacao'
     | '/invisible-academy'
     | '/politica-de-privacidade'
     | '/projeto-elo'
@@ -216,16 +267,21 @@ export interface FileRouteTypes {
     | '/termos-de-uso'
     | '/api/auth'
     | '/api/cms-content'
+    | '/api/donation'
     | '/api/health'
+    | '/doacao/retorno'
     | '/api/admin/cms'
     | '/api/admin/data'
+    | '/api/admin/elo'
     | '/api/admin/media'
     | '/api/admin/summary'
+    | '/api/admin/users'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/contato'
+    | '/doacao'
     | '/invisible-academy'
     | '/politica-de-privacidade'
     | '/projeto-elo'
@@ -236,17 +292,22 @@ export interface FileRouteTypes {
     | '/termos-de-uso'
     | '/api/auth'
     | '/api/cms-content'
+    | '/api/donation'
     | '/api/health'
+    | '/doacao/retorno'
     | '/api/admin/cms'
     | '/api/admin/data'
+    | '/api/admin/elo'
     | '/api/admin/media'
     | '/api/admin/summary'
+    | '/api/admin/users'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ContatoRoute: typeof ContatoRoute
+  DoacaoRoute: typeof DoacaoRouteWithChildren
   InvisibleAcademyRoute: typeof InvisibleAcademyRoute
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   ProjetoEloRoute: typeof ProjetoEloRoute
@@ -257,11 +318,14 @@ export interface RootRouteChildren {
   TermosDeUsoRoute: typeof TermosDeUsoRoute
   ApiAuthRoute: typeof ApiAuthRoute
   ApiCmsContentRoute: typeof ApiCmsContentRoute
+  ApiDonationRoute: typeof ApiDonationRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAdminCmsRoute: typeof ApiAdminCmsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
+  ApiAdminEloRoute: typeof ApiAdminEloRoute
   ApiAdminMediaRoute: typeof ApiAdminMediaRoute
   ApiAdminSummaryRoute: typeof ApiAdminSummaryRoute
+  ApiAdminUsersRoute: typeof ApiAdminUsersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -285,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/contato'
       fullPath: '/contato'
       preLoaderRoute: typeof ContatoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/doacao': {
+      id: '/doacao'
+      path: '/doacao'
+      fullPath: '/doacao'
+      preLoaderRoute: typeof DoacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invisible-academy': {
@@ -357,12 +428,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCmsContentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/donation': {
+      id: '/api/donation'
+      path: '/api/donation'
+      fullPath: '/api/donation'
+      preLoaderRoute: typeof ApiDonationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/doacao/retorno': {
+      id: '/doacao/retorno'
+      path: '/retorno'
+      fullPath: '/doacao/retorno'
+      preLoaderRoute: typeof DoacaoRetornoRouteImport
+      parentRoute: typeof DoacaoRoute
     }
     '/api/admin/cms': {
       id: '/api/admin/cms'
@@ -376,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/data'
       fullPath: '/api/admin/data'
       preLoaderRoute: typeof ApiAdminDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/elo': {
+      id: '/api/admin/elo'
+      path: '/api/admin/elo'
+      fullPath: '/api/admin/elo'
+      preLoaderRoute: typeof ApiAdminEloRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/media': {
@@ -392,13 +484,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSummaryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/users': {
+      id: '/api/admin/users'
+      path: '/api/admin/users'
+      fullPath: '/api/admin/users'
+      preLoaderRoute: typeof ApiAdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface DoacaoRouteChildren {
+  DoacaoRetornoRoute: typeof DoacaoRetornoRoute
+}
+
+const DoacaoRouteChildren: DoacaoRouteChildren = {
+  DoacaoRetornoRoute: DoacaoRetornoRoute,
+}
+
+const DoacaoRouteWithChildren =
+  DoacaoRoute._addFileChildren(DoacaoRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ContatoRoute: ContatoRoute,
+  DoacaoRoute: DoacaoRouteWithChildren,
   InvisibleAcademyRoute: InvisibleAcademyRoute,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   ProjetoEloRoute: ProjetoEloRoute,
@@ -409,11 +520,14 @@ const rootRouteChildren: RootRouteChildren = {
   TermosDeUsoRoute: TermosDeUsoRoute,
   ApiAuthRoute: ApiAuthRoute,
   ApiCmsContentRoute: ApiCmsContentRoute,
+  ApiDonationRoute: ApiDonationRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAdminCmsRoute: ApiAdminCmsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
+  ApiAdminEloRoute: ApiAdminEloRoute,
   ApiAdminMediaRoute: ApiAdminMediaRoute,
   ApiAdminSummaryRoute: ApiAdminSummaryRoute,
+  ApiAdminUsersRoute: ApiAdminUsersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

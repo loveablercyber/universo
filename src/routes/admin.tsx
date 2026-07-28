@@ -21,10 +21,12 @@ type Summary = {
   sessions: { active: number };
   audit: { total: number };
 };
-type Section = "overview" | "pages" | "media" | "elo" | "modules" | "settings" | "audit";
+type Section = "overview" | "pages" | "media" | "elo" | "modules" | "settings" | "audit" | "users";
 import { CmsEditor } from "@/components/admin/CmsEditor";
 import { CmsVersionHistory } from "@/components/admin/CmsVersionHistory";
 import { MediaLibrary } from "@/components/admin/MediaLibrary";
+import { EloManager } from "@/components/admin/EloManager";
+import { UserManager } from "@/components/admin/UserManager";
 import { Image as ImageIcon } from "lucide-react";
 type Page = {
   id: string;
@@ -34,15 +36,7 @@ type Page = {
   content: Record<string, unknown>;
   seo: Record<string, unknown>;
 };
-type Participant = {
-  id: string;
-  kind: "donor" | "beneficiary" | "volunteer" | "partner";
-  fullName: string;
-  email?: string;
-  phone?: string;
-  status: "new" | "reviewing" | "approved" | "active" | "completed" | "rejected";
-  notes?: string;
-};
+
 type Module = {
   key: "site" | "elo" | "store" | "academy";
   name: string;
@@ -89,12 +83,9 @@ function AdminPage() {
     setSection(nextSection);
     setNotice("");
     if (nextSection === "overview") return loadSummary();
-    if (nextSection === "media") return; // O componente MediaLibrary gerencia seu próprio fetch
     setSectionLoading(true);
     try {
-      const endpoint =
-        nextSection === "pages" ? "/api/admin/cms" : `/api/admin/data?section=${nextSection}`;
-      const response = await fetch(endpoint);
+      const response = await fetch(`/api/admin/data?section=${nextSection}`);
       const payload = await readPayload(response);
       if (!response.ok) throw new Error(payload.message);
       setSectionData(payload);
@@ -210,6 +201,7 @@ function AdminPage() {
     { key: "media" as const, label: "Mídias", icon: ImageIcon },
     { key: "elo" as const, label: "Projeto Elo", icon: HeartHandshake },
     { key: "modules" as const, label: "Módulos", icon: Database },
+    { key: "users" as const, label: "Usuários", icon: Users },
     { key: "settings" as const, label: "Configurações", icon: Settings },
     { key: "audit" as const, label: "Auditoria", icon: ShieldCheck },
   ];
@@ -328,36 +320,11 @@ function SectionContent({
   }
 
   if (section === "elo") {
-    const participants = (data.participants ?? []) as Participant[];
-    return (
-      <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
-        <ParticipantForm save={save} />
-        <div className="overflow-hidden rounded-2xl border border-copper/10 bg-white">
-          <div className="border-b border-copper/10 p-5">
-            <h3 className="font-serif text-2xl">Participantes</h3>
-          </div>
-          <div className="divide-y divide-copper/10">
-            {participants.length === 0 && (
-              <p className="p-5 text-sm text-brown/60">Nenhum cadastro ainda.</p>
-            )}
-            {participants.map((item) => (
-              <div key={item.id} className="grid gap-2 p-5 sm:grid-cols-[1fr_auto]">
-                <div>
-                  <p className="font-medium">{item.fullName}</p>
-                  <p className="text-xs text-brown/55">
-                    {item.email || item.phone || "Sem contato"}
-                  </p>
-                </div>
-                <div className="text-left sm:text-right">
-                  <p className="text-[10px] uppercase tracking-wider text-copper">{item.kind}</p>
-                  <p className="text-xs text-brown/60">{item.status}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <EloManager />;
+  }
+
+  if (section === "users") {
+    return <UserManager />;
   }
 
   if (section === "modules") {
@@ -468,38 +435,6 @@ function SectionContent({
         ))}
       </div>
     </div>
-  );
-}
-
-function ParticipantForm({ save }: { save: (body: Record<string, unknown>) => Promise<unknown> }) {
-  return (
-    <form
-      className="h-fit rounded-2xl border border-copper/10 bg-white p-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const form = new FormData(event.currentTarget);
-        void save({
-          action: "save-participant",
-          kind: form.get("kind"),
-          fullName: form.get("fullName"),
-          email: form.get("email"),
-          phone: form.get("phone"),
-          status: form.get("status"),
-          notes: form.get("notes"),
-        }).then(() => event.currentTarget.reset());
-      }}
-    >
-      <h3 className="font-serif text-2xl">Novo cadastro</h3>
-      <div className="mt-5 grid gap-4">
-        <Select label="Tipo" name="kind" defaultValue="donor" options={kindOptions} />
-        <Field label="Nome completo" name="fullName" required />
-        <Field label="E-mail" name="email" type="email" />
-        <Field label="Telefone" name="phone" />
-        <Select label="Status" name="status" defaultValue="new" options={eloStatusOptions} />
-        <TextArea label="Observações internas" name="notes" />
-      </div>
-      <SaveButton label="CADASTRAR" />
-    </form>
   );
 }
 
@@ -677,18 +612,4 @@ const moduleOptions = [
   { value: "development", label: "Em desenvolvimento" },
   { value: "active", label: "Ativo" },
   { value: "paused", label: "Pausado" },
-];
-const kindOptions = [
-  { value: "donor", label: "Doador(a)" },
-  { value: "beneficiary", label: "Beneficiário(a)" },
-  { value: "volunteer", label: "Voluntário(a)" },
-  { value: "partner", label: "Parceiro(a)" },
-];
-const eloStatusOptions = [
-  { value: "new", label: "Novo" },
-  { value: "reviewing", label: "Em análise" },
-  { value: "approved", label: "Aprovado" },
-  { value: "active", label: "Ativo" },
-  { value: "completed", label: "Concluído" },
-  { value: "rejected", label: "Recusado" },
 ];

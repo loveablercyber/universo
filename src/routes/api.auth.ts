@@ -8,6 +8,7 @@ import {
   destroySession,
   readSession,
   sessionCookie,
+  checkRateLimit,
 } from "@/lib/auth.server";
 
 const loginSchema = z.object({
@@ -46,6 +47,10 @@ export const Route = createFileRoute("/api/auth")({
 
           const input = loginSchema.safeParse(body);
           if (!input.success) return jsonError("Dados de acesso inválidos.", 400);
+
+          const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+          await checkRateLimit(ip);
+
           const user = await authenticate(input.data.email, input.data.password);
           if (!user) return jsonError("E-mail ou senha incorretos.", 401);
 

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { UniverseSwitcher } from "@/components/UniverseSwitcher";
 import {
@@ -195,12 +195,18 @@ function HeroSection() {
               <br />
               acolhimento e esperança para quem mais precisa.
             </p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                to="/doacao"
+                className="inline-flex items-center gap-3 rounded-full bg-copper px-7 py-3.5 font-sans-brand text-[11px] font-semibold tracking-[0.25em] text-white shadow-lg transition hover:bg-copper/90"
+              >
+                FAZER DOAÇÃO ONLINE <Heart className="h-3.5 w-3.5 fill-current" strokeWidth={1.5} />
+              </Link>
               <a
                 href="#como-doar"
-                className="inline-flex items-center gap-3 rounded-full bg-brown-dark px-7 py-3.5 font-sans-brand text-[11px] tracking-[0.25em] text-white transition hover:bg-brown-mid"
+                className="inline-flex items-center gap-3 rounded-full border border-copper/30 bg-warm-white px-7 py-3.5 font-sans-brand text-[11px] tracking-[0.25em] text-brown-dark transition hover:bg-cream"
               >
-                CONHEÇA O PROJETO ELO <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+                SAIBA MAIS <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
               </a>
             </div>
           </div>
@@ -471,12 +477,20 @@ function CommunityCTA() {
             Juntos, criamos elos que devolvem autoestima e esperança.
           </p>
         </div>
-        <a
-          href="https://wa.me/5514998373935?text=Ol%C3%A1%2C%20quero%20conhecer%20e%20apoiar%20o%20Projeto%20Elo."
-          className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/70 bg-white/10 px-7 py-3.5 font-sans-brand text-[11px] tracking-[0.25em] text-white backdrop-blur hover:bg-white/20"
-        >
-          QUERO FAZER PARTE <Heart className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </a>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            to="/doacao"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white bg-white px-7 py-3.5 font-sans-brand text-[11px] font-semibold tracking-[0.25em] text-copper shadow-lg transition hover:bg-cream"
+          >
+            DOAR AGORA (ONLINE) <Heart className="h-3.5 w-3.5 fill-current" strokeWidth={1.5} />
+          </Link>
+          <a
+            href="https://wa.me/5514998373935?text=Ol%C3%A1%2C%20quero%20conhecer%20e%20apoiar%20o%20Projeto%20Elo."
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/70 bg-white/10 px-7 py-3.5 font-sans-brand text-[11px] tracking-[0.25em] text-white backdrop-blur hover:bg-white/20"
+          >
+            FALAR NO WHATSAPP <Heart className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </a>
+        </div>
         <Heart
           className="pointer-events-none absolute -right-6 top-1/2 h-40 w-40 -translate-y-1/2 text-white/15"
           strokeWidth={0.8}

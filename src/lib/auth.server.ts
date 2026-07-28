@@ -9,7 +9,8 @@ export type SessionUser = {
   id: string;
   email: string;
   fullName: string;
-  role: "admin" | "manager" | "customer" | "student" | "donor" | "volunteer";
+  role: "admin" | "manager" | "operator" | "customer" | "student" | "donor" | "volunteer";
+  permissions: string[];
 };
 
 function cookieValue(request: Request) {
@@ -116,8 +117,9 @@ export async function readSession(request: Request): Promise<SessionUser | null>
     email: string;
     full_name: string;
     role: SessionUser["role"];
+    permissions: string[];
   }>(
-    `select u.id, u.email, u.full_name, u.role
+    `select u.id, u.email, u.full_name, u.role, u.permissions
        from universe.sessions s
        join universe.users u on u.id=s.user_id
       where s.token_hash=$1
@@ -128,7 +130,13 @@ export async function readSession(request: Request): Promise<SessionUser | null>
   );
   const user = result.rows[0];
   return user
-    ? { id: user.id, email: user.email, fullName: user.full_name, role: user.role }
+    ? {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name,
+        role: user.role,
+        permissions: user.permissions,
+      }
     : null;
 }
 
@@ -144,4 +152,40 @@ export async function requireAdmin(request: Request) {
     throw new Response("Acesso administrativo necessário.", { status: 403 });
   }
   return user;
+}
+
+export async function requirePermission(request: Request, permission: string) {
+  const user = await readSession(request);
+  if (!user) throw new Response("Autenticação necessária.", { status: 401 });
+  if (user.role === "admin") return user; // Admin has full access
+  if (!user.permissions.includes(permission)) {
+    throw new Response("Permissão insuficiente para esta ação.", { status: 403 });
+  }
+  return user;
+}
+
+export async function checkRateLimit(ip: string | null) {
+  if (!ip) return; // Cannot rate limit without IP
+  const result = await query<{ blocked_until: string | null }>(
+    `insert into universe.login_attempts(ip_address)
+     values($1::inet)
+     on conflict (ip_address) do update
+     set attempt_count = case
+           when universe.login_attempts.last_attempt < now() - interval '15 minutes' then 1
+           else universe.login_attempts.attempt_count + 1
+         end,
+         last_attempt = now(),
+         blocked_until = case
+           when universe.login_attempts.last_attempt >= now() - interval '15 minutes'
+                and universe.login_attempts.attempt_count + 1 >= 5
+           then now() + interval '15 minutes'
+           else null
+         end
+     returning blocked_until`,
+    [ip],
+  );
+  const record = result.rows[0];
+  if (record?.blocked_until && new Date(record.blocked_until) > new Date()) {
+    throw new Response("Muitas tentativas falhas. Tente novamente em 15 minutos.", { status: 429 });
+  }
 }
