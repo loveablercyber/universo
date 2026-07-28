@@ -1,4 +1,4 @@
-import { Instagram, Facebook, Youtube, MessageCircle, Mail, MapPin, Calendar } from "lucide-react";
+import { Instagram, MessageCircle, Mail, MapPin, Calendar } from "lucide-react";
 import { Logo } from "./Logo";
 import { brand, footerLinks } from "@/data/carol-sol";
 import { siteLinks } from "@/lib/site-links";
@@ -15,20 +15,23 @@ export function Footer() {
             Confiança que empodera.
           </p>
           <div className="mt-6 flex gap-3">
-            {[Instagram, Facebook, Youtube].map((I, i) => (
-              <a
-                key={i}
-                href="#"
-                className="grid h-9 w-9 place-items-center rounded-full border border-copper/40 text-copper-light hover:bg-copper/10 transition"
-              >
-                <I className="h-4 w-4" strokeWidth={1.5} />
-              </a>
-            ))}
             <a
-              href="#"
-              className="grid h-9 w-9 place-items-center rounded-full border border-copper/40 text-copper-light hover:bg-copper/10 transition text-xs font-bold"
+              href={brand.instagram}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Instagram Carol Sol Hair"
+              className="grid h-9 w-9 place-items-center rounded-full border border-copper/40 text-copper-light hover:bg-copper/10 transition"
             >
-              TT
+              <Instagram className="h-4 w-4" strokeWidth={1.5} />
+            </a>
+            <a
+              href={brand.whatsapp}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="WhatsApp Carol Sol"
+              className="grid h-9 w-9 place-items-center rounded-full border border-copper/40 text-copper-light hover:bg-copper/10 transition"
+            >
+              <MessageCircle className="h-4 w-4" strokeWidth={1.5} />
             </a>
           </div>
         </div>
@@ -51,17 +54,17 @@ export function Footer() {
           <ul className="space-y-4 text-[12px]">
             <li className="flex items-start gap-3">
               <MessageCircle className="h-4 w-4 text-copper mt-0.5 shrink-0" strokeWidth={1.5} />
-              <div>
+              <a href={brand.whatsapp} target="_blank" rel="noreferrer">
                 <div className="text-warm-white/60 text-[10px]">WhatsApp</div>
                 {brand.phone}
-              </div>
+              </a>
             </li>
             <li className="flex items-start gap-3">
               <Mail className="h-4 w-4 text-copper mt-0.5 shrink-0" strokeWidth={1.5} />
-              <div>
+              <a href={`mailto:${brand.email}`}>
                 <div className="text-warm-white/60 text-[10px]">E-mail</div>
                 {brand.email}
-              </div>
+              </a>
             </li>
             <li className="flex items-start gap-3">
               <MapPin className="h-4 w-4 text-copper mt-0.5 shrink-0" strokeWidth={1.5} />

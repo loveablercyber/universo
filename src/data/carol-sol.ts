@@ -3,9 +3,10 @@ import { siteLinks } from "@/lib/site-links";
 export const brand = {
   name: "CAROL SOL",
   tagline: "LUXURY HAIR & BEAUTY UNIVERSE",
-  phone: "(14) 99888-0000",
-  whatsapp: "https://wa.me/5514998880000",
-  email: "contato@carolsol.com.br",
+  phone: "(14) 99837-3935",
+  whatsapp: "https://wa.me/5514998373935",
+  instagram: "https://www.instagram.com/carolsolhair/",
+  email: "ola@carolsol.com.br",
   location: "Bauru · São Paulo · Brasil",
   hours: ["Segunda a Sexta: 9h às 19h", "Sábado: 9h às 16h", "Domingo: Fechado"],
 };
@@ -66,7 +67,7 @@ export const possibilities = [
     items: ["Pré-avaliação", "Orçamentos", "Agendamento", "Suporte"],
     cta: {
       label: "FALAR NO WHATSAPP",
-      href: "https://wa.me/5514998880000",
+      href: brand.whatsapp,
       variant: "whatsapp" as const,
     },
   },
