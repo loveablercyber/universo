@@ -25,11 +25,14 @@ import { Route as ApiAuthRouteImport } from './routes/api.auth'
 import { Route as ApiCmsContentRouteImport } from './routes/api.cms-content'
 import { Route as ApiDonationRouteImport } from './routes/api.donation'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiStoreRouteImport } from './routes/api.store'
 import { Route as DoacaoRetornoRouteImport } from './routes/doacao.retorno'
+import { Route as SolHairClosetPedidoRouteImport } from './routes/sol-hair-closet.pedido'
 import { Route as ApiAdminCmsRouteImport } from './routes/api.admin.cms'
 import { Route as ApiAdminDataRouteImport } from './routes/api.admin.data'
 import { Route as ApiAdminEloRouteImport } from './routes/api.admin.elo'
 import { Route as ApiAdminMediaRouteImport } from './routes/api.admin.media'
+import { Route as ApiAdminStoreRouteImport } from './routes/api.admin.store'
 import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin.users'
 
@@ -113,10 +116,20 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStoreRoute = ApiStoreRouteImport.update({
+  id: '/api/store',
+  path: '/api/store',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DoacaoRetornoRoute = DoacaoRetornoRouteImport.update({
   id: '/retorno',
   path: '/retorno',
   getParentRoute: () => DoacaoRoute,
+} as any)
+const SolHairClosetPedidoRoute = SolHairClosetPedidoRouteImport.update({
+  id: '/pedido',
+  path: '/pedido',
+  getParentRoute: () => SolHairClosetRoute,
 } as any)
 const ApiAdminCmsRoute = ApiAdminCmsRouteImport.update({
   id: '/api/admin/cms',
@@ -136,6 +149,11 @@ const ApiAdminEloRoute = ApiAdminEloRouteImport.update({
 const ApiAdminMediaRoute = ApiAdminMediaRouteImport.update({
   id: '/api/admin/media',
   path: '/api/admin/media',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminStoreRoute = ApiAdminStoreRouteImport.update({
+  id: '/api/admin/store',
+  path: '/api/admin/store',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminSummaryRoute = ApiAdminSummaryRouteImport.update({
@@ -160,17 +178,20 @@ export interface FileRoutesByFullPath {
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
-  '/sol-hair-closet': typeof SolHairClosetRoute
+  '/sol-hair-closet': typeof SolHairClosetRouteWithChildren
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/store': typeof ApiStoreRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
+  '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
   '/api/admin/media': typeof ApiAdminMediaRoute
+  '/api/admin/store': typeof ApiAdminStoreRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
 }
@@ -185,17 +206,20 @@ export interface FileRoutesByTo {
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
-  '/sol-hair-closet': typeof SolHairClosetRoute
+  '/sol-hair-closet': typeof SolHairClosetRouteWithChildren
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/store': typeof ApiStoreRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
+  '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
   '/api/admin/media': typeof ApiAdminMediaRoute
+  '/api/admin/store': typeof ApiAdminStoreRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
 }
@@ -211,17 +235,20 @@ export interface FileRoutesById {
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
-  '/sol-hair-closet': typeof SolHairClosetRoute
+  '/sol-hair-closet': typeof SolHairClosetRouteWithChildren
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/store': typeof ApiStoreRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
+  '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
   '/api/admin/media': typeof ApiAdminMediaRoute
+  '/api/admin/store': typeof ApiAdminStoreRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
 }
@@ -244,11 +271,14 @@ export interface FileRouteTypes {
     | '/api/cms-content'
     | '/api/donation'
     | '/api/health'
+    | '/api/store'
     | '/doacao/retorno'
+    | '/sol-hair-closet/pedido'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
     | '/api/admin/media'
+    | '/api/admin/store'
     | '/api/admin/summary'
     | '/api/admin/users'
   fileRoutesByTo: FileRoutesByTo
@@ -269,11 +299,14 @@ export interface FileRouteTypes {
     | '/api/cms-content'
     | '/api/donation'
     | '/api/health'
+    | '/api/store'
     | '/doacao/retorno'
+    | '/sol-hair-closet/pedido'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
     | '/api/admin/media'
+    | '/api/admin/store'
     | '/api/admin/summary'
     | '/api/admin/users'
   id:
@@ -294,11 +327,14 @@ export interface FileRouteTypes {
     | '/api/cms-content'
     | '/api/donation'
     | '/api/health'
+    | '/api/store'
     | '/doacao/retorno'
+    | '/sol-hair-closet/pedido'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
     | '/api/admin/media'
+    | '/api/admin/store'
     | '/api/admin/summary'
     | '/api/admin/users'
   fileRoutesById: FileRoutesById
@@ -314,16 +350,18 @@ export interface RootRouteChildren {
   SalaoRoute: typeof SalaoRoute
   ServicosRoute: typeof ServicosRoute
   SobreRoute: typeof SobreRoute
-  SolHairClosetRoute: typeof SolHairClosetRoute
+  SolHairClosetRoute: typeof SolHairClosetRouteWithChildren
   TermosDeUsoRoute: typeof TermosDeUsoRoute
   ApiAuthRoute: typeof ApiAuthRoute
   ApiCmsContentRoute: typeof ApiCmsContentRoute
   ApiDonationRoute: typeof ApiDonationRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiStoreRoute: typeof ApiStoreRoute
   ApiAdminCmsRoute: typeof ApiAdminCmsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
   ApiAdminEloRoute: typeof ApiAdminEloRoute
   ApiAdminMediaRoute: typeof ApiAdminMediaRoute
+  ApiAdminStoreRoute: typeof ApiAdminStoreRoute
   ApiAdminSummaryRoute: typeof ApiAdminSummaryRoute
   ApiAdminUsersRoute: typeof ApiAdminUsersRoute
 }
@@ -442,12 +480,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/store': {
+      id: '/api/store'
+      path: '/api/store'
+      fullPath: '/api/store'
+      preLoaderRoute: typeof ApiStoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/doacao/retorno': {
       id: '/doacao/retorno'
       path: '/retorno'
       fullPath: '/doacao/retorno'
       preLoaderRoute: typeof DoacaoRetornoRouteImport
       parentRoute: typeof DoacaoRoute
+    }
+    '/sol-hair-closet/pedido': {
+      id: '/sol-hair-closet/pedido'
+      path: '/pedido'
+      fullPath: '/sol-hair-closet/pedido'
+      preLoaderRoute: typeof SolHairClosetPedidoRouteImport
+      parentRoute: typeof SolHairClosetRoute
     }
     '/api/admin/cms': {
       id: '/api/admin/cms'
@@ -475,6 +527,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/media'
       fullPath: '/api/admin/media'
       preLoaderRoute: typeof ApiAdminMediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/store': {
+      id: '/api/admin/store'
+      path: '/api/admin/store'
+      fullPath: '/api/admin/store'
+      preLoaderRoute: typeof ApiAdminStoreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/summary': {
@@ -505,6 +564,18 @@ const DoacaoRouteChildren: DoacaoRouteChildren = {
 const DoacaoRouteWithChildren =
   DoacaoRoute._addFileChildren(DoacaoRouteChildren)
 
+interface SolHairClosetRouteChildren {
+  SolHairClosetPedidoRoute: typeof SolHairClosetPedidoRoute
+}
+
+const SolHairClosetRouteChildren: SolHairClosetRouteChildren = {
+  SolHairClosetPedidoRoute: SolHairClosetPedidoRoute,
+}
+
+const SolHairClosetRouteWithChildren = SolHairClosetRoute._addFileChildren(
+  SolHairClosetRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
@@ -516,16 +587,18 @@ const rootRouteChildren: RootRouteChildren = {
   SalaoRoute: SalaoRoute,
   ServicosRoute: ServicosRoute,
   SobreRoute: SobreRoute,
-  SolHairClosetRoute: SolHairClosetRoute,
+  SolHairClosetRoute: SolHairClosetRouteWithChildren,
   TermosDeUsoRoute: TermosDeUsoRoute,
   ApiAuthRoute: ApiAuthRoute,
   ApiCmsContentRoute: ApiCmsContentRoute,
   ApiDonationRoute: ApiDonationRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiStoreRoute: ApiStoreRoute,
   ApiAdminCmsRoute: ApiAdminCmsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
   ApiAdminEloRoute: ApiAdminEloRoute,
   ApiAdminMediaRoute: ApiAdminMediaRoute,
+  ApiAdminStoreRoute: ApiAdminStoreRoute,
   ApiAdminSummaryRoute: ApiAdminSummaryRoute,
   ApiAdminUsersRoute: ApiAdminUsersRoute,
 }

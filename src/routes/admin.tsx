@@ -21,12 +21,14 @@ type Summary = {
   sessions: { active: number };
   audit: { total: number };
 };
-type Section = "overview" | "pages" | "media" | "elo" | "modules" | "settings" | "audit" | "users";
+type Section =
+  "overview" | "pages" | "media" | "elo" | "store" | "modules" | "settings" | "audit" | "users";
 import { CmsEditor } from "@/components/admin/CmsEditor";
 import { CmsVersionHistory } from "@/components/admin/CmsVersionHistory";
 import { MediaLibrary } from "@/components/admin/MediaLibrary";
 import { EloManager } from "@/components/admin/EloManager";
 import { UserManager } from "@/components/admin/UserManager";
+import { StoreManager } from "@/components/admin/StoreManager";
 import { Image as ImageIcon } from "lucide-react";
 type Page = {
   id: string;
@@ -200,6 +202,7 @@ function AdminPage() {
     { key: "pages" as const, label: "Conteúdo do site", icon: FileText },
     { key: "media" as const, label: "Mídias", icon: ImageIcon },
     { key: "elo" as const, label: "Projeto Elo", icon: HeartHandshake },
+    { key: "store" as const, label: "Loja Virtual", icon: ShoppingBag },
     { key: "modules" as const, label: "Módulos", icon: Database },
     { key: "users" as const, label: "Usuários", icon: Users },
     { key: "settings" as const, label: "Configurações", icon: Settings },
@@ -321,6 +324,10 @@ function SectionContent({
 
   if (section === "elo") {
     return <EloManager />;
+  }
+
+  if (section === "store") {
+    return <StoreManager />;
   }
 
   if (section === "users") {

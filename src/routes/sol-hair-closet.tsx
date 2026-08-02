@@ -59,6 +59,23 @@ function HomePage() {
   const [favs, setFavs] = useState<string[]>([]);
   const [openDrawer, setOpenDrawer] = useState<null | "cat" | "search" | "cart" | "fav">(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [storeProducts, setStoreProducts] = useState<Product[]>(products);
+
+  useEffect(() => {
+    async function loadStoreProducts() {
+      try {
+        const res = await fetch("/api/store?action=products");
+        const data = await res.json();
+        if (res.ok && data.ok && Array.isArray(data.products) && data.products.length > 0) {
+          setStoreProducts(data.products);
+        }
+      } catch (e) {
+        /* fallback to static products */
+      }
+    }
+    void loadStoreProducts();
+  }, []);
 
   useEffect(() => {
     try {
@@ -145,11 +162,16 @@ function HomePage() {
         open={openDrawer === "cart"}
         onClose={() => setOpenDrawer(null)}
         cart={cart}
-        subtotal={subtotal}
-        pixTotal={pixTotal}
-        onQty={changeQty}
-        onRemove={removeItem}
+        onSetQty={setQty}
+        onRemove={removeFromCart}
+        onCheckout={() => {
+          setOpenDrawer(null);
+          setShowCheckoutModal(true);
+        }}
       />
+      {showCheckoutModal && (
+        <CheckoutModal cart={cart} onClose={() => setShowCheckoutModal(false)} />
+      )}
       <FavDrawer
         open={openDrawer === "fav"}
         onClose={() => setOpenDrawer(null)}
@@ -817,19 +839,19 @@ function CartDrawer({
   open,
   onClose,
   cart,
-  subtotal,
-  pixTotal,
-  onQty,
+  onSetQty,
   onRemove,
+  onCheckout,
 }: {
   open: boolean;
   onClose: () => void;
   cart: CartItem[];
-  subtotal: number;
-  pixTotal: number;
-  onQty: (id: string, d: number) => void;
+  onSetQty: (id: string, qty: number) => void;
   onRemove: (id: string) => void;
+  onCheckout: () => void;
 }) {
+  const subtotal = cart.reduce((a, i) => a + i.qty * i.product.price, 0);
+  const pixTotal = subtotal * 0.95;
   const missing = Math.max(0, FREE_SHIPPING - subtotal);
   return (
     <DrawerShell open={open} onClose={onClose} title="Sua Sacola" side="right">
@@ -849,7 +871,7 @@ function CartDrawer({
                 <div className="mt-2 flex items-center justify-between">
                   <div className="flex items-center border border-line rounded-full">
                     <button
-                      onClick={() => onQty(i.product.id, -1)}
+                      onClick={() => onSetQty(i.product.id, i.qty - 1)}
                       aria-label="Diminuir"
                       className="px-2 py-1 text-ink-deep hover:text-copper"
                     >
@@ -857,7 +879,7 @@ function CartDrawer({
                     </button>
                     <span className="px-2 text-[12px]">{i.qty}</span>
                     <button
-                      onClick={() => onQty(i.product.id, 1)}
+                      onClick={() => onSetQty(i.product.id, i.qty + 1)}
                       aria-label="Aumentar"
                       className="px-2 py-1 text-ink-deep hover:text-copper"
                     >
@@ -894,18 +916,258 @@ function CartDrawer({
             <span className="text-text-secondary">No Pix (5% off)</span>
             <span className="font-semibold text-copper">{fmt(pixTotal)}</span>
           </div>
-          <button className="w-full mt-3 rounded-full bg-ink-deep py-3 text-[11px] tracking-[0.25em] font-semibold text-cream hover:bg-copper">
+          <button
+            onClick={onCheckout}
+            disabled={cart.length === 0}
+            className="w-full mt-3 rounded-full bg-ink-deep py-3 text-[11px] tracking-[0.25em] font-semibold text-cream hover:bg-copper transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             FINALIZAR COMPRA
           </button>
           <button
             onClick={onClose}
-            className="w-full rounded-full border border-line py-3 text-[11px] tracking-[0.25em] font-medium text-ink-deep hover:bg-warm-white"
+            className="w-full rounded-full border border-line py-3 text-[11px] tracking-[0.25em] font-medium text-ink-deep hover:bg-warm-white transition"
           >
             CONTINUAR COMPRANDO
           </button>
         </div>
       </div>
     </DrawerShell>
+  );
+}
+
+function CheckoutModal({ cart, onClose }: { cart: CartItem[]; onClose: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const subtotal = cart.reduce((a, i) => a + i.qty * i.product.price, 0);
+  const shippingCost = subtotal >= FREE_SHIPPING ? 0 : 20.0;
+  const totalAmount = subtotal + shippingCost;
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const form = new FormData(e.currentTarget);
+
+    try {
+      const payload = {
+        customerName: form.get("customerName"),
+        customerEmail: form.get("customerEmail"),
+        customerPhone: form.get("customerPhone"),
+        customerDocument: form.get("customerDocument"),
+        shippingAddress: {
+          zipCode: form.get("zipCode"),
+          street: form.get("street"),
+          number: form.get("number"),
+          complement: form.get("complement") || "",
+          neighborhood: form.get("neighborhood"),
+          city: form.get("city"),
+          state: form.get("state"),
+        },
+        items: cart.map((i) => ({
+          productId: i.product.id,
+          productName: i.product.name,
+          price: i.product.price,
+          qty: i.qty,
+        })),
+      };
+
+      const res = await fetch("/api/store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || "Não foi possível criar o pedido.");
+      }
+
+      /* Redirect to SumUp Hosted Checkout */
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao processar checkout.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-ink-deep/60 backdrop-blur-sm overflow-y-auto">
+      <div className="my-auto flex w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-warm-white shadow-2xl ring-1 ring-line">
+        <header className="flex items-center justify-between border-b border-line bg-cream/40 px-6 py-4">
+          <div>
+            <h2 className="font-serif text-2xl text-ink-deep font-bold">Finalizar Compra</h2>
+            <p className="text-xs text-text-secondary">Preencha seus dados de entrega</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 text-ink-mid hover:bg-cream hover:text-ink-deep transition"
+          >
+            <X size={20} />
+          </button>
+        </header>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+          {error && <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700">{error}</p>}
+
+          <div className="space-y-3">
+            <h3 className="font-serif text-lg font-semibold text-copper border-b border-line pb-1">
+              Seus Dados
+            </h3>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-ink-deep">Nome Completo *</label>
+              <input
+                name="customerName"
+                required
+                placeholder="Seu nome completo"
+                className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-ink-deep">E-mail *</label>
+                <input
+                  name="customerEmail"
+                  type="email"
+                  required
+                  placeholder="seu@email.com"
+                  className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-ink-deep">Telefone / WhatsApp *</label>
+                <input
+                  name="customerPhone"
+                  required
+                  placeholder="(14) 99999-9999"
+                  className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-ink-deep">
+                CPF (para envio e rastreio) *
+              </label>
+              <input
+                name="customerDocument"
+                required
+                placeholder="000.000.000-00"
+                className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <h3 className="font-serif text-lg font-semibold text-copper border-b border-line pb-1">
+              Endereço de Entrega
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1 col-span-1">
+                <label className="text-xs font-medium text-ink-deep">CEP *</label>
+                <input
+                  name="zipCode"
+                  required
+                  placeholder="17000-000"
+                  className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+                />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <label className="text-xs font-medium text-ink-deep">Rua / Logradouro *</label>
+                <input
+                  name="street"
+                  required
+                  placeholder="Rua, Avenida..."
+                  className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-ink-deep">Número *</label>
+                <input
+                  name="number"
+                  required
+                  placeholder="123"
+                  className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+                />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <label className="text-xs font-medium text-ink-deep">Complemento</label>
+                <input
+                  name="complement"
+                  placeholder="Apto, Bloco (opcional)"
+                  className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-ink-deep">Bairro *</label>
+                <input
+                  name="neighborhood"
+                  required
+                  placeholder="Bairro"
+                  className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-ink-deep">Cidade *</label>
+                <input
+                  name="city"
+                  required
+                  placeholder="Cidade"
+                  className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs outline-none focus:border-copper"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-ink-deep">Estado (UF) *</label>
+                <input
+                  name="state"
+                  required
+                  placeholder="SP"
+                  maxLength={2}
+                  className="w-full h-10 rounded-xl border border-line bg-cream/20 px-3 text-xs uppercase outline-none focus:border-copper"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-cream/50 p-4 space-y-1 text-xs border border-line">
+            <div className="flex justify-between text-text-secondary">
+              <span>Subtotal ({cart.reduce((a, i) => a + i.qty, 0)} itens)</span>
+              <span>R$ {subtotal.toFixed(2).replace(".", ",")}</span>
+            </div>
+            <div className="flex justify-between text-text-secondary">
+              <span>Frete</span>
+              <span>
+                {shippingCost === 0 ? "GRÁTIS" : `R$ ${shippingCost.toFixed(2).replace(".", ",")}`}
+              </span>
+            </div>
+            <div className="flex justify-between font-serif text-base font-bold text-ink-deep pt-1 border-t border-line">
+              <span>Total</span>
+              <span className="text-copper">R$ {totalAmount.toFixed(2).replace(".", ",")}</span>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 rounded-full bg-ink-deep font-sans-brand text-xs font-semibold tracking-widest text-cream hover:bg-copper transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                GERANDO CHECKOUT...
+              </>
+            ) : (
+              <>PAGAR COM SUMUP (CARTÃO OU PIX)</>
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 
