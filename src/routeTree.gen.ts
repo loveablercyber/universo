@@ -35,6 +35,7 @@ import { Route as ApiAdminCmsRouteImport } from './routes/api.admin.cms'
 import { Route as ApiAdminDataRouteImport } from './routes/api.admin.data'
 import { Route as ApiAdminEloRouteImport } from './routes/api.admin.elo'
 import { Route as ApiAdminMediaRouteImport } from './routes/api.admin.media'
+import { Route as ApiAdminNotificationsRouteImport } from './routes/api.admin.notifications'
 import { Route as ApiAdminStoreRouteImport } from './routes/api.admin.store'
 import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin.users'
@@ -169,6 +170,11 @@ const ApiAdminMediaRoute = ApiAdminMediaRouteImport.update({
   path: '/api/admin/media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminNotificationsRoute = ApiAdminNotificationsRouteImport.update({
+  id: '/api/admin/notifications',
+  path: '/api/admin/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminStoreRoute = ApiAdminStoreRouteImport.update({
   id: '/api/admin/store',
   path: '/api/admin/store',
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
   '/api/admin/media': typeof ApiAdminMediaRoute
+  '/api/admin/notifications': typeof ApiAdminNotificationsRoute
   '/api/admin/store': typeof ApiAdminStoreRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
   '/api/admin/media': typeof ApiAdminMediaRoute
+  '/api/admin/notifications': typeof ApiAdminNotificationsRoute
   '/api/admin/store': typeof ApiAdminStoreRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
@@ -275,6 +283,7 @@ export interface FileRoutesById {
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
   '/api/admin/media': typeof ApiAdminMediaRoute
+  '/api/admin/notifications': typeof ApiAdminNotificationsRoute
   '/api/admin/store': typeof ApiAdminStoreRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/api/admin/data'
     | '/api/admin/elo'
     | '/api/admin/media'
+    | '/api/admin/notifications'
     | '/api/admin/store'
     | '/api/admin/summary'
     | '/api/admin/users'
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/api/admin/data'
     | '/api/admin/elo'
     | '/api/admin/media'
+    | '/api/admin/notifications'
     | '/api/admin/store'
     | '/api/admin/summary'
     | '/api/admin/users'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/api/admin/data'
     | '/api/admin/elo'
     | '/api/admin/media'
+    | '/api/admin/notifications'
     | '/api/admin/store'
     | '/api/admin/summary'
     | '/api/admin/users'
@@ -399,6 +411,7 @@ export interface RootRouteChildren {
   ApiAdminDataRoute: typeof ApiAdminDataRoute
   ApiAdminEloRoute: typeof ApiAdminEloRoute
   ApiAdminMediaRoute: typeof ApiAdminMediaRoute
+  ApiAdminNotificationsRoute: typeof ApiAdminNotificationsRoute
   ApiAdminStoreRoute: typeof ApiAdminStoreRoute
   ApiAdminSummaryRoute: typeof ApiAdminSummaryRoute
   ApiAdminUsersRoute: typeof ApiAdminUsersRoute
@@ -588,6 +601,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/notifications': {
+      id: '/api/admin/notifications'
+      path: '/api/admin/notifications'
+      fullPath: '/api/admin/notifications'
+      preLoaderRoute: typeof ApiAdminNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/store': {
       id: '/api/admin/store'
       path: '/api/admin/store'
@@ -670,6 +690,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminDataRoute: ApiAdminDataRoute,
   ApiAdminEloRoute: ApiAdminEloRoute,
   ApiAdminMediaRoute: ApiAdminMediaRoute,
+  ApiAdminNotificationsRoute: ApiAdminNotificationsRoute,
   ApiAdminStoreRoute: ApiAdminStoreRoute,
   ApiAdminSummaryRoute: ApiAdminSummaryRoute,
   ApiAdminUsersRoute: ApiAdminUsersRoute,

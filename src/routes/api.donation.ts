@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { query } from "@/lib/db.server";
 import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
+import { sendEloDonationNotification } from "@/lib/notifications.server";
 
 const donationSchema = z.object({
   amount: z
@@ -88,24 +89,20 @@ export const Route = createFileRoute("/api/donation")({
             await query(
               `INSERT INTO universe.elo_donations
                  (participant_id, amount, donation_date, payment_method, status, notes, checkout_id)
-               SELECT
-                 NULL,
-                 $1,
-                 CURRENT_DATE,
-                 'SumUp Online',
-                 'completed',
-                 $2,
-                 $3
-               WHERE NOT EXISTS (
-                 SELECT 1 FROM universe.elo_donations WHERE checkout_id = $3
-               )`,
+               VALUES ($1, $2, now(), 'sumup_online', 'completed', $3, $4)
+               ON CONFLICT (checkout_id) DO NOTHING`,
               [
-                Number(checkout.amount),
-                checkout.donor_name
-                  ? `Doação online de ${checkout.donor_name}`
-                  : "Doação online anônima",
+                checkout.participant_id ?? null,
+                checkout.amount,
+                `Doação online via SumUp. Doador: ${checkout.donor_name || "Anônimo"}`,
                 checkout.id,
               ],
+            );
+
+            void sendEloDonationNotification(
+              checkout.donor_name ?? undefined,
+              checkout.donor_email ?? undefined,
+              Number(checkout.amount),
             );
 
             await query(

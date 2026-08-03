@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { query } from "@/lib/db.server";
 import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
+import { sendStoreOrderNotification } from "@/lib/notifications.server";
 
 const cartItemSchema = z.object({
   productId: z.string(),
@@ -250,6 +251,14 @@ export const Route = createFileRoute("/api/store")({
               [orderId, item.productName, item.price, item.qty, item.price * item.qty],
             );
           }
+
+          void sendStoreOrderNotification(
+            orderNumber,
+            customerName,
+            customerEmail,
+            customerPhone,
+            totalAmount,
+          );
 
           /* Audit log */
           await query(

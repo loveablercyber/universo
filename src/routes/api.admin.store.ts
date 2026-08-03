@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { assertSameOrigin, requirePermission } from "@/lib/auth.server";
 import { query } from "@/lib/db.server";
+import { sendStoreShippingNotification } from "@/lib/notifications.server";
 
 const productSchema = z.object({
   action: z.literal("save-product"),
@@ -207,15 +208,24 @@ export const Route = createFileRoute("/api/admin/store")({
           const orderUpdate = updateOrderStatusSchema.safeParse(body);
           if (orderUpdate.success) {
             const { orderId, status, trackingCode } = orderUpdate.data;
-            await query(
+            const { rows } = await query<{ order_number: string; customer_email: string }>(
               `UPDATE universe.store_orders
                   SET status = $2,
                       tracking_code = COALESCE(NULLIF($3, ''), tracking_code),
                       paid_at = CASE WHEN $2 = 'paid' AND paid_at IS NULL THEN now() ELSE paid_at END,
                       updated_at = now()
-                WHERE id = $1`,
+                WHERE id = $1
+                RETURNING order_number, customer_email`,
               [orderId, status, trackingCode ?? ""],
             );
+
+            if (trackingCode && rows[0]) {
+              void sendStoreShippingNotification(
+                rows[0].order_number,
+                rows[0].customer_email,
+                trackingCode,
+              );
+            }
 
             await audit(actor.id, "store.order.status_updated", "store_order", orderId, {
               status,

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { query } from "@/lib/db.server";
 import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
+import { sendAcademyEnrollmentNotification } from "@/lib/notifications.server";
 
 const enrollSchema = z.object({
   action: z.literal("enroll"),
@@ -309,6 +310,13 @@ export const Route = createFileRoute("/api/academy")({
                 enrollResult.rows[0].id,
                 JSON.stringify({ courseTitle: course.title, studentEmail, amount }),
               ],
+            );
+
+            void sendAcademyEnrollmentNotification(
+              studentName,
+              studentEmail,
+              studentPhone ?? undefined,
+              course.title,
             );
 
             if (!sumup.hosted_checkout_url) {

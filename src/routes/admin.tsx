@@ -28,6 +28,7 @@ type Section =
   | "elo"
   | "store"
   | "academy"
+  | "notifications"
   | "modules"
   | "settings"
   | "audit"
@@ -39,7 +40,8 @@ import { EloManager } from "@/components/admin/EloManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { StoreManager } from "@/components/admin/StoreManager";
 import { AcademyManager } from "@/components/admin/AcademyManager";
-import { Image as ImageIcon, GraduationCap } from "lucide-react";
+import { NotificationManager } from "@/components/admin/NotificationManager";
+import { Image as ImageIcon, GraduationCap, Bell } from "lucide-react";
 type Page = {
   id: string;
   slug: string;
@@ -214,6 +216,7 @@ function AdminPage() {
     { key: "elo" as const, label: "Projeto Elo", icon: HeartHandshake },
     { key: "store" as const, label: "Loja Virtual", icon: ShoppingBag },
     { key: "academy" as const, label: "Academy / EAD", icon: GraduationCap },
+    { key: "notifications" as const, label: "Notificações", icon: Bell },
     { key: "modules" as const, label: "Módulos", icon: Database },
     { key: "users" as const, label: "Usuários", icon: Users },
     { key: "settings" as const, label: "Configurações", icon: Settings },
@@ -343,6 +346,10 @@ function SectionContent({
 
   if (section === "academy") {
     return <AcademyManager />;
+  }
+
+  if (section === "notifications") {
+    return <NotificationManager />;
   }
 
   if (section === "users") {
