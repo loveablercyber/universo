@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { FormEvent, useEffect, useState } from "react";
 import {
   Activity,
@@ -96,10 +96,22 @@ function AdminPage() {
   async function loadSection(nextSection: Section) {
     setSection(nextSection);
     setNotice("");
+    setError("");
     if (nextSection === "overview") return loadSummary();
+
+    // These modules load their own data and must not be sent to the generic
+    // admin endpoint, which only serves settings, modules and audit records.
+    if (["media", "elo", "store", "academy", "notifications", "users"].includes(nextSection)) {
+      setSectionData({});
+      setSectionLoading(false);
+      return;
+    }
+
     setSectionLoading(true);
     try {
-      const response = await fetch(`/api/admin/data?section=${nextSection}`);
+      const endpoint =
+        nextSection === "pages" ? "/api/admin/cms" : `/api/admin/data?section=${nextSection}`;
+      const response = await fetch(endpoint);
       const payload = await readPayload(response);
       if (!response.ok) throw new Error(payload.message);
       setSectionData(payload);
@@ -114,7 +126,9 @@ function AdminPage() {
 
   async function save(body: Record<string, unknown>) {
     setNotice("");
-    const response = await fetch("/api/admin/data", {
+    setError("");
+    const isCmsAction = body.action === "save-page" || body.action === "restore-version";
+    const response = await fetch(isCmsAction ? "/api/admin/cms" : "/api/admin/data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -203,6 +217,12 @@ function AdminPage() {
             >
               ENTRAR
             </button>
+            <Link
+              to="/redefinir-senha"
+              className="block text-center text-xs text-copper hover:underline"
+            >
+              Esqueci minha senha
+            </Link>
           </form>
         </section>
       </main>

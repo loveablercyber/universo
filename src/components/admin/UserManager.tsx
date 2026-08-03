@@ -205,11 +205,6 @@ function UserEditorModal({
 
   const handleAction = async (action: string, payload?: Record<string, unknown>) => {
     if (!user) return;
-    if (
-      action === "reset-password" &&
-      !confirm("Deseja realmente redefinir a senha para 'mudar1234'?")
-    )
-      return;
 
     try {
       const res = await fetch("/api/admin/users", {
@@ -290,7 +285,7 @@ function UserEditorModal({
                 <input
                   name="password"
                   required
-                  minLength={8}
+                  minLength={12}
                   className="w-full h-10 rounded-xl border border-copper/20 px-3 outline-none focus:border-copper"
                 />
               </div>
@@ -302,7 +297,21 @@ function UserEditorModal({
               <h3 className="font-serif text-lg">Ações Avançadas</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
-                  onClick={() => handleAction("reset-password", { newPassword: "mudar1234" })}
+                  onClick={() => {
+                    const newPassword = window.prompt(
+                      "Digite uma nova senha provisória com pelo menos 12 caracteres:",
+                    );
+                    if (!newPassword) return;
+                    if (newPassword.length < 12) {
+                      window.alert("A senha precisa ter pelo menos 12 caracteres.");
+                      return;
+                    }
+                    if (
+                      !window.confirm("Confirmar a redefinição e encerrar as sessões do usuário?")
+                    )
+                      return;
+                    void handleAction("reset-password", { newPassword });
+                  }}
                   className="flex items-center gap-2 text-xs font-medium bg-cream/30 hover:bg-cream/50 p-3 rounded-xl transition"
                 >
                   <Key size={16} className="text-copper" /> Resetar Senha

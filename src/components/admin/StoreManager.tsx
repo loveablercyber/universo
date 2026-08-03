@@ -11,6 +11,9 @@ import {
   X,
   Save,
   ExternalLink,
+  Users,
+  Mail,
+  Phone,
 } from "lucide-react";
 
 type StoreProduct = {
@@ -62,16 +65,34 @@ type Stats = {
   shippedOrders: number;
 };
 
+type StoreCustomer = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  document?: string;
+  status: "active" | "blocked" | "inactive";
+  ordersCount: number;
+  totalSpent: number;
+  lastOrderAt?: string | null;
+  defaultAddress?: StoreOrder["shippingAddress"];
+  orders: Array<
+    Pick<StoreOrder, "id" | "orderNumber" | "totalAmount" | "status" | "trackingCode" | "createdAt">
+  >;
+};
+
 export function StoreManager() {
-  const [activeTab, setActiveTab] = useState<"products" | "orders">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "orders" | "customers">("products");
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [orders, setOrders] = useState<StoreOrder[]>([]);
+  const [customers, setCustomers] = useState<StoreCustomer[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [editingProduct, setEditingProduct] = useState<StoreProduct | null>(null);
   const [viewingOrder, setViewingOrder] = useState<StoreOrder | null>(null);
+  const [viewingCustomer, setViewingCustomer] = useState<StoreCustomer | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -80,20 +101,23 @@ export function StoreManager() {
     setLoading(true);
     setError("");
     try {
-      const [resProd, resOrd, resStats] = await Promise.all([
+      const [resProd, resOrd, resStats, resCustomers] = await Promise.all([
         fetch("/api/admin/store?action=products"),
         fetch("/api/admin/store?action=orders"),
         fetch("/api/admin/store?action=stats"),
+        fetch("/api/admin/store?action=customers"),
       ]);
 
       const dataProd = await resProd.json();
       const dataOrd = await resOrd.json();
       const dataStats = await resStats.json();
+      const dataCustomers = await resCustomers.json();
 
       if (!resProd.ok) throw new Error(dataProd.message || "Erro ao carregar produtos");
 
       setProducts(dataProd.products || []);
       setOrders(dataOrd.orders || []);
+      if (resCustomers.ok) setCustomers(dataCustomers.customers || []);
       if (resStats.ok) setStats(dataStats.stats);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar loja");
@@ -119,6 +143,16 @@ export function StoreManager() {
       o.customerEmail.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = !statusFilter || o.status === statusFilter;
     return matchesSearch && matchesStatus;
+  });
+
+  const filteredCustomers = customers.filter((customer) => {
+    const search = searchQuery.toLowerCase();
+    return (
+      customer.fullName.toLowerCase().includes(search) ||
+      customer.email.toLowerCase().includes(search) ||
+      (customer.phone || "").includes(search) ||
+      (customer.document || "").includes(search)
+    );
   });
 
   return (
@@ -179,6 +213,16 @@ export function StoreManager() {
             }`}
           >
             <ShoppingBag size={16} /> Pedidos ({orders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("customers")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold transition ${
+              activeTab === "customers"
+                ? "bg-copper text-white shadow-sm"
+                : "bg-cream/40 text-brown/70 hover:bg-cream"
+            }`}
+          >
+            <Users size={16} /> Clientes ({customers.length})
           </button>
         </div>
 
@@ -379,6 +423,73 @@ export function StoreManager() {
         </div>
       )}
 
+      {activeTab === "customers" && (
+        <div className="overflow-hidden rounded-2xl border border-copper/10 bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-cream/30 text-xs uppercase text-brown/60">
+                <tr>
+                  <th className="px-6 py-4 font-medium">Cliente</th>
+                  <th className="px-6 py-4 font-medium">Contato</th>
+                  <th className="px-6 py-4 font-medium">Pedidos</th>
+                  <th className="px-6 py-4 font-medium">Total comprado</th>
+                  <th className="px-6 py-4 font-medium">Último pedido</th>
+                  <th className="px-6 py-4 font-medium" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-copper/10">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-brown/60">
+                      Carregando clientes...
+                    </td>
+                  </tr>
+                ) : filteredCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-brown/60">
+                      Nenhum cliente encontrado.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCustomers.map((customer) => (
+                    <tr key={customer.id} className="hover:bg-cream/20">
+                      <td className="px-6 py-4">
+                        <p className="font-medium">{customer.fullName}</p>
+                        <p className="text-xs text-brown/50">
+                          {customer.document || "Documento não informado"}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-xs">{customer.email}</p>
+                        <p className="text-xs text-brown/55">{customer.phone || "—"}</p>
+                      </td>
+                      <td className="px-6 py-4 font-semibold">{customer.ordersCount}</td>
+                      <td className="px-6 py-4 font-semibold text-emerald-700">
+                        R${" "}
+                        {customer.totalSpent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-brown/60">
+                        {customer.lastOrderAt
+                          ? new Date(customer.lastOrderAt).toLocaleDateString("pt-BR")
+                          : "—"}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => setViewingCustomer(customer)}
+                          className="rounded-full p-2 text-brown/50 hover:bg-copper/10 hover:text-copper"
+                        >
+                          <ExternalLink size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Modal Edição de Produto */}
       {editingProduct && (
         <ProductEditorModal
@@ -396,6 +507,93 @@ export function StoreManager() {
           onUpdate={loadData}
         />
       )}
+      {viewingCustomer && (
+        <CustomerDetailModal customer={viewingCustomer} onClose={() => setViewingCustomer(null)} />
+      )}
+    </div>
+  );
+}
+
+function CustomerDetailModal({
+  customer,
+  onClose,
+}: {
+  customer: StoreCustomer;
+  onClose: () => void;
+}) {
+  const address = customer.defaultAddress;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <header className="flex items-center justify-between border-b border-copper/10 bg-cream/30 px-6 py-4">
+          <div>
+            <h2 className="font-serif text-2xl">{customer.fullName}</h2>
+            <p className="text-xs text-brown/55">Cliente da Sol Hair Closet</p>
+          </div>
+          <button onClick={onClose} className="rounded-full p-2 text-brown/50 hover:bg-copper/10">
+            <X size={20} />
+          </button>
+        </header>
+        <div className="space-y-6 overflow-auto p-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <p className="flex items-center gap-2 text-sm">
+              <Mail size={15} className="text-copper" /> {customer.email}
+            </p>
+            <p className="flex items-center gap-2 text-sm">
+              <Phone size={15} className="text-copper" /> {customer.phone || "Não informado"}
+            </p>
+            <p className="text-sm">
+              <span className="text-brown/55">Documento:</span>{" "}
+              {customer.document || "Não informado"}
+            </p>
+            <p className="text-sm">
+              <span className="text-brown/55">Total comprado:</span> R${" "}
+              {customer.totalSpent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          {address?.street && (
+            <div>
+              <h3 className="font-serif text-lg">Endereço mais recente</h3>
+              <p className="mt-2 text-sm text-brown/70">
+                {address.street}, {address.number}
+                {address.complement ? ` — ${address.complement}` : ""}
+                <br />
+                {address.neighborhood} — {address.city}/{address.state}
+                <br />
+                CEP {address.zipCode}
+              </p>
+            </div>
+          )}
+          <div>
+            <h3 className="font-serif text-lg">Histórico de compras</h3>
+            <div className="mt-3 divide-y divide-copper/10 rounded-xl border border-copper/10">
+              {customer.orders.length === 0 ? (
+                <p className="p-4 text-sm text-brown/55">Nenhum pedido.</p>
+              ) : (
+                customer.orders.map((order) => (
+                  <div key={order.id} className="grid gap-2 p-4 sm:grid-cols-[1fr_auto_auto]">
+                    <div>
+                      <p className="font-mono text-xs font-bold text-copper">{order.orderNumber}</p>
+                      <p className="text-xs text-brown/50">
+                        {new Date(order.createdAt).toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                    <span className="text-xs uppercase">{order.status}</span>
+                    <p className="font-semibold">
+                      R$ {Number(order.totalAmount).toFixed(2).replace(".", ",")}
+                    </p>
+                    {order.trackingCode && (
+                      <p className="text-xs text-brown/60 sm:col-span-3">
+                        Rastreio: {order.trackingCode}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

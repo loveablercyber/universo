@@ -5,6 +5,8 @@ import {
   CmsHeroSection,
   CmsTextSection,
   CmsCardsSection,
+  CmsGallerySection,
+  CmsCtaSection,
 } from "@/lib/cms.types";
 import { Plus, Trash2, Save, Eye, History, Layers } from "lucide-react";
 
@@ -40,11 +42,21 @@ export function CmsEditor({
       newSec = { type: "hero", title: "Novo Título Principal", subtitle: "Subtítulo da seção" };
     } else if (type === "text") {
       newSec = { type: "text", title: "Título do Bloco", content: "Escreva o texto aqui..." };
-    } else {
+    } else if (type === "cards") {
       newSec = {
         type: "cards",
         title: "Nossos Destaques",
         items: [{ title: "Item 1", description: "Descrição do item" }],
+      };
+    } else if (type === "gallery") {
+      newSec = { type: "gallery", title: "Galeria", images: [{ url: "", alt: "", caption: "" }] };
+    } else {
+      newSec = {
+        type: "cta",
+        title: "Pronta para começar?",
+        subtitle: "",
+        buttonLabel: "Saiba mais",
+        buttonLink: "/contato",
       };
     }
     setSections([...sections, newSec]);
@@ -178,6 +190,22 @@ export function CmsEditor({
                     onChange={(e) => updateSection(idx, { ...sec, subtitle: e.target.value })}
                     className="w-full rounded-lg border border-copper/20 p-2 text-xs"
                   />
+                  {(["eyebrow", "buttonLabel", "buttonLink", "imageUrl"] as const).map((field) => (
+                    <input
+                      key={field}
+                      placeholder={
+                        {
+                          eyebrow: "Texto superior",
+                          buttonLabel: "Texto do botão",
+                          buttonLink: "Link do botão",
+                          imageUrl: "URL da imagem",
+                        }[field]
+                      }
+                      value={String((sec as CmsHeroSection)[field] || "")}
+                      onChange={(e) => updateSection(idx, { ...sec, [field]: e.target.value })}
+                      className="w-full h-9 rounded-lg border border-copper/20 px-3 text-xs"
+                    />
+                  ))}
                 </div>
               )}
 
@@ -207,9 +235,155 @@ export function CmsEditor({
                     onChange={(e) => updateSection(idx, { ...sec, title: e.target.value })}
                     className="w-full h-9 rounded-lg border border-copper/20 px-3 text-xs"
                   />
-                  <p className="text-[11px] text-brown/60">
-                    Itens configurados: {(sec as CmsCardsSection).items?.length || 0}
-                  </p>
+                  {(sec as CmsCardsSection).items.map((item, itemIndex) => (
+                    <div
+                      key={itemIndex}
+                      className="grid gap-2 rounded-lg border border-copper/10 p-3"
+                    >
+                      <input
+                        placeholder="Título do card"
+                        value={item.title}
+                        onChange={(e) => {
+                          const items = [...(sec as CmsCardsSection).items];
+                          items[itemIndex] = { ...item, title: e.target.value };
+                          updateSection(idx, { ...sec, items });
+                        }}
+                        className="h-9 rounded-lg border border-copper/20 px-3 text-xs"
+                      />
+                      <textarea
+                        placeholder="Descrição"
+                        value={item.description}
+                        onChange={(e) => {
+                          const items = [...(sec as CmsCardsSection).items];
+                          items[itemIndex] = { ...item, description: e.target.value };
+                          updateSection(idx, { ...sec, items });
+                        }}
+                        className="rounded-lg border border-copper/20 p-2 text-xs"
+                      />
+                      <input
+                        placeholder="Link opcional"
+                        value={item.link || ""}
+                        onChange={(e) => {
+                          const items = [...(sec as CmsCardsSection).items];
+                          items[itemIndex] = { ...item, link: e.target.value };
+                          updateSection(idx, { ...sec, items });
+                        }}
+                        className="h-9 rounded-lg border border-copper/20 px-3 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateSection(idx, {
+                            ...sec,
+                            items: (sec as CmsCardsSection).items.filter((_, i) => i !== itemIndex),
+                          })
+                        }
+                        className="justify-self-start text-xs text-red-600"
+                      >
+                        Remover card
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateSection(idx, {
+                        ...sec,
+                        items: [
+                          ...(sec as CmsCardsSection).items,
+                          { title: "Novo item", description: "" },
+                        ],
+                      })
+                    }
+                    className="text-xs font-semibold text-copper"
+                  >
+                    + Adicionar card
+                  </button>
+                </div>
+              )}
+
+              {sec.type === "gallery" && (
+                <div className="space-y-2">
+                  <input
+                    placeholder="Título da galeria"
+                    value={(sec as CmsGallerySection).title || ""}
+                    onChange={(e) => updateSection(idx, { ...sec, title: e.target.value })}
+                    className="h-9 w-full rounded-lg border border-copper/20 px-3 text-xs"
+                  />
+                  {(sec as CmsGallerySection).images.map((image, imageIndex) => (
+                    <div
+                      key={imageIndex}
+                      className="grid gap-2 rounded-lg border border-copper/10 p-3"
+                    >
+                      {(["url", "alt", "caption"] as const).map((field) => (
+                        <input
+                          key={field}
+                          placeholder={
+                            { url: "URL da imagem", alt: "Texto alternativo", caption: "Legenda" }[
+                              field
+                            ]
+                          }
+                          value={image[field] || ""}
+                          onChange={(e) => {
+                            const images = [...(sec as CmsGallerySection).images];
+                            images[imageIndex] = { ...image, [field]: e.target.value };
+                            updateSection(idx, { ...sec, images });
+                          }}
+                          className="h-9 rounded-lg border border-copper/20 px-3 text-xs"
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateSection(idx, {
+                            ...sec,
+                            images: (sec as CmsGallerySection).images.filter(
+                              (_, i) => i !== imageIndex,
+                            ),
+                          })
+                        }
+                        className="justify-self-start text-xs text-red-600"
+                      >
+                        Remover imagem
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateSection(idx, {
+                        ...sec,
+                        images: [
+                          ...(sec as CmsGallerySection).images,
+                          { url: "", alt: "", caption: "" },
+                        ],
+                      })
+                    }
+                    className="text-xs font-semibold text-copper"
+                  >
+                    + Adicionar imagem
+                  </button>
+                </div>
+              )}
+
+              {sec.type === "cta" && (
+                <div className="grid gap-2">
+                  {(["title", "subtitle", "buttonLabel", "buttonLink"] as const).map((field) => (
+                    <input
+                      key={field}
+                      placeholder={
+                        {
+                          title: "Título",
+                          subtitle: "Subtítulo",
+                          buttonLabel: "Texto do botão",
+                          buttonLink: "Link do botão",
+                        }[field]
+                      }
+                      value={String((sec as CmsCtaSection)[field] || "")}
+                      onChange={(e) => updateSection(idx, { ...sec, [field]: e.target.value })}
+                      className="h-9 rounded-lg border border-copper/20 px-3 text-xs"
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -236,6 +410,20 @@ export function CmsEditor({
               className="inline-flex items-center gap-1 rounded-lg border border-copper/30 bg-cream/40 px-3 py-1.5 text-xs text-brown hover:bg-copper hover:text-white"
             >
               <Plus size={13} /> Add Cards
+            </button>
+            <button
+              type="button"
+              onClick={() => addSection("gallery")}
+              className="inline-flex items-center gap-1 rounded-lg border border-copper/30 bg-cream/40 px-3 py-1.5 text-xs text-brown hover:bg-copper hover:text-white"
+            >
+              <Plus size={13} /> Add Galeria
+            </button>
+            <button
+              type="button"
+              onClick={() => addSection("cta")}
+              className="inline-flex items-center gap-1 rounded-lg border border-copper/30 bg-cream/40 px-3 py-1.5 text-xs text-brown hover:bg-copper hover:text-white"
+            >
+              <Plus size={13} /> Add Chamada
             </button>
           </div>
         </div>

@@ -77,7 +77,7 @@ export async function authenticate(email: string, password: string) {
   const result = await query<
     SessionUser & { password_hash: string; status: string; full_name: string }
   >(
-    `select id, email, password_hash, full_name, role, status
+    `select id, email, password_hash, full_name, role, status, permissions
        from universe.users
       where lower(email)=lower($1)
       limit 1`,
@@ -91,6 +91,7 @@ export async function authenticate(email: string, password: string) {
     email: record.email,
     fullName: record.full_name,
     role: record.role,
+    permissions: record.permissions ?? [],
   } satisfies SessionUser;
 }
 
@@ -167,6 +168,18 @@ export async function requirePermission(request: Request, permission: string) {
 export async function checkRateLimit(ip: string | null) {
   if (!ip) return; // Cannot rate limit without IP
   const result = await query<{ blocked_until: string | null }>(
+    `select blocked_until from universe.login_attempts where ip_address=$1::inet`,
+    [ip],
+  );
+  const record = result.rows[0];
+  if (record?.blocked_until && new Date(record.blocked_until) > new Date()) {
+    throw new Response("Muitas tentativas falhas. Tente novamente em 15 minutos.", { status: 429 });
+  }
+}
+
+export async function recordFailedLogin(ip: string | null) {
+  if (!ip) return;
+  await query(
     `insert into universe.login_attempts(ip_address)
      values($1::inet)
      on conflict (ip_address) do update
@@ -184,8 +197,8 @@ export async function checkRateLimit(ip: string | null) {
      returning blocked_until`,
     [ip],
   );
-  const record = result.rows[0];
-  if (record?.blocked_until && new Date(record.blocked_until) > new Date()) {
-    throw new Response("Muitas tentativas falhas. Tente novamente em 15 minutos.", { status: 429 });
-  }
+}
+
+export async function clearFailedLogins(ip: string | null) {
+  if (ip) await query(`delete from universe.login_attempts where ip_address=$1::inet`, [ip]);
 }

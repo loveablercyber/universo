@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { assertSameOrigin, requirePermission } from "@/lib/auth.server";
 import { query } from "@/lib/db.server";
+import bcrypt from "bcryptjs";
 
 const courseSchema = z.object({
   action: z.literal("save-course"),
@@ -46,6 +47,7 @@ const manualEnrollmentSchema = z.object({
   studentName: z.string().min(2),
   studentEmail: z.string().email(),
   studentPhone: z.string().optional(),
+  password: z.string().min(12),
 });
 
 async function audit(
@@ -132,9 +134,16 @@ export const Route = createFileRoute("/api/admin/academy")({
             const { rows } = await query(
               `SELECT e.id, e.student_name as "studentName", e.student_email as "studentEmail",
                       e.student_phone as "studentPhone", e.amount_paid::float as "amountPaid",
-                      e.status, e.enrolled_at as "enrolledAt", c.title as "courseTitle"
+                      e.status, e.enrolled_at as "enrolledAt", e.payment_confirmed_at as "paymentConfirmedAt",
+                      c.title as "courseTitle", c.subtitle as "courseSubtitle",
+                      count(distinct p.lesson_id) filter (where p.completed)::int as "completedLessons",
+                      count(distinct l.id)::int as "totalLessons"
                  FROM universe.academy_enrollments e
                  JOIN universe.academy_courses c ON c.id = e.course_id
+                 LEFT JOIN universe.academy_modules m ON m.course_id = c.id
+                 LEFT JOIN universe.academy_lessons l ON l.module_id = m.id
+                 LEFT JOIN universe.academy_student_progress p ON p.enrollment_id = e.id AND p.lesson_id = l.id
+                GROUP BY e.id, c.id
                 ORDER BY e.enrolled_at DESC LIMIT 200`,
             );
             return Response.json({ ok: true, enrollments: rows });
@@ -277,11 +286,21 @@ export const Route = createFileRoute("/api/admin/academy")({
 
           const manualEnroll = manualEnrollmentSchema.safeParse(body);
           if (manualEnroll.success) {
-            const { courseId, studentName, studentEmail, studentPhone } = manualEnroll.data;
+            const { courseId, studentName, studentEmail, studentPhone, password } =
+              manualEnroll.data;
+            const passwordHash = await bcrypt.hash(password, 12);
+            const userResult = await query<{ id: string }>(
+              `INSERT INTO universe.users(email, password_hash, full_name, role, status)
+               VALUES(lower($1), $2, $3, 'student', 'active')
+               ON CONFLICT (lower(email)) WHERE status <> 'deleted'
+               DO UPDATE SET full_name=excluded.full_name, updated_at=now()
+               RETURNING id`,
+              [studentEmail, passwordHash, studentName],
+            );
             const { rows } = await query<{ id: string }>(
-              `INSERT INTO universe.academy_enrollments (course_id, student_name, student_email, student_phone, amount_paid, status)
-               VALUES ($1, $2, $3, $4, 0.0, 'active') RETURNING id`,
-              [courseId, studentName, studentEmail, studentPhone ?? null],
+              `INSERT INTO universe.academy_enrollments (user_id, course_id, student_name, student_email, student_phone, amount_paid, status, payment_confirmed_at)
+               VALUES ($1, $2, $3, lower($4), $5, 0.0, 'active', now()) RETURNING id`,
+              [userResult.rows[0].id, courseId, studentName, studentEmail, studentPhone ?? null],
             );
 
             await audit(actor.id, "academy.enrollment.manual", "academy_enrollment", rows[0].id, {

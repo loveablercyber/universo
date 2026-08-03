@@ -144,7 +144,11 @@ function generateEmailHtml(template: string, payload: Record<string, unknown>): 
       <h2>Bem-vinda ao curso ${payload.courseTitle}!</h2>
       <p>Olá, <strong>${payload.studentName}</strong>!</p>
       <p>Sua matrícula na <strong>Invisible Academy</strong> foi realizada com sucesso.</p>
-      <p><a href="https://carolsol.com.br/invisible-academy/aluno?email=${encodeURIComponent(String(payload.studentEmail))}" style="display: inline-block; background: #C97945; color: white; padding: 12px 24px; text-decoration: none; border-radius: 20px;">ACESSAR SALA DE AULA</a></p>`;
+      <p><a href="https://carolsol.com.br/invisible-academy/aluno" style="display: inline-block; background: #C97945; color: white; padding: 12px 24px; text-decoration: none; border-radius: 20px;">ACESSAR SALA DE AULA</a></p>`;
+  }
+
+  if (template === "password_reset") {
+    return `${brandHeader}<h2>Redefinição de senha</h2><p>Olá, <strong>${payload.fullName || ""}</strong>.</p><p>Recebemos uma solicitação para redefinir sua senha. O link é válido por 30 minutos.</p><p><a href="${payload.resetUrl}" style="display:inline-block;background:#C97945;color:white;padding:12px 24px;text-decoration:none;border-radius:20px;">CRIAR NOVA SENHA</a></p><p>Se você não fez esta solicitação, ignore este e-mail.</p>`;
   }
 
   return `${brandHeader}<p>${JSON.stringify(payload)}</p>`;
@@ -164,7 +168,7 @@ function generateWhatsAppText(template: string, payload: Record<string, unknown>
   }
 
   if (template === "academy_enrollment_welcome") {
-    return `✦ *INVISIBLE ACADEMY*\n\nOlá ${payload.studentName}! Sua matrícula no curso *${payload.courseTitle}* está ativa! 🎓\nAcesse suas aulas em: https://carolsol.com.br/invisible-academy/aluno?email=${encodeURIComponent(String(payload.studentEmail))}`;
+    return `✦ *INVISIBLE ACADEMY*\n\nOlá ${payload.studentName}! Sua matrícula no curso *${payload.courseTitle}* está ativa! 🎓\nAcesse suas aulas em: https://carolsol.com.br/invisible-academy/aluno`;
   }
 
   return `UNIVERSO CAROL SOL: Notificação transacional.`;

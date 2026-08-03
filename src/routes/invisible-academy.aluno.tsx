@@ -61,18 +61,21 @@ function StudentClassroomPage() {
   const urlParams =
     typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const courseSlug = urlParams?.get("course") || "mega-hair-metodos-classicos";
-  const studentEmail = urlParams?.get("email") || "";
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     async function loadClassroom() {
-      if (!studentEmail) {
-        setLoading(false);
-        return;
-      }
-
       try {
+        const session = await fetch("/api/auth");
+        const sessionData = await session.json();
+        if (!sessionData.user) {
+          setAuthenticated(false);
+          setLoading(false);
+          return;
+        }
+        setAuthenticated(true);
         const res = await fetch(
-          `/api/academy?action=classroom&course_slug=${encodeURIComponent(courseSlug)}&email=${encodeURIComponent(studentEmail)}`,
+          `/api/academy?action=classroom&course_slug=${encodeURIComponent(courseSlug)}`,
         );
         const json = await res.json();
 
@@ -92,7 +95,25 @@ function StudentClassroomPage() {
     }
 
     void loadClassroom();
-  }, [courseSlug, studentEmail]);
+  }, [courseSlug]);
+
+  const login = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    const form = new FormData(event.currentTarget);
+    const response = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "login",
+        email: form.get("email"),
+        password: form.get("password"),
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) return setError(payload.message || "Não foi possível entrar.");
+    window.location.reload();
+  };
 
   const toggleCompleteLesson = async (lesson: Lesson) => {
     if (!data) return;
@@ -162,22 +183,14 @@ function StudentClassroomPage() {
 
       {/* Classroom Content */}
       <div className="mx-auto max-w-7xl w-full px-6 py-8 flex-1">
-        {!studentEmail ? (
+        {authenticated === false ? (
           <div className="mx-auto max-w-md my-16 text-center space-y-4 rounded-3xl border border-[#C97945]/20 bg-[#171412] p-8 shadow-2xl">
             <Lock className="mx-auto text-[#C97945]" size={48} strokeWidth={1.5} />
             <h2 className="font-serif text-3xl font-bold text-white">Acesse a Área do Aluno</h2>
             <p className="text-xs text-[#6F5A50] leading-relaxed">
-              Informe o e-mail cadastrado na matrícula para carregar suas videoaulas.
+              Entre com o e-mail e a senha cadastrados na matrícula.
             </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const email = new FormData(e.currentTarget).get("email");
-                if (email)
-                  window.location.href = `/invisible-academy/aluno?email=${encodeURIComponent(String(email))}`;
-              }}
-              className="space-y-3 pt-2"
-            >
+            <form onSubmit={login} className="space-y-3 pt-2">
               <input
                 name="email"
                 type="email"
@@ -185,12 +198,27 @@ function StudentClassroomPage() {
                 placeholder="seu@email.com"
                 className="w-full h-11 rounded-xl border border-[#C97945]/30 bg-[#221D1A] px-4 text-xs text-white outline-none focus:border-[#C97945]"
               />
+              <input
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder="Sua senha"
+                className="w-full h-11 rounded-xl border border-[#C97945]/30 bg-[#221D1A] px-4 text-xs text-white outline-none focus:border-[#C97945]"
+              />
+              {error && <p className="text-xs text-red-400">{error}</p>}
               <button
                 type="submit"
                 className="w-full h-11 rounded-xl bg-[#C97945] font-semibold text-xs tracking-wider text-white hover:bg-[#b06638] transition"
               >
                 ENTRAR NA SALA DE AULA
               </button>
+              <Link
+                to="/redefinir-senha"
+                className="block text-center text-xs text-[#C97945] hover:underline"
+              >
+                Esqueci minha senha
+              </Link>
             </form>
           </div>
         ) : loading ? (

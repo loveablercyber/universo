@@ -1,5 +1,12 @@
 import React from "react";
-import { CmsPageContent, CmsHeroSection, CmsTextSection, CmsCardsSection } from "./cms.types";
+import {
+  CmsPageContent,
+  CmsHeroSection,
+  CmsTextSection,
+  CmsCardsSection,
+  CmsGallerySection,
+  CmsCtaSection,
+} from "./cms.types";
 import { Sparkles, ArrowRight } from "lucide-react";
 
 export function CmsSectionRenderer({ content }: { content?: CmsPageContent }) {
@@ -17,6 +24,10 @@ export function CmsSectionRenderer({ content }: { content?: CmsPageContent }) {
             return <TextWidget key={index} data={section as CmsTextSection} />;
           case "cards":
             return <CardsWidget key={index} data={section as CmsCardsSection} />;
+          case "gallery":
+            return <GalleryWidget key={index} data={section as CmsGallerySection} />;
+          case "cta":
+            return <CtaWidget key={index} data={section as CmsCtaSection} />;
           default:
             return null;
         }
@@ -33,6 +44,13 @@ function HeroWidget({ data }: { data: CmsHeroSection }) {
           {data.eyebrow}
         </p>
       )}
+      {data.imageUrl && (
+        <img
+          src={data.imageUrl}
+          alt={data.title}
+          className="mt-6 max-h-[32rem] w-full rounded-2xl object-cover"
+        />
+      )}
       <h2 className="mt-3 font-serif text-3xl md:text-5xl leading-tight text-brown">
         {data.title}
       </h2>
@@ -47,6 +65,43 @@ function HeroWidget({ data }: { data: CmsHeroSection }) {
           {data.buttonLabel} <ArrowRight size={14} />
         </a>
       )}
+    </section>
+  );
+}
+
+function GalleryWidget({ data }: { data: CmsGallerySection }) {
+  return (
+    <section className="space-y-5">
+      {data.title && <h3 className="font-serif text-3xl text-brown">{data.title}</h3>}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {data.images.map((image, index) => (
+          <figure key={`${image.url}-${index}`} className="overflow-hidden rounded-2xl bg-white">
+            <img
+              src={image.url}
+              alt={image.alt || image.caption || ""}
+              className="aspect-[4/3] w-full object-cover"
+            />
+            {image.caption && (
+              <figcaption className="p-3 text-xs text-brown/70">{image.caption}</figcaption>
+            )}
+          </figure>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CtaWidget({ data }: { data: CmsCtaSection }) {
+  return (
+    <section className="rounded-[2rem] bg-ink p-8 text-white md:p-12">
+      <h3 className="font-serif text-3xl md:text-4xl">{data.title}</h3>
+      {data.subtitle && <p className="mt-3 max-w-2xl text-sm text-white/70">{data.subtitle}</p>}
+      <a
+        href={data.buttonLink}
+        className="mt-6 inline-flex rounded-xl bg-copper px-6 py-3 text-xs font-semibold tracking-wider"
+      >
+        {data.buttonLabel}
+      </a>
     </section>
   );
 }

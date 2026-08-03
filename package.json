@@ -11,6 +11,8 @@
     "start": "node scripts/db-setup.mjs && node .output/server/index.mjs",
     "db:setup": "node scripts/db-setup.mjs",
     "db:check": "node scripts/db-check.mjs",
+    "db:backup": "node scripts/db-backup.mjs",
+    "db:restore": "node scripts/db-restore.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

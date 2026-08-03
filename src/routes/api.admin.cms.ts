@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { assertSameOrigin, requireAdmin } from "@/lib/auth.server";
 import { query } from "@/lib/db.server";
+import { defaultCmsPages } from "@/data/cms-defaults";
 
 const pageSaveSchema = z.object({
   action: z.literal("save-page"),
@@ -63,7 +64,19 @@ export const Route = createFileRoute("/api/admin/cms")({
             `select id, slug, title, status, content, seo, updated_at as "updatedAt"
                from universe.cms_pages order by title`,
           );
-          return Response.json({ ok: true, pages: rows });
+          const pages = rows.map((page) => {
+            const fallback = defaultCmsPages[String(page.slug)];
+            const content = page.content as { sections?: unknown[] } | null;
+            return {
+              ...page,
+              content: content?.sections?.length || !fallback ? page.content : fallback.content,
+              seo: {
+                ...(fallback?.seo ?? {}),
+                ...((page.seo as Record<string, unknown>) ?? {}),
+              },
+            };
+          });
+          return Response.json({ ok: true, pages });
         } catch (error) {
           return errorResponse(error);
         }

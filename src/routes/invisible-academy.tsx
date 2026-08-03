@@ -694,6 +694,7 @@ function EnrollmentModal({ course, onClose }: { course: CourseItem; onClose: () 
           studentName: form.get("studentName"),
           studentEmail: form.get("studentEmail"),
           studentPhone: form.get("studentPhone"),
+          password: form.get("password"),
         }),
       });
 
@@ -759,6 +760,20 @@ function EnrollmentModal({ course, onClose }: { course: CourseItem; onClose: () 
             <input
               name="studentPhone"
               placeholder="(14) 99999-9999"
+              className="w-full h-11 rounded-xl border border-[rgba(201,121,69,0.25)] bg-[#F5ECE5]/40 px-3 text-xs text-[#4B2C1E] outline-none focus:border-[#C97945]"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-[#4B2C1E] block mb-1">
+              Crie sua senha de acesso *
+            </label>
+            <input
+              name="password"
+              type="password"
+              minLength={12}
+              required
+              autoComplete="new-password"
+              placeholder="Mínimo de 12 caracteres"
               className="w-full h-11 rounded-xl border border-[rgba(201,121,69,0.25)] bg-[#F5ECE5]/40 px-3 text-xs text-[#4B2C1E] outline-none focus:border-[#C97945]"
             />
           </div>

@@ -55,6 +55,10 @@ type Enrollment = {
   status: string;
   enrolledAt: string;
   courseTitle: string;
+  courseSubtitle?: string;
+  paymentConfirmedAt?: string | null;
+  completedLessons: number;
+  totalLessons: number;
 };
 
 export function AcademyManager() {
@@ -392,19 +396,20 @@ export function AcademyManager() {
                   <th className="px-6 py-4 font-medium">Curso</th>
                   <th className="px-6 py-4 font-medium">Valor Pago</th>
                   <th className="px-6 py-4 font-medium">Status</th>
+                  <th className="px-6 py-4 font-medium">Progresso</th>
                   <th className="px-6 py-4 font-medium">Data de Inscrição</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-copper/10">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-brown/60">
+                    <td colSpan={6} className="p-8 text-center text-brown/60">
                       Carregando matrículas...
                     </td>
                   </tr>
                 ) : filteredEnrollments.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-brown/60">
+                    <td colSpan={6} className="p-8 text-center text-brown/60">
                       Nenhuma aluna encontrada.
                     </td>
                   </tr>
@@ -422,9 +427,40 @@ export function AcademyManager() {
                         R$ {e.amountPaid.toFixed(2).replace(".", ",")}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                        <span
+                          className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-bold ${
+                            e.status === "active" || e.status === "completed"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : e.status === "pending"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-red-100 text-red-800"
+                          }`}
+                        >
                           {e.status}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="w-28">
+                          <div className="mb-1 flex justify-between text-[10px] text-brown/55">
+                            <span>
+                              {e.completedLessons}/{e.totalLessons}
+                            </span>
+                            <span>
+                              {e.totalLessons
+                                ? Math.round((e.completedLessons / e.totalLessons) * 100)
+                                : 0}
+                              %
+                            </span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-cream">
+                            <div
+                              className="h-full bg-copper"
+                              style={{
+                                width: `${e.totalLessons ? (e.completedLessons / e.totalLessons) * 100 : 0}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-xs text-brown/60">
                         {new Date(e.enrolledAt).toLocaleDateString("pt-BR")}
@@ -909,6 +945,7 @@ function ManualEnrollModal({
           studentName: form.get("studentName"),
           studentEmail: form.get("studentEmail"),
           studentPhone: form.get("studentPhone"),
+          password: form.get("password"),
         }),
       });
 
@@ -965,6 +1002,18 @@ function ManualEnrollModal({
             <input
               name="studentPhone"
               placeholder="(14) 99999-9999"
+              className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Senha provisória</label>
+            <input
+              name="password"
+              type="password"
+              minLength={12}
+              required
+              autoComplete="new-password"
+              placeholder="Mínimo de 12 caracteres"
               className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
             />
           </div>

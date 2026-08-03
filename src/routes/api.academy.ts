@@ -3,6 +3,8 @@ import { z } from "zod";
 import { query } from "@/lib/db.server";
 import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
 import { sendAcademyEnrollmentNotification } from "@/lib/notifications.server";
+import { readSession } from "@/lib/auth.server";
+import bcrypt from "bcryptjs";
 
 const enrollSchema = z.object({
   action: z.literal("enroll"),
@@ -10,6 +12,7 @@ const enrollSchema = z.object({
   studentName: z.string().min(2, "Nome é obrigatório."),
   studentEmail: z.string().email("E-mail inválido."),
   studentPhone: z.string().optional(),
+  password: z.string().min(12, "A senha precisa ter pelo menos 12 caracteres."),
 });
 
 const completeLessonSchema = z.object({
@@ -24,6 +27,42 @@ function errorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Erro ao processar requisição EAD.";
   console.error("[Academy API]", error);
   return Response.json({ ok: false, message }, { status: 503 });
+}
+
+async function requireStudent(request: Request) {
+  const user = await readSession(request);
+  if (!user)
+    throw new Response(
+      JSON.stringify({ ok: false, message: "Faça login para acessar a Academy." }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  return user;
+}
+
+async function confirmPendingPayments(userId: string) {
+  const pending = await query<{ id: string; sumup_checkout_id: string | null }>(
+    `SELECT id, sumup_checkout_id FROM universe.academy_enrollments WHERE user_id=$1 AND status='pending'`,
+    [userId],
+  );
+  for (const enrollment of pending.rows) {
+    if (!enrollment.sumup_checkout_id) continue;
+    try {
+      const checkout = await getSumUpCheckoutStatus(enrollment.sumup_checkout_id);
+      if (checkout.status === "PAID") {
+        await query(
+          `UPDATE universe.academy_enrollments SET status='active', payment_confirmed_at=now() WHERE id=$1 AND status='pending'`,
+          [enrollment.id],
+        );
+      } else if (["FAILED", "EXPIRED"].includes(checkout.status)) {
+        await query(
+          `UPDATE universe.academy_enrollments SET status='cancelled' WHERE id=$1 AND status='pending'`,
+          [enrollment.id],
+        );
+      }
+    } catch (error) {
+      console.error("[Academy API] Não foi possível conciliar matrícula", enrollment.id, error);
+    }
+  }
 }
 
 export const Route = createFileRoute("/api/academy")({
@@ -125,21 +164,17 @@ export const Route = createFileRoute("/api/academy")({
           }
 
           if (action === "my_courses") {
-            const email = url.searchParams.get("email");
-            if (!email)
-              return Response.json(
-                { ok: false, message: "E-mail do aluno ausente." },
-                { status: 400 },
-              );
+            const user = await requireStudent(request);
+            await confirmPendingPayments(user.id);
 
             const { rows } = await query(
               `SELECT e.id as "enrollmentId", e.status as "enrollmentStatus", e.enrolled_at as "enrolledAt",
                       c.id as "courseId", c.slug, c.title, c.subtitle, c.image_url as image, c.badge, c.level
                  FROM universe.academy_enrollments e
                  JOIN universe.academy_courses c ON c.id = e.course_id
-                WHERE e.student_email = $1 AND e.status IN ('active', 'completed')
+                WHERE e.user_id = $1 AND e.status IN ('active', 'completed')
                 ORDER BY e.enrolled_at DESC`,
-              [email],
+              [user.id],
             );
 
             return Response.json({ ok: true, enrollments: rows });
@@ -147,9 +182,10 @@ export const Route = createFileRoute("/api/academy")({
 
           if (action === "classroom") {
             const courseSlug = url.searchParams.get("course_slug");
-            const email = url.searchParams.get("email");
+            const user = await requireStudent(request);
+            await confirmPendingPayments(user.id);
 
-            if (!courseSlug || !email) {
+            if (!courseSlug) {
               return Response.json({ ok: false, message: "Parâmetros ausentes." }, { status: 400 });
             }
 
@@ -158,8 +194,8 @@ export const Route = createFileRoute("/api/academy")({
               `SELECT e.id, e.status, e.course_id
                  FROM universe.academy_enrollments e
                  JOIN universe.academy_courses c ON c.id = e.course_id
-                WHERE c.slug = $1 AND e.student_email = $2 AND e.status IN ('active', 'completed')`,
-              [courseSlug, email],
+                WHERE c.slug = $1 AND e.user_id = $2 AND e.status IN ('active', 'completed')`,
+              [courseSlug, user.id],
             );
 
             const enrollment = enrollRes.rows[0];
@@ -234,11 +270,22 @@ export const Route = createFileRoute("/api/academy")({
           const body = await request.json();
 
           if (body?.action === "complete_lesson") {
+            const user = await requireStudent(request);
             const input = completeLessonSchema.safeParse(body);
             if (!input.success)
               return Response.json({ ok: false, message: "Dados inválidos." }, { status: 400 });
 
             const { enrollmentId, lessonId, completed } = input.data;
+
+            const ownership = await query(
+              `SELECT 1 FROM universe.academy_enrollments e
+                JOIN universe.academy_lessons l ON l.id=$2
+                JOIN universe.academy_modules m ON m.id=l.module_id AND m.course_id=e.course_id
+               WHERE e.id=$1 AND e.user_id=$3 AND e.status IN ('active','completed')`,
+              [enrollmentId, lessonId, user.id],
+            );
+            if (!ownership.rowCount)
+              return Response.json({ ok: false, message: "Acesso negado." }, { status: 403 });
 
             if (completed) {
               await query(
@@ -259,7 +306,7 @@ export const Route = createFileRoute("/api/academy")({
 
           const enroll = enrollSchema.safeParse(body);
           if (enroll.success) {
-            const { courseId, studentName, studentEmail, studentPhone } = enroll.data;
+            const { courseId, studentName, studentEmail, studentPhone, password } = enroll.data;
 
             /* Fetch Course price */
             const courseRes = await query<{
@@ -291,16 +338,57 @@ export const Route = createFileRoute("/api/academy")({
               amount,
               reference,
               `Inscrição ${course.title} – Invisible Academy`,
-              `${acadReturnUrl}?email=${encodeURIComponent(studentEmail)}`,
+              acadReturnUrl,
             );
+
+            const passwordHash = await bcrypt.hash(password, 12);
+            const existingStudent = await query<{ id: string; password_hash: string }>(
+              `SELECT id, password_hash FROM universe.users
+                WHERE lower(email)=lower($1) AND status <> 'deleted' LIMIT 1`,
+              [studentEmail],
+            );
+            let studentId = existingStudent.rows[0]?.id;
+            if (studentId) {
+              const validPassword = await bcrypt.compare(
+                password,
+                existingStudent.rows[0].password_hash,
+              );
+              if (!validPassword)
+                return Response.json(
+                  {
+                    ok: false,
+                    message: "Este e-mail já possui uma conta. Informe a senha correta.",
+                  },
+                  { status: 409 },
+                );
+              await query(`UPDATE universe.users SET full_name=$2, updated_at=now() WHERE id=$1`, [
+                studentId,
+                studentName,
+              ]);
+            } else {
+              const studentResult = await query<{ id: string }>(
+                `INSERT INTO universe.users(email, password_hash, full_name, role, status)
+                 VALUES(lower($1), $2, $3, 'student', 'active') RETURNING id`,
+                [studentEmail, passwordHash, studentName],
+              );
+              studentId = studentResult.rows[0].id;
+            }
 
             /* Save enrollment to DB */
             const enrollResult = await query<{ id: string }>(
               `INSERT INTO universe.academy_enrollments
-                 (course_id, student_name, student_email, student_phone, sumup_checkout_id, amount_paid, status)
-               VALUES ($1, $2, $3, $4, $5, $6, 'active')
+                 (user_id, course_id, student_name, student_email, student_phone, sumup_checkout_id, amount_paid, status)
+               VALUES ($1, $2, $3, lower($4), $5, $6, $7, 'pending')
                RETURNING id`,
-              [courseId, studentName, studentEmail, studentPhone ?? null, sumup.id, amount],
+              [
+                studentId,
+                courseId,
+                studentName,
+                studentEmail,
+                studentPhone ?? null,
+                sumup.id,
+                amount,
+              ],
             );
 
             await query(

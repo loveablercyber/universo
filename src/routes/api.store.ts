@@ -5,7 +5,7 @@ import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server"
 import { sendStoreOrderNotification } from "@/lib/notifications.server";
 
 const cartItemSchema = z.object({
-  productId: z.string(),
+  productId: z.string().uuid(),
   productName: z.string(),
   price: z.number().min(0),
   qty: z.number().int().min(1),
@@ -191,11 +191,32 @@ export const Route = createFileRoute("/api/store")({
             items,
           } = input.data;
 
-          /* Calculate Subtotal */
+          /* Load authoritative product data. Never trust prices sent by the browser. */
+          const productIds = [...new Set(items.map((item) => item.productId))];
+          const productsResult = await query<{
+            id: string;
+            name: string;
+            price: string;
+            promotional_price: string | null;
+            stock_quantity: number;
+          }>(
+            `SELECT id, name, price, promotional_price, stock_quantity
+               FROM universe.store_products
+              WHERE id = ANY($1::uuid[]) AND status = 'active'`,
+            [productIds],
+          );
+          const products = new Map(productsResult.rows.map((product) => [product.id, product]));
+
           let subtotal = 0;
-          for (const item of items) {
-            subtotal += item.price * item.qty;
-          }
+          const authoritativeItems = items.map((item) => {
+            const product = products.get(item.productId);
+            if (!product) throw new Error(`Produto indisponível: ${item.productName}`);
+            if (product.stock_quantity < item.qty)
+              throw new Error(`Estoque insuficiente para ${product.name}.`);
+            const price = Number(product.promotional_price ?? product.price);
+            subtotal += price * item.qty;
+            return { ...item, productName: product.name, price };
+          });
 
           /* Calculate Shipping Cost (Free shipping if subtotal >= 299.90) */
           const shippingCost = subtotal >= 299.9 ? 0 : 20.0;
@@ -219,15 +240,35 @@ export const Route = createFileRoute("/api/store")({
             storeReturnUrl,
           );
 
+          /* Create/update the unified store customer before saving the order. */
+          const customerResult = await query<{ id: string }>(
+            `INSERT INTO universe.store_customers
+               (full_name, email, phone, document, default_address)
+             VALUES ($1, lower($2), $3, $4, $5::jsonb)
+             ON CONFLICT (lower(email)) DO UPDATE
+               SET full_name=excluded.full_name, phone=excluded.phone,
+                   document=excluded.document, default_address=excluded.default_address,
+                   updated_at=now()
+             RETURNING id`,
+            [
+              customerName,
+              customerEmail,
+              customerPhone,
+              customerDocument,
+              JSON.stringify(shippingAddress),
+            ],
+          );
+
           /* Save Order to DB */
           const orderResult = await query<{ id: string }>(
             `INSERT INTO universe.store_orders
-               (order_number, customer_name, customer_email, customer_phone, customer_document,
+               (order_number, customer_id, customer_name, customer_email, customer_phone, customer_document,
                 shipping_address, shipping_cost, subtotal, total_amount, sumup_checkout_id)
-             VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10)
+             VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)
              RETURNING id`,
             [
               orderNumber,
+              customerResult.rows[0].id,
               customerName,
               customerEmail,
               customerPhone,
@@ -243,12 +284,19 @@ export const Route = createFileRoute("/api/store")({
           const orderId = orderResult.rows[0].id;
 
           /* Save Order Items */
-          for (const item of items) {
+          for (const item of authoritativeItems) {
             await query(
               `INSERT INTO universe.store_order_items
-                 (order_id, product_name, unit_price, quantity, total_price)
-               VALUES ($1, $2, $3, $4, $5)`,
-              [orderId, item.productName, item.price, item.qty, item.price * item.qty],
+                 (order_id, product_id, product_name, unit_price, quantity, total_price)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [
+                orderId,
+                item.productId,
+                item.productName,
+                item.price,
+                item.qty,
+                item.price * item.qty,
+              ],
             );
           }
 

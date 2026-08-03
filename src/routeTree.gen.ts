@@ -16,6 +16,7 @@ import { Route as DoacaoRouteImport } from './routes/doacao'
 import { Route as InvisibleAcademyRouteImport } from './routes/invisible-academy'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as ProjetoEloRouteImport } from './routes/projeto-elo'
+import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as SalaoRouteImport } from './routes/salao'
 import { Route as ServicosRouteImport } from './routes/servicos'
 import { Route as SobreRouteImport } from './routes/sobre'
@@ -73,6 +74,11 @@ const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
 const ProjetoEloRoute = ProjetoEloRouteImport.update({
   id: '/projeto-elo',
   path: '/projeto-elo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
+  id: '/redefinir-senha',
+  path: '/redefinir-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SalaoRoute = SalaoRouteImport.update({
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
@@ -231,6 +238,7 @@ export interface FileRoutesByTo {
   '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
@@ -298,6 +307,7 @@ export interface FileRouteTypes {
     | '/invisible-academy'
     | '/politica-de-privacidade'
     | '/projeto-elo'
+    | '/redefinir-senha'
     | '/salao'
     | '/servicos'
     | '/sobre'
@@ -330,6 +340,7 @@ export interface FileRouteTypes {
     | '/invisible-academy'
     | '/politica-de-privacidade'
     | '/projeto-elo'
+    | '/redefinir-senha'
     | '/salao'
     | '/servicos'
     | '/sobre'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/invisible-academy'
     | '/politica-de-privacidade'
     | '/projeto-elo'
+    | '/redefinir-senha'
     | '/salao'
     | '/servicos'
     | '/sobre'
@@ -395,6 +407,7 @@ export interface RootRouteChildren {
   InvisibleAcademyRoute: typeof InvisibleAcademyRouteWithChildren
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   ProjetoEloRoute: typeof ProjetoEloRoute
+  RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   SalaoRoute: typeof SalaoRoute
   ServicosRoute: typeof ServicosRoute
   SobreRoute: typeof SobreRoute
@@ -466,6 +479,13 @@ declare module '@tanstack/react-router' {
       path: '/projeto-elo'
       fullPath: '/projeto-elo'
       preLoaderRoute: typeof ProjetoEloRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redefinir-senha': {
+      id: '/redefinir-senha'
+      path: '/redefinir-senha'
+      fullPath: '/redefinir-senha'
+      preLoaderRoute: typeof RedefinirSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/salao': {
@@ -674,6 +694,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvisibleAcademyRoute: InvisibleAcademyRouteWithChildren,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   ProjetoEloRoute: ProjetoEloRoute,
+  RedefinirSenhaRoute: RedefinirSenhaRoute,
   SalaoRoute: SalaoRoute,
   ServicosRoute: ServicosRoute,
   SobreRoute: SobreRoute,

@@ -10,7 +10,7 @@ const userSchema = z.object({
   fullName: z.string().min(2).max(160),
   role: z.enum(["admin", "manager", "operator", "customer", "student", "donor", "volunteer"]),
   permissions: z.array(z.string()).default([]),
-  password: z.string().min(8).max(200),
+  password: z.string().min(12).max(200),
 });
 
 const updateUserSchema = z.object({
@@ -29,13 +29,13 @@ const updatePermissionsSchema = z.object({
 const resetPasswordSchema = z.object({
   action: z.literal("reset-password"),
   id: z.string().uuid(),
-  newPassword: z.string().min(8).max(200),
+  newPassword: z.string().min(12).max(200),
 });
 
 const changeOwnPasswordSchema = z.object({
   action: z.literal("change-own-password"),
   currentPassword: z.string().min(8),
-  newPassword: z.string().min(8).max(200),
+  newPassword: z.string().min(12).max(200),
 });
 
 const toggleStatusSchema = z.object({

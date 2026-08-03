@@ -105,6 +105,27 @@ export const Route = createFileRoute("/api/admin/store")({
             return Response.json({ ok: true, orders: rows });
           }
 
+          if (action === "customers") {
+            const { rows } = await query(
+              `SELECT c.id, c.full_name as "fullName", c.email, c.phone, c.document,
+                      c.default_address as "defaultAddress", c.notes, c.status,
+                      c.created_at as "createdAt", c.updated_at as "updatedAt",
+                      count(o.id)::int as "ordersCount",
+                      coalesce(sum(o.total_amount) filter (where o.status in ('paid','processing','shipped','delivered')), 0)::float as "totalSpent",
+                      max(o.created_at) as "lastOrderAt",
+                      coalesce(json_agg(json_build_object(
+                        'id', o.id, 'orderNumber', o.order_number, 'totalAmount', o.total_amount::float,
+                        'status', o.status, 'trackingCode', o.tracking_code, 'createdAt', o.created_at
+                      ) order by o.created_at desc) filter (where o.id is not null), '[]'::json) as orders
+                 FROM universe.store_customers c
+                 LEFT JOIN universe.store_orders o ON o.customer_id = c.id
+                GROUP BY c.id
+                ORDER BY max(o.created_at) desc nulls last, c.created_at desc
+                LIMIT 500`,
+            );
+            return Response.json({ ok: true, customers: rows });
+          }
+
           if (action === "stats") {
             const [salesResult, countResult] = await Promise.all([
               query(
