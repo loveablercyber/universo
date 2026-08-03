@@ -22,14 +22,24 @@ type Summary = {
   audit: { total: number };
 };
 type Section =
-  "overview" | "pages" | "media" | "elo" | "store" | "modules" | "settings" | "audit" | "users";
+  | "overview"
+  | "pages"
+  | "media"
+  | "elo"
+  | "store"
+  | "academy"
+  | "modules"
+  | "settings"
+  | "audit"
+  | "users";
 import { CmsEditor } from "@/components/admin/CmsEditor";
 import { CmsVersionHistory } from "@/components/admin/CmsVersionHistory";
 import { MediaLibrary } from "@/components/admin/MediaLibrary";
 import { EloManager } from "@/components/admin/EloManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { StoreManager } from "@/components/admin/StoreManager";
-import { Image as ImageIcon } from "lucide-react";
+import { AcademyManager } from "@/components/admin/AcademyManager";
+import { Image as ImageIcon, GraduationCap } from "lucide-react";
 type Page = {
   id: string;
   slug: string;
@@ -203,6 +213,7 @@ function AdminPage() {
     { key: "media" as const, label: "Mídias", icon: ImageIcon },
     { key: "elo" as const, label: "Projeto Elo", icon: HeartHandshake },
     { key: "store" as const, label: "Loja Virtual", icon: ShoppingBag },
+    { key: "academy" as const, label: "Academy / EAD", icon: GraduationCap },
     { key: "modules" as const, label: "Módulos", icon: Database },
     { key: "users" as const, label: "Usuários", icon: Users },
     { key: "settings" as const, label: "Configurações", icon: Settings },
@@ -328,6 +339,10 @@ function SectionContent({
 
   if (section === "store") {
     return <StoreManager />;
+  }
+
+  if (section === "academy") {
+    return <AcademyManager />;
   }
 
   if (section === "users") {

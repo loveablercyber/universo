@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { UniverseSwitcher } from "@/components/UniverseSwitcher";
 import {
   Sparkles,
@@ -100,19 +100,22 @@ function MainHeader() {
         <a href="#inicio" className="shrink-0">
           <InvisibleLogo />
         </a>
-        <nav className="hidden lg:flex items-center gap-7">
+        <nav className="hidden lg:flex items-center gap-6 text-[11px] tracking-[0.22em] font-medium text-[#4B2C1E]">
           {navigation.map((n) => (
             <a
               key={n.label}
               href={n.href}
-              className={`text-[11px] tracking-[0.18em] font-medium transition-colors hover:text-[#C97945] relative ${n.active ? "text-[#C97945]" : "text-[#4B2C1E]"}`}
+              className={`hover:text-[#C97945] transition ${n.active ? "text-[#C97945] font-semibold" : ""}`}
             >
               {n.label}
-              {n.active && (
-                <span className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 h-[1.5px] w-4 bg-[#C97945] rounded-full" />
-              )}
             </a>
           ))}
+          <Link
+            to="/invisible-academy/aluno"
+            className="rounded-full bg-[#4B2C1E] px-4 py-2 text-[10px] font-semibold tracking-widest text-white hover:bg-[#C97945] transition flex items-center gap-1.5"
+          >
+            <GraduationCap size={14} /> ÁREA DO ALUNO
+          </Link>
         </nav>
         <div className="flex items-center gap-3">
           <a
@@ -267,7 +270,38 @@ function LearningBenefits() {
   );
 }
 
+type CourseItem = {
+  id?: string;
+  badge: string;
+  image: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  level: string;
+  cert?: string;
+  price?: number;
+  promotionalPrice?: number | null;
+};
+
 function CoursesSection() {
+  const [academyCourses, setAcademyCourses] = useState<CourseItem[]>(courses);
+  const [selectedCourseForEnroll, setSelectedCourseForEnroll] = useState<CourseItem | null>(null);
+
+  useEffect(() => {
+    async function loadLiveCourses() {
+      try {
+        const res = await fetch("/api/academy?action=courses");
+        const json = await res.json();
+        if (res.ok && json.ok && Array.isArray(json.courses) && json.courses.length > 0) {
+          setAcademyCourses(json.courses);
+        }
+      } catch (e) {
+        /* fallback to static courses */
+      }
+    }
+    void loadLiveCourses();
+  }, []);
+
   return (
     <section id="cursos" className="bg-[#FBF6F1] py-14">
       <div className="container-max">
@@ -286,9 +320,9 @@ function CoursesSection() {
         </div>
 
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-          {courses.map((c) => (
+          {academyCourses.map((c) => (
             <article
-              key={c.subtitle}
+              key={c.id || c.subtitle}
               className="bg-[#FFFDFC] rounded-2xl border border-[rgba(201,121,69,0.15)] overflow-hidden flex flex-col hover:shadow-[0_20px_40px_-24px_rgba(75,44,30,0.35)] hover:-translate-y-0.5 transition"
             >
               <div className="relative aspect-[4/3]">
@@ -319,27 +353,28 @@ function CoursesSection() {
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <Award size={12} className="text-[#C97945]" />
-                    {c.cert}
+                    Certificado
                   </span>
                 </div>
                 <div className="mt-5 flex justify-center">
-                  <a
-                    href="https://academy.carolsol.com.br"
-                    className="btn-copper btn-copper-hover text-[10px] px-5 py-2.5"
+                  <button
+                    onClick={() => setSelectedCourseForEnroll(c)}
+                    className="btn-copper btn-copper-hover text-[10px] px-5 py-2.5 flex items-center gap-1.5"
                   >
-                    SAIBA MAIS <ArrowRight size={12} />
-                  </a>
+                    MATRICULAR-SE <ArrowRight size={12} />
+                  </button>
                 </div>
               </div>
             </article>
           ))}
         </div>
 
-        <div className="mt-10 flex justify-center">
-          <a href="https://academy.carolsol.com.br" className="btn-ghost">
-            VER TODOS OS CURSOS <ArrowRight size={13} className="text-[#C97945]" />
-          </a>
-        </div>
+        {selectedCourseForEnroll && (
+          <EnrollmentModal
+            course={selectedCourseForEnroll}
+            onClose={() => setSelectedCourseForEnroll(null)}
+          />
+        )}
       </div>
     </section>
   );
@@ -635,6 +670,108 @@ function Index() {
       </main>
       <Footer />
       <BottomUniverseBar />
+    </div>
+  );
+}
+
+function EnrollmentModal({ course, onClose }: { course: CourseItem; onClose: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const form = new FormData(e.currentTarget);
+
+    try {
+      const res = await fetch("/api/academy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "enroll",
+          courseId: course.id || "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
+          studentName: form.get("studentName"),
+          studentEmail: form.get("studentEmail"),
+          studentPhone: form.get("studentPhone"),
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.message || "Não foi possível criar sua matrícula.");
+      }
+
+      /* Redirect to SumUp Hosted Checkout */
+      window.location.href = json.checkoutUrl;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro no checkout");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F0D0C]/70 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl bg-[#FFFDFC] p-6 sm:p-8 shadow-2xl border border-[rgba(201,121,69,0.2)] relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-[#4B2C1E] hover:text-[#C97945]"
+        >
+          <X size={20} />
+        </button>
+
+        <span className="text-[10px] font-bold uppercase tracking-widest text-[#C97945]">
+          Matrícula Online
+        </span>
+        <h3 className="font-serif text-2xl font-bold text-[#4B2C1E] mt-1">{course.title}</h3>
+        <p className="text-xs text-[#6F5B52] font-semibold">{course.subtitle}</p>
+
+        {error && <p className="mt-3 rounded-xl bg-red-50 p-3 text-xs text-red-700">{error}</p>}
+
+        <form onSubmit={handleSubmit} className="mt-5 space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-[#4B2C1E] block mb-1">
+              Seu Nome Completo *
+            </label>
+            <input
+              name="studentName"
+              required
+              placeholder="Nome da aluna"
+              className="w-full h-11 rounded-xl border border-[rgba(201,121,69,0.25)] bg-[#F5ECE5]/40 px-3 text-xs text-[#4B2C1E] outline-none focus:border-[#C97945]"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-[#4B2C1E] block mb-1">
+              Seu E-mail (Acesso às videoaulas) *
+            </label>
+            <input
+              name="studentEmail"
+              type="email"
+              required
+              placeholder="aluna@email.com"
+              className="w-full h-11 rounded-xl border border-[rgba(201,121,69,0.25)] bg-[#F5ECE5]/40 px-3 text-xs text-[#4B2C1E] outline-none focus:border-[#C97945]"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-[#4B2C1E] block mb-1">
+              Telefone / WhatsApp
+            </label>
+            <input
+              name="studentPhone"
+              placeholder="(14) 99999-9999"
+              className="w-full h-11 rounded-xl border border-[rgba(201,121,69,0.25)] bg-[#F5ECE5]/40 px-3 text-xs text-[#4B2C1E] outline-none focus:border-[#C97945]"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 mt-4 rounded-full bg-[#C97945] font-semibold text-xs tracking-widest text-white hover:bg-[#b06638] transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+          >
+            {loading ? "PROCESSANDO..." : "MATRICULAR-SE COM SUMUP"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

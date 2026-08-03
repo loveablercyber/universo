@@ -21,13 +21,16 @@ import { Route as ServicosRouteImport } from './routes/servicos'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as SolHairClosetRouteImport } from './routes/sol-hair-closet'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
+import { Route as ApiAcademyRouteImport } from './routes/api.academy'
 import { Route as ApiAuthRouteImport } from './routes/api.auth'
 import { Route as ApiCmsContentRouteImport } from './routes/api.cms-content'
 import { Route as ApiDonationRouteImport } from './routes/api.donation'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiStoreRouteImport } from './routes/api.store'
 import { Route as DoacaoRetornoRouteImport } from './routes/doacao.retorno'
+import { Route as InvisibleAcademyAlunoRouteImport } from './routes/invisible-academy.aluno'
 import { Route as SolHairClosetPedidoRouteImport } from './routes/sol-hair-closet.pedido'
+import { Route as ApiAdminAcademyRouteImport } from './routes/api.admin.academy'
 import { Route as ApiAdminCmsRouteImport } from './routes/api.admin.cms'
 import { Route as ApiAdminDataRouteImport } from './routes/api.admin.data'
 import { Route as ApiAdminEloRouteImport } from './routes/api.admin.elo'
@@ -96,6 +99,11 @@ const TermosDeUsoRoute = TermosDeUsoRouteImport.update({
   path: '/termos-de-uso',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAcademyRoute = ApiAcademyRouteImport.update({
+  id: '/api/academy',
+  path: '/api/academy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthRoute = ApiAuthRouteImport.update({
   id: '/api/auth',
   path: '/api/auth',
@@ -126,10 +134,20 @@ const DoacaoRetornoRoute = DoacaoRetornoRouteImport.update({
   path: '/retorno',
   getParentRoute: () => DoacaoRoute,
 } as any)
+const InvisibleAcademyAlunoRoute = InvisibleAcademyAlunoRouteImport.update({
+  id: '/aluno',
+  path: '/aluno',
+  getParentRoute: () => InvisibleAcademyRoute,
+} as any)
 const SolHairClosetPedidoRoute = SolHairClosetPedidoRouteImport.update({
   id: '/pedido',
   path: '/pedido',
   getParentRoute: () => SolHairClosetRoute,
+} as any)
+const ApiAdminAcademyRoute = ApiAdminAcademyRouteImport.update({
+  id: '/api/admin/academy',
+  path: '/api/admin/academy',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminCmsRoute = ApiAdminCmsRouteImport.update({
   id: '/api/admin/cms',
@@ -172,7 +190,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
-  '/invisible-academy': typeof InvisibleAcademyRoute
+  '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
   '/salao': typeof SalaoRoute
@@ -180,13 +198,16 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRouteWithChildren
   '/termos-de-uso': typeof TermosDeUsoRoute
+  '/api/academy': typeof ApiAcademyRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
   '/api/store': typeof ApiStoreRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
+  '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
+  '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
@@ -200,7 +221,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
-  '/invisible-academy': typeof InvisibleAcademyRoute
+  '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
   '/salao': typeof SalaoRoute
@@ -208,13 +229,16 @@ export interface FileRoutesByTo {
   '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRouteWithChildren
   '/termos-de-uso': typeof TermosDeUsoRoute
+  '/api/academy': typeof ApiAcademyRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
   '/api/store': typeof ApiStoreRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
+  '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
+  '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
@@ -229,7 +253,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
-  '/invisible-academy': typeof InvisibleAcademyRoute
+  '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
   '/salao': typeof SalaoRoute
@@ -237,13 +261,16 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRouteWithChildren
   '/termos-de-uso': typeof TermosDeUsoRoute
+  '/api/academy': typeof ApiAcademyRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
   '/api/store': typeof ApiStoreRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
+  '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
+  '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
@@ -267,13 +294,16 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/sol-hair-closet'
     | '/termos-de-uso'
+    | '/api/academy'
     | '/api/auth'
     | '/api/cms-content'
     | '/api/donation'
     | '/api/health'
     | '/api/store'
     | '/doacao/retorno'
+    | '/invisible-academy/aluno'
     | '/sol-hair-closet/pedido'
+    | '/api/admin/academy'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
@@ -295,13 +325,16 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/sol-hair-closet'
     | '/termos-de-uso'
+    | '/api/academy'
     | '/api/auth'
     | '/api/cms-content'
     | '/api/donation'
     | '/api/health'
     | '/api/store'
     | '/doacao/retorno'
+    | '/invisible-academy/aluno'
     | '/sol-hair-closet/pedido'
+    | '/api/admin/academy'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
@@ -323,13 +356,16 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/sol-hair-closet'
     | '/termos-de-uso'
+    | '/api/academy'
     | '/api/auth'
     | '/api/cms-content'
     | '/api/donation'
     | '/api/health'
     | '/api/store'
     | '/doacao/retorno'
+    | '/invisible-academy/aluno'
     | '/sol-hair-closet/pedido'
+    | '/api/admin/academy'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
@@ -344,7 +380,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ContatoRoute: typeof ContatoRoute
   DoacaoRoute: typeof DoacaoRouteWithChildren
-  InvisibleAcademyRoute: typeof InvisibleAcademyRoute
+  InvisibleAcademyRoute: typeof InvisibleAcademyRouteWithChildren
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   ProjetoEloRoute: typeof ProjetoEloRoute
   SalaoRoute: typeof SalaoRoute
@@ -352,11 +388,13 @@ export interface RootRouteChildren {
   SobreRoute: typeof SobreRoute
   SolHairClosetRoute: typeof SolHairClosetRouteWithChildren
   TermosDeUsoRoute: typeof TermosDeUsoRoute
+  ApiAcademyRoute: typeof ApiAcademyRoute
   ApiAuthRoute: typeof ApiAuthRoute
   ApiCmsContentRoute: typeof ApiCmsContentRoute
   ApiDonationRoute: typeof ApiDonationRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiStoreRoute: typeof ApiStoreRoute
+  ApiAdminAcademyRoute: typeof ApiAdminAcademyRoute
   ApiAdminCmsRoute: typeof ApiAdminCmsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
   ApiAdminEloRoute: typeof ApiAdminEloRoute
@@ -452,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosDeUsoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/academy': {
+      id: '/api/academy'
+      path: '/api/academy'
+      fullPath: '/api/academy'
+      preLoaderRoute: typeof ApiAcademyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth': {
       id: '/api/auth'
       path: '/api/auth'
@@ -494,12 +539,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoacaoRetornoRouteImport
       parentRoute: typeof DoacaoRoute
     }
+    '/invisible-academy/aluno': {
+      id: '/invisible-academy/aluno'
+      path: '/aluno'
+      fullPath: '/invisible-academy/aluno'
+      preLoaderRoute: typeof InvisibleAcademyAlunoRouteImport
+      parentRoute: typeof InvisibleAcademyRoute
+    }
     '/sol-hair-closet/pedido': {
       id: '/sol-hair-closet/pedido'
       path: '/pedido'
       fullPath: '/sol-hair-closet/pedido'
       preLoaderRoute: typeof SolHairClosetPedidoRouteImport
       parentRoute: typeof SolHairClosetRoute
+    }
+    '/api/admin/academy': {
+      id: '/api/admin/academy'
+      path: '/api/admin/academy'
+      fullPath: '/api/admin/academy'
+      preLoaderRoute: typeof ApiAdminAcademyRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/admin/cms': {
       id: '/api/admin/cms'
@@ -564,6 +623,17 @@ const DoacaoRouteChildren: DoacaoRouteChildren = {
 const DoacaoRouteWithChildren =
   DoacaoRoute._addFileChildren(DoacaoRouteChildren)
 
+interface InvisibleAcademyRouteChildren {
+  InvisibleAcademyAlunoRoute: typeof InvisibleAcademyAlunoRoute
+}
+
+const InvisibleAcademyRouteChildren: InvisibleAcademyRouteChildren = {
+  InvisibleAcademyAlunoRoute: InvisibleAcademyAlunoRoute,
+}
+
+const InvisibleAcademyRouteWithChildren =
+  InvisibleAcademyRoute._addFileChildren(InvisibleAcademyRouteChildren)
+
 interface SolHairClosetRouteChildren {
   SolHairClosetPedidoRoute: typeof SolHairClosetPedidoRoute
 }
@@ -581,7 +651,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ContatoRoute: ContatoRoute,
   DoacaoRoute: DoacaoRouteWithChildren,
-  InvisibleAcademyRoute: InvisibleAcademyRoute,
+  InvisibleAcademyRoute: InvisibleAcademyRouteWithChildren,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   ProjetoEloRoute: ProjetoEloRoute,
   SalaoRoute: SalaoRoute,
@@ -589,11 +659,13 @@ const rootRouteChildren: RootRouteChildren = {
   SobreRoute: SobreRoute,
   SolHairClosetRoute: SolHairClosetRouteWithChildren,
   TermosDeUsoRoute: TermosDeUsoRoute,
+  ApiAcademyRoute: ApiAcademyRoute,
   ApiAuthRoute: ApiAuthRoute,
   ApiCmsContentRoute: ApiCmsContentRoute,
   ApiDonationRoute: ApiDonationRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiStoreRoute: ApiStoreRoute,
+  ApiAdminAcademyRoute: ApiAdminAcademyRoute,
   ApiAdminCmsRoute: ApiAdminCmsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
   ApiAdminEloRoute: ApiAdminEloRoute,

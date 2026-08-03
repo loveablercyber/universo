@@ -1,0 +1,357 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import {
+  CheckCircle2,
+  PlayCircle,
+  Lock,
+  ArrowLeft,
+  GraduationCap,
+  Award,
+  BookOpen,
+  Clock,
+  Sparkles,
+} from "lucide-react";
+import { UniverseSwitcher } from "@/components/UniverseSwitcher";
+
+export const Route = createFileRoute("/invisible-academy/aluno")({
+  head: () => ({
+    meta: [
+      { title: "Área do Aluno | Invisible Academy" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
+  component: StudentClassroomPage,
+});
+
+type Lesson = {
+  id: string;
+  title: string;
+  description?: string;
+  videoUrl: string;
+  durationMinutes: number;
+  completed: boolean;
+};
+
+type Module = {
+  id: string;
+  title: string;
+  sortOrder: number;
+  lessons: Lesson[];
+};
+
+type CourseClassroomData = {
+  enrollmentId: string;
+  course: {
+    id: string;
+    slug: string;
+    title: string;
+    subtitle: string;
+    description: string;
+    image: string;
+  };
+  modules: Module[];
+};
+
+function StudentClassroomPage() {
+  const [data, setData] = useState<CourseClassroomData | null>(null);
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const urlParams =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const courseSlug = urlParams?.get("course") || "mega-hair-metodos-classicos";
+  const studentEmail = urlParams?.get("email") || "";
+
+  useEffect(() => {
+    async function loadClassroom() {
+      if (!studentEmail) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/api/academy?action=classroom&course_slug=${encodeURIComponent(courseSlug)}&email=${encodeURIComponent(studentEmail)}`,
+        );
+        const json = await res.json();
+
+        if (res.ok && json.ok) {
+          setData(json);
+          /* Set initial active lesson to first lesson */
+          const firstLesson = json.modules?.[0]?.lessons?.[0];
+          if (firstLesson) setActiveLesson(firstLesson);
+        } else {
+          setError(json.message || "Matrícula não encontrada.");
+        }
+      } catch (err) {
+        setError("Erro de conexão ao carregar sala de aula.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadClassroom();
+  }, [courseSlug, studentEmail]);
+
+  const toggleCompleteLesson = async (lesson: Lesson) => {
+    if (!data) return;
+    const newCompleted = !lesson.completed;
+
+    /* Optimistic UI update */
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        modules: prev.modules.map((m) => ({
+          ...m,
+          lessons: m.lessons.map((l) =>
+            l.id === lesson.id ? { ...l, completed: newCompleted } : l,
+          ),
+        })),
+      };
+    });
+
+    if (activeLesson?.id === lesson.id) {
+      setActiveLesson((prev) => (prev ? { ...prev, completed: newCompleted } : prev));
+    }
+
+    try {
+      await fetch("/api/academy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "complete_lesson",
+          enrollmentId: data.enrollmentId,
+          lessonId: lesson.id,
+          completed: newCompleted,
+        }),
+      });
+    } catch (e) {
+      console.error("Erro ao registrar conclusão da aula:", e);
+    }
+  };
+
+  /* Calculate Progress % */
+  const allLessons = data?.modules.flatMap((m) => m.lessons) || [];
+  const completedCount = allLessons.filter((l) => l.completed).length;
+  const progressPercent =
+    allLessons.length > 0 ? Math.round((completedCount / allLessons.length) * 100) : 0;
+
+  return (
+    <main className="min-h-screen bg-[#0F0D0C] text-[#FBF6F1] font-sans flex flex-col justify-between">
+      <UniverseSwitcher />
+
+      {/* Header Aluno */}
+      <header className="border-b border-[#C97945]/20 bg-[#171412] px-6 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <Link
+            to="/invisible-academy"
+            className="flex items-center gap-2 text-xs font-semibold tracking-widest text-[#C97945] hover:text-white transition"
+          >
+            <ArrowLeft size={16} /> ACADEMY
+          </Link>
+          <div className="flex items-center gap-3">
+            <GraduationCap className="text-[#C97945]" size={22} />
+            <span className="font-serif text-lg font-bold tracking-wider text-white">
+              ÁREA DO ALUNO
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* Classroom Content */}
+      <div className="mx-auto max-w-7xl w-full px-6 py-8 flex-1">
+        {!studentEmail ? (
+          <div className="mx-auto max-w-md my-16 text-center space-y-4 rounded-3xl border border-[#C97945]/20 bg-[#171412] p-8 shadow-2xl">
+            <Lock className="mx-auto text-[#C97945]" size={48} strokeWidth={1.5} />
+            <h2 className="font-serif text-3xl font-bold text-white">Acesse a Área do Aluno</h2>
+            <p className="text-xs text-[#6F5A50] leading-relaxed">
+              Informe o e-mail cadastrado na matrícula para carregar suas videoaulas.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const email = new FormData(e.currentTarget).get("email");
+                if (email)
+                  window.location.href = `/invisible-academy/aluno?email=${encodeURIComponent(String(email))}`;
+              }}
+              className="space-y-3 pt-2"
+            >
+              <input
+                name="email"
+                type="email"
+                required
+                placeholder="seu@email.com"
+                className="w-full h-11 rounded-xl border border-[#C97945]/30 bg-[#221D1A] px-4 text-xs text-white outline-none focus:border-[#C97945]"
+              />
+              <button
+                type="submit"
+                className="w-full h-11 rounded-xl bg-[#C97945] font-semibold text-xs tracking-wider text-white hover:bg-[#b06638] transition"
+              >
+                ENTRAR NA SALA DE AULA
+              </button>
+            </form>
+          </div>
+        ) : loading ? (
+          <div className="py-24 text-center space-y-4">
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#C97945]/30 border-t-[#C97945]" />
+            <h2 className="font-serif text-2xl">Carregando sala de aula...</h2>
+          </div>
+        ) : error || !data ? (
+          <div className="mx-auto max-w-md my-16 text-center space-y-4 rounded-3xl border border-[#C97945]/20 bg-[#171412] p-8">
+            <Lock className="mx-auto text-amber-500" size={48} strokeWidth={1.5} />
+            <h2 className="font-serif text-2xl text-white">Ops! {error}</h2>
+            <p className="text-xs text-[#6F5A50]">
+              Verifique se a matrícula foi concluída com o e-mail informado.
+            </p>
+            <Link
+              to="/invisible-academy"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-[#C97945] px-6 text-xs font-bold text-white"
+            >
+              VER CURSOS DISPONÍVEIS
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+            {/* Player de Vídeo & Detalhes da Aula */}
+            <div className="space-y-6">
+              {/* Player Container */}
+              <div className="relative aspect-video w-full overflow-hidden rounded-3xl border border-[#C97945]/20 bg-black shadow-2xl">
+                {activeLesson?.videoUrl ? (
+                  activeLesson.videoUrl.includes("youtube") ||
+                  activeLesson.videoUrl.includes("vimeo") ? (
+                    <iframe
+                      src={activeLesson.videoUrl.replace("watch?v=", "embed/")}
+                      title={activeLesson.title}
+                      className="h-full w-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={activeLesson.videoUrl}
+                      controls
+                      className="h-full w-full object-cover"
+                    />
+                  )
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-center p-8">
+                    <div>
+                      <PlayCircle
+                        size={64}
+                        className="mx-auto text-[#C97945]/40 mb-3"
+                        strokeWidth={1}
+                      />
+                      <p className="text-sm text-[#6F5A50]">
+                        Selecione uma aula no índice ao lado para assistir.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Informações da Aula Ativa */}
+              {activeLesson && (
+                <div className="rounded-3xl border border-[#C97945]/20 bg-[#171412] p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#C97945]/15 pb-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#C97945]">
+                        AULA EM EXIBIÇÃO • {activeLesson.durationMinutes} MINUTOS
+                      </span>
+                      <h2 className="font-serif text-2xl font-bold text-white mt-1">
+                        {activeLesson.title}
+                      </h2>
+                    </div>
+
+                    <button
+                      onClick={() => toggleCompleteLesson(activeLesson)}
+                      className={`h-11 px-6 rounded-2xl text-xs font-bold tracking-wider transition flex items-center justify-center gap-2 shrink-0 ${
+                        activeLesson.completed
+                          ? "bg-emerald-950/80 text-emerald-400 border border-emerald-500/30"
+                          : "bg-[#C97945] text-white hover:bg-[#b06638]"
+                      }`}
+                    >
+                      <CheckCircle2 size={16} />
+                      {activeLesson.completed ? "CONCLUÍDA ✓" : "MARCAR COMO CONCLUÍDA"}
+                    </button>
+                  </div>
+
+                  {activeLesson.description && (
+                    <p className="text-xs text-[#6F5A50] leading-relaxed">
+                      {activeLesson.description}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar com Módulos, Aulas e Progresso */}
+            <div className="space-y-6">
+              {/* Barra de Progresso */}
+              <div className="rounded-3xl border border-[#C97945]/20 bg-[#171412] p-6 space-y-3 shadow-sm">
+                <div className="flex justify-between items-center text-xs font-semibold">
+                  <span className="text-[#C97945] tracking-wider uppercase">
+                    Progresso do Curso
+                  </span>
+                  <span className="text-white font-mono">{progressPercent}%</span>
+                </div>
+                <div className="h-3 w-full rounded-full bg-[#221D1A] overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#C97945] to-[#E7B08F] transition-all duration-500"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-[#6F5A50] text-center pt-1">
+                  {completedCount} de {allLessons.length} aulas concluídas
+                </p>
+              </div>
+
+              {/* Índice de Módulos & Aulas */}
+              <div className="rounded-3xl border border-[#C97945]/20 bg-[#171412] p-5 space-y-4 max-h-[600px] overflow-y-auto">
+                <h3 className="font-serif text-lg font-bold text-white border-b border-[#C97945]/15 pb-2">
+                  Índice do Curso
+                </h3>
+
+                <div className="space-y-4">
+                  {data.modules.map((m, mIdx) => (
+                    <div key={m.id} className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#C97945]">
+                        MÓDULO {mIdx + 1}: {m.title}
+                      </p>
+
+                      <div className="space-y-1">
+                        {m.lessons.map((l) => (
+                          <button
+                            key={l.id}
+                            onClick={() => setActiveLesson(l)}
+                            className={`w-full text-left p-3 rounded-xl text-xs transition flex items-center justify-between border ${
+                              activeLesson?.id === l.id
+                                ? "bg-[#C97945]/20 border-[#C97945] text-white"
+                                : "bg-[#221D1A]/50 border-transparent text-[#6F5A50] hover:bg-[#221D1A] hover:text-white"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <PlayCircle
+                                size={15}
+                                className={activeLesson?.id === l.id ? "text-[#C97945]" : ""}
+                              />
+                              <span className="truncate font-medium">{l.title}</span>
+                            </div>
+                            {l.completed && (
+                              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

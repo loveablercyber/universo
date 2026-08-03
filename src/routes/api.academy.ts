@@ -1,0 +1,334 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { query } from "@/lib/db.server";
+import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
+
+const enrollSchema = z.object({
+  action: z.literal("enroll"),
+  courseId: z.string().uuid(),
+  studentName: z.string().min(2, "Nome é obrigatório."),
+  studentEmail: z.string().email("E-mail inválido."),
+  studentPhone: z.string().optional(),
+});
+
+const completeLessonSchema = z.object({
+  action: z.literal("complete_lesson"),
+  enrollmentId: z.string().uuid(),
+  lessonId: z.string().uuid(),
+  completed: z.boolean().default(true),
+});
+
+function errorResponse(error: unknown) {
+  if (error instanceof Response) return error;
+  const message = error instanceof Error ? error.message : "Erro ao processar requisição EAD.";
+  console.error("[Academy API]", error);
+  return Response.json({ ok: false, message }, { status: 503 });
+}
+
+export const Route = createFileRoute("/api/academy")({
+  server: {
+    handlers: {
+      /* ───── GET: Courses, Course Details, Student Classroom ───── */
+      GET: async ({ request }) => {
+        try {
+          const url = new URL(request.url);
+          const action = url.searchParams.get("action") ?? "courses";
+
+          if (action === "courses") {
+            const { rows } = await query(
+              `SELECT id, slug, title, subtitle, description,
+                      price::float as price, promotional_price::float as "promotionalPrice",
+                      image_url as image, badge, level, workload_hours as "workloadHours"
+                 FROM universe.academy_courses
+                WHERE status = 'active'
+                ORDER BY created_at DESC`,
+            );
+            return Response.json({ ok: true, courses: rows });
+          }
+
+          if (action === "course") {
+            const slug = url.searchParams.get("slug");
+            if (!slug)
+              return Response.json(
+                { ok: false, message: "Slug do curso ausente." },
+                { status: 400 },
+              );
+
+            const courseRes = await query<{
+              id: string;
+              slug: string;
+              title: string;
+              subtitle: string;
+              description: string;
+              price: string;
+              promotional_price: string | null;
+              image_url: string;
+              badge: string;
+              level: string;
+              workload_hours: number;
+            }>(
+              `SELECT id, slug, title, subtitle, description, price, promotional_price, image_url, badge, level, workload_hours
+                 FROM universe.academy_courses
+                WHERE slug = $1 AND status = 'active'`,
+              [slug],
+            );
+
+            const course = courseRes.rows[0];
+            if (!course)
+              return Response.json(
+                { ok: false, message: "Curso não encontrado." },
+                { status: 404 },
+              );
+
+            /* Fetch Modules and Lessons */
+            const modulesRes = await query<{
+              id: string;
+              title: string;
+              description: string;
+              sort_order: number;
+            }>(
+              `SELECT id, title, description, sort_order
+                 FROM universe.academy_modules
+                WHERE course_id = $1
+                ORDER BY sort_order ASC, created_at ASC`,
+              [course.id],
+            );
+
+            const modulesWithLessons = await Promise.all(
+              modulesRes.rows.map(async (m) => {
+                const lessonsRes = await query(
+                  `SELECT id, title, description, duration_minutes as "durationMinutes", is_preview as "isPreview"
+                     FROM universe.academy_lessons
+                    WHERE module_id = $1
+                    ORDER BY sort_order ASC, created_at ASC`,
+                  [m.id],
+                );
+                return {
+                  ...m,
+                  lessons: lessonsRes.rows,
+                };
+              }),
+            );
+
+            return Response.json({
+              ok: true,
+              course: {
+                ...course,
+                price: Number(course.price),
+                promotionalPrice: course.promotional_price
+                  ? Number(course.promotional_price)
+                  : null,
+                modules: modulesWithLessons,
+              },
+            });
+          }
+
+          if (action === "my_courses") {
+            const email = url.searchParams.get("email");
+            if (!email)
+              return Response.json(
+                { ok: false, message: "E-mail do aluno ausente." },
+                { status: 400 },
+              );
+
+            const { rows } = await query(
+              `SELECT e.id as "enrollmentId", e.status as "enrollmentStatus", e.enrolled_at as "enrolledAt",
+                      c.id as "courseId", c.slug, c.title, c.subtitle, c.image_url as image, c.badge, c.level
+                 FROM universe.academy_enrollments e
+                 JOIN universe.academy_courses c ON c.id = e.course_id
+                WHERE e.student_email = $1 AND e.status IN ('active', 'completed')
+                ORDER BY e.enrolled_at DESC`,
+              [email],
+            );
+
+            return Response.json({ ok: true, enrollments: rows });
+          }
+
+          if (action === "classroom") {
+            const courseSlug = url.searchParams.get("course_slug");
+            const email = url.searchParams.get("email");
+
+            if (!courseSlug || !email) {
+              return Response.json({ ok: false, message: "Parâmetros ausentes." }, { status: 400 });
+            }
+
+            /* Verify active enrollment */
+            const enrollRes = await query<{ id: string; status: string; course_id: string }>(
+              `SELECT e.id, e.status, e.course_id
+                 FROM universe.academy_enrollments e
+                 JOIN universe.academy_courses c ON c.id = e.course_id
+                WHERE c.slug = $1 AND e.student_email = $2 AND e.status IN ('active', 'completed')`,
+              [courseSlug, email],
+            );
+
+            const enrollment = enrollRes.rows[0];
+            if (!enrollment) {
+              return Response.json(
+                { ok: false, message: "Matrícula não encontrada ou pendente." },
+                { status: 403 },
+              );
+            }
+
+            /* Get Course details + Modules + Lessons + Video URLs */
+            const courseRes = await query(
+              `SELECT id, slug, title, subtitle, description, image_url as image FROM universe.academy_courses WHERE id = $1`,
+              [enrollment.course_id],
+            );
+
+            const modulesRes = await query<{ id: string; title: string; sort_order: number }>(
+              `SELECT id, title, sort_order FROM universe.academy_modules WHERE course_id = $1 ORDER BY sort_order ASC`,
+              [enrollment.course_id],
+            );
+
+            /* Progress */
+            const progressRes = await query<{ lesson_id: string }>(
+              `SELECT lesson_id FROM universe.academy_student_progress WHERE enrollment_id = $1 AND completed = true`,
+              [enrollment.id],
+            );
+            const completedLessonIds = new Set(progressRes.rows.map((p) => p.lesson_id));
+
+            const modulesWithLessons = await Promise.all(
+              modulesRes.rows.map(async (m) => {
+                const lessonsRes = await query<{
+                  id: string;
+                  title: string;
+                  description: string;
+                  video_url: string;
+                  duration_minutes: number;
+                }>(
+                  `SELECT id, title, description, video_url as "videoUrl", duration_minutes as "durationMinutes"
+                     FROM universe.academy_lessons
+                    WHERE module_id = $1
+                    ORDER BY sort_order ASC`,
+                  [m.id],
+                );
+
+                return {
+                  ...m,
+                  lessons: lessonsRes.rows.map((l) => ({
+                    ...l,
+                    completed: completedLessonIds.has(l.id),
+                  })),
+                };
+              }),
+            );
+
+            return Response.json({
+              ok: true,
+              enrollmentId: enrollment.id,
+              course: courseRes.rows[0],
+              modules: modulesWithLessons,
+            });
+          }
+
+          return Response.json({ ok: false, message: "Ação inválida." }, { status: 400 });
+        } catch (error) {
+          return errorResponse(error);
+        }
+      },
+
+      /* ───── POST: Course Enrollment (SumUp) & Lesson Completion ───── */
+      POST: async ({ request }) => {
+        try {
+          const body = await request.json();
+
+          if (body?.action === "complete_lesson") {
+            const input = completeLessonSchema.safeParse(body);
+            if (!input.success)
+              return Response.json({ ok: false, message: "Dados inválidos." }, { status: 400 });
+
+            const { enrollmentId, lessonId, completed } = input.data;
+
+            if (completed) {
+              await query(
+                `INSERT INTO universe.academy_student_progress (enrollment_id, lesson_id, completed, completed_at)
+                 VALUES ($1, $2, true, now())
+                 ON CONFLICT (enrollment_id, lesson_id) DO UPDATE SET completed = true, completed_at = now()`,
+                [enrollmentId, lessonId],
+              );
+            } else {
+              await query(
+                `DELETE FROM universe.academy_student_progress WHERE enrollment_id = $1 AND lesson_id = $2`,
+                [enrollmentId, lessonId],
+              );
+            }
+
+            return Response.json({ ok: true });
+          }
+
+          const enroll = enrollSchema.safeParse(body);
+          if (enroll.success) {
+            const { courseId, studentName, studentEmail, studentPhone } = enroll.data;
+
+            /* Fetch Course price */
+            const courseRes = await query<{
+              title: string;
+              price: string;
+              promotional_price: string | null;
+            }>(
+              `SELECT title, price, promotional_price FROM universe.academy_courses WHERE id = $1 AND status = 'active'`,
+              [courseId],
+            );
+            const course = courseRes.rows[0];
+            if (!course)
+              return Response.json(
+                { ok: false, message: "Curso não encontrado." },
+                { status: 404 },
+              );
+
+            const amount = course.promotional_price
+              ? Number(course.promotional_price)
+              : Number(course.price);
+            const reference = `acad-${crypto.randomUUID()}`;
+
+            /* Create SumUp Checkout */
+            const returnUrl =
+              process.env.SUMUP_RETURN_URL || "https://carolsol.com.br/doacao/retorno";
+            const acadReturnUrl = returnUrl.replace("/doacao/retorno", "/invisible-academy/aluno");
+
+            const sumup = await createSumUpCheckout(
+              amount,
+              reference,
+              `Inscrição ${course.title} – Invisible Academy`,
+              `${acadReturnUrl}?email=${encodeURIComponent(studentEmail)}`,
+            );
+
+            /* Save enrollment to DB */
+            const enrollResult = await query<{ id: string }>(
+              `INSERT INTO universe.academy_enrollments
+                 (course_id, student_name, student_email, student_phone, sumup_checkout_id, amount_paid, status)
+               VALUES ($1, $2, $3, $4, $5, $6, 'active')
+               RETURNING id`,
+              [courseId, studentName, studentEmail, studentPhone ?? null, sumup.id, amount],
+            );
+
+            await query(
+              `INSERT INTO universe.audit_logs(actor_id, action, entity_type, entity_id, metadata)
+               VALUES(NULL, 'academy.enrollment.created', 'academy_enrollment', $1, $2::jsonb)`,
+              [
+                enrollResult.rows[0].id,
+                JSON.stringify({ courseTitle: course.title, studentEmail, amount }),
+              ],
+            );
+
+            if (!sumup.hosted_checkout_url) {
+              return Response.json(
+                { ok: false, message: "SumUp não retornou URL de checkout." },
+                { status: 502 },
+              );
+            }
+
+            return Response.json({
+              ok: true,
+              checkoutUrl: sumup.hosted_checkout_url,
+            });
+          }
+
+          return Response.json({ ok: false, message: "Dados inválidos." }, { status: 400 });
+        } catch (error) {
+          return errorResponse(error);
+        }
+      },
+    },
+  },
+});
