@@ -88,6 +88,8 @@ function AdminPage() {
   const [sectionLoading, setSectionLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   async function loadSummary() {
     const response = await fetch("/api/admin/summary");
@@ -204,13 +206,27 @@ function AdminPage() {
           <p className="mt-3 text-sm leading-relaxed text-brown/70">
             Acesse a gestão segura do ecossistema Carol Sol.
           </p>
-          <form className="mt-8 space-y-4" onSubmit={login}>
-            <Field label="E-mail" name="email" type="email" autoComplete="username" required />
+          <form className="mt-8 space-y-4" onSubmit={login} autoComplete="off">
+            <Field
+              label="E-mail"
+              name="email"
+              type="email"
+              autoComplete="off"
+              value={loginEmail}
+              onChange={(event) => setLoginEmail(event.target.value)}
+              data-1p-ignore
+              data-lpignore="true"
+              required
+            />
             <Field
               label="Senha"
               name="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
+              value={loginPassword}
+              onChange={(event) => setLoginPassword(event.target.value)}
+              data-1p-ignore
+              data-lpignore="true"
               required
             />
             {error && <p className="text-sm text-red-700">{error}</p>}
