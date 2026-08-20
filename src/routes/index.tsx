@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Header } from "@/components/carol/Header";
 import { HeroSection } from "@/components/carol/HeroSection";
 import { PossibilitiesSection } from "@/components/carol/PossibilitiesSection";
@@ -31,6 +32,12 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  useEffect(() => {
+    if (window.location.hostname !== "loja.carolsol.com.br") return;
+
+    window.location.replace(`/sol-hair-closet${window.location.search}${window.location.hash}`);
+  }, []);
+
   return (
     <div className="min-h-screen bg-cream">
       <UniverseSwitcher />
