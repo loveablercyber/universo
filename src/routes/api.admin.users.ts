@@ -159,8 +159,9 @@ export const Route = createFileRoute("/api/admin/users")({
                 `update universe.users set password_hash=$2, updated_at=now() where id=$1`,
                 [user.id, newHash],
               );
+              await query(`delete from universe.sessions where user_id=$1`, [user.id]);
               await audit(user.id, "user.password_changed", "user", user.id);
-              return Response.json({ ok: true });
+              return Response.json({ ok: true, reauthenticationRequired: true });
             }
           }
 

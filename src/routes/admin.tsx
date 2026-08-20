@@ -8,11 +8,13 @@ import {
   HeartHandshake,
   LayoutDashboard,
   LogOut,
+  KeyRound,
   Save,
   Settings,
   ShieldCheck,
   ShoppingBag,
   Users,
+  X,
 } from "lucide-react";
 
 type User = { id: string; email: string; fullName: string; role: string };
@@ -85,6 +87,9 @@ function AdminPage() {
   const [sectionData, setSectionData] = useState<Record<string, unknown>>({});
   const [sectionLoading, setSectionLoading] = useState(false);
   const [notice, setNotice] = useState("");
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   async function loadSummary() {
     const response = await fetch("/api/admin/summary");
@@ -201,13 +206,27 @@ function AdminPage() {
           <p className="mt-3 text-sm leading-relaxed text-brown/70">
             Acesse a gestão segura do ecossistema Carol Sol.
           </p>
-          <form className="mt-8 space-y-4" onSubmit={login}>
-            <Field label="E-mail" name="email" type="email" autoComplete="username" required />
+          <form className="mt-8 space-y-4" onSubmit={login} autoComplete="off">
+            <Field
+              label="E-mail"
+              name="email"
+              type="email"
+              autoComplete="off"
+              value={loginEmail}
+              onChange={(event) => setLoginEmail(event.target.value)}
+              data-1p-ignore
+              data-lpignore="true"
+              required
+            />
             <Field
               label="Senha"
               name="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
+              value={loginPassword}
+              onChange={(event) => setLoginPassword(event.target.value)}
+              data-1p-ignore
+              data-lpignore="true"
               required
             />
             {error && <p className="text-sm text-red-700">{error}</p>}
@@ -277,9 +296,18 @@ function AdminPage() {
                 {navigation.find((item) => item.key === section)?.label}
               </h2>
             </div>
-            <span className="rounded-full border border-copper/20 bg-white px-4 py-2 text-[10px] uppercase tracking-wider">
-              {user.role}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPasswordChange(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-copper/20 bg-white px-4 py-2 text-[10px] uppercase tracking-wider transition hover:border-copper hover:text-copper"
+              >
+                <KeyRound size={14} /> Alterar minha senha
+              </button>
+              <span className="rounded-full border border-copper/20 bg-white px-4 py-2 text-[10px] uppercase tracking-wider">
+                {user.role}
+              </span>
+            </div>
           </header>
           {error && <Message tone="error">{error}</Message>}
           {notice && <Message>{notice}</Message>}
@@ -292,7 +320,118 @@ function AdminPage() {
           </div>
         </div>
       </div>
+      {showPasswordChange && (
+        <ChangePasswordModal
+          onClose={() => setShowPasswordChange(false)}
+          onChanged={() => {
+            setShowPasswordChange(false);
+            setUser(null);
+            setSummary(null);
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+function ChangePasswordModal({
+  onClose,
+  onChanged,
+}: {
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    const form = new FormData(event.currentTarget);
+    const currentPassword = String(form.get("currentPassword") || "");
+    const newPassword = String(form.get("newPassword") || "");
+    const confirmation = String(form.get("confirmation") || "");
+    if (newPassword !== confirmation)
+      return setError("A confirmação não corresponde à nova senha.");
+    if (currentPassword === newPassword)
+      return setError("A nova senha deve ser diferente da senha atual.");
+
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "change-own-password", currentPassword, newPassword }),
+      });
+      const payload = await readPayload(response);
+      if (!response.ok) throw new Error(payload.message || "Não foi possível alterar a senha.");
+      window.alert("Senha alterada. Entre novamente com sua nova senha.");
+      onChanged();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Não foi possível alterar a senha.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4 backdrop-blur-sm">
+      <section className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <header className="flex items-center justify-between border-b border-copper/10 bg-cream/30 px-6 py-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-copper">Segurança</p>
+            <h3 className="font-serif text-2xl text-brown">Alterar minha senha</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-brown/50 hover:bg-copper/10"
+          >
+            <X size={19} />
+          </button>
+        </header>
+        <form onSubmit={submit} className="space-y-4 p-6">
+          <Field
+            label="Senha atual"
+            name="currentPassword"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+          <Field
+            label="Nova senha"
+            name="newPassword"
+            type="password"
+            autoComplete="new-password"
+            minLength={12}
+            required
+          />
+          <Field
+            label="Confirmar nova senha"
+            name="confirmation"
+            type="password"
+            autoComplete="new-password"
+            minLength={12}
+            required
+          />
+          <p className="text-xs leading-relaxed text-brown/55">
+            Use pelo menos 12 caracteres. Após a alteração, todas as sessões serão encerradas.
+          </p>
+          {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-brown/60">
+              Cancelar
+            </button>
+            <button
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-copper px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              <KeyRound size={16} /> {loading ? "Alterando..." : "Alterar senha"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }
 
