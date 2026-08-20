@@ -62,13 +62,16 @@ export function assertSameOrigin(request: Request) {
   const requestUrl = new URL(request.url);
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const publicOrigin = process.env.APP_URL
-    ? new URL(process.env.APP_URL).origin
-    : forwardedHost
-      ? `${forwardedProto || requestUrl.protocol.replace(":", "")}://${forwardedHost}`
-      : requestUrl.origin;
+  const requestOrigin = forwardedHost
+    ? `${forwardedProto || requestUrl.protocol.replace(":", "")}://${forwardedHost}`
+    : requestUrl.origin;
+  const configuredOrigins = [process.env.APP_URL, ...(process.env.ALLOWED_ORIGINS ?? "").split(",")]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .map((value) => new URL(value).origin);
+  const allowedOrigins = new Set([requestOrigin, ...configuredOrigins]);
 
-  if (origin !== publicOrigin) {
+  if (!allowedOrigins.has(origin)) {
     throw new Response("Origem não autorizada.", { status: 403 });
   }
 }
