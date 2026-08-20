@@ -122,13 +122,11 @@ function HomePage() {
     });
     setToast(`${p.name} adicionado à sacola`);
   };
-  const changeQty = (id: string, d: number) =>
+  const setQty = (id: string, qty: number) =>
     setCart((prev) =>
-      prev.flatMap((i) =>
-        i.product.id === id ? (i.qty + d <= 0 ? [] : [{ ...i, qty: i.qty + d }]) : [i],
-      ),
+      prev.flatMap((i) => (i.product.id === id ? (qty <= 0 ? [] : [{ ...i, qty }]) : [i])),
     );
-  const removeItem = (id: string) => setCart((prev) => prev.filter((i) => i.product.id !== id));
+  const removeFromCart = (id: string) => setCart((prev) => prev.filter((i) => i.product.id !== id));
   const toggleFav = (id: string) =>
     setFavs((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const favProducts = useMemo(() => products.filter((p) => favs.includes(p.id)), [favs]);
