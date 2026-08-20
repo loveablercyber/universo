@@ -18,6 +18,28 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
+const STORE_HOSTNAME = "loja.carolsol.com.br";
+
+function routeStoreSubdomain(request: Request): Request {
+  const url = new URL(request.url);
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const hostname = (forwardedHost ?? request.headers.get("host") ?? url.hostname)
+    .split(":")[0]
+    .toLowerCase();
+
+  if (hostname !== STORE_HOSTNAME) return request;
+
+  if (url.pathname === "/") {
+    url.pathname = "/sol-hair-closet";
+  } else if (url.pathname === "/pedido") {
+    url.pathname = "/sol-hair-closet/pedido";
+  } else {
+    return request;
+  }
+
+  return new Request(url, request);
+}
+
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
@@ -48,7 +70,7 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const response = await handler.fetch(routeStoreSubdomain(request), env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);

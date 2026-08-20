@@ -229,9 +229,8 @@ export const Route = createFileRoute("/api/store")({
           const reference = `store-${orderNumber}`;
 
           /* Create SumUp Checkout */
-          const returnUrl =
-            process.env.SUMUP_RETURN_URL || "https://carolsol.com.br/doacao/retorno";
-          const storeReturnUrl = returnUrl.replace("/doacao/retorno", "/sol-hair-closet/pedido");
+          const storeReturnUrl =
+            process.env.SUMUP_STORE_RETURN_URL || "https://loja.carolsol.com.br/pedido";
 
           const sumup = await createSumUpCheckout(
             totalAmount,

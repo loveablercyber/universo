@@ -44,7 +44,7 @@ export const Route = createFileRoute("/sol-hair-closet")({
         content: "Cabelos, fibras, acessórios e produtos no Universo Carol Sol.",
       },
     ],
-    links: [{ rel: "canonical", href: "https://www.carolsol.com.br/sol-hair-closet" }],
+    links: [{ rel: "canonical", href: "https://loja.carolsol.com.br/" }],
   }),
   component: HomePage,
 });
