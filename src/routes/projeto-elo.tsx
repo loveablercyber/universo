@@ -293,9 +293,12 @@ function HelpSection() {
               <p className="mt-4 min-h-[72px] font-sans-brand text-sm leading-relaxed text-text-soft">
                 {c.text}
               </p>
-              <button className="mt-6 w-full rounded-full bg-gradient-copper px-6 py-3 font-sans-brand text-[11px] tracking-[0.2em] text-white transition hover:brightness-105">
+              <a
+                href={c.href}
+                className="mt-6 w-full rounded-full bg-gradient-copper px-6 py-3 font-sans-brand text-[11px] tracking-[0.2em] text-white transition hover:brightness-105"
+              >
                 {c.cta}
-              </button>
+              </a>
             </article>
           ))}
         </div>

@@ -25,6 +25,7 @@ export const helpCards = [
     script: "cabelo",
     text: "Doe cabelos, perucas, produtos e acessórios e ajude a transformar vidas.",
     cta: "QUERO DOAR",
+    href: "https://wa.me/5514998373935?text=Ol%C3%A1%2C%20quero%20doar%20cabelo%20ou%20materiais%20para%20o%20Projeto%20Elo.",
   },
   {
     icon: HandHeart,
@@ -32,6 +33,7 @@ export const helpCards = [
     script: "cabelo",
     text: "Solicite um cabelo ou peruca e receba apoio neste momento tão importante.",
     cta: "SOLICITAR AGORA",
+    href: "https://wa.me/5514998373935?text=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20atendimento%20do%20Projeto%20Elo.",
   },
   {
     icon: Users,
@@ -39,6 +41,7 @@ export const helpCards = [
     script: "voluntário",
     text: "Seu talento e seu tempo podem gerar impacto na vida de muitas pessoas.",
     cta: "QUERO SER VOLUNTÁRIO",
+    href: "https://wa.me/5514998373935?text=Ol%C3%A1%2C%20quero%20ser%20volunt%C3%A1rio%20no%20Projeto%20Elo.",
   },
   {
     icon: HeartHandshake,
@@ -46,6 +49,7 @@ export const helpCards = [
     script: "o projeto",
     text: "Apoie com doações financeiras, materiais, serviços ou divulgação.",
     cta: "QUERO APOIAR",
+    href: "/doacao",
   },
 ];
 

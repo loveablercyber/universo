@@ -51,6 +51,7 @@ function DoacaoPage() {
           donorName: donorName || undefined,
           donorEmail: donorEmail || undefined,
           donorMessage: donorMessage || undefined,
+          lgpdAccepted,
         }),
       });
 

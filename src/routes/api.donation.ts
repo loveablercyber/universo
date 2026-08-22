@@ -12,6 +12,7 @@ const donationSchema = z.object({
   donorName: z.string().max(160).optional(),
   donorEmail: z.string().email().max(254).or(z.literal("")).optional(),
   donorMessage: z.string().max(500).optional(),
+  lgpdAccepted: z.literal(true),
 });
 
 function errorResponse(error: unknown) {
@@ -41,9 +42,11 @@ export const Route = createFileRoute("/api/donation")({
             checkout_id: string;
             amount: string;
             donor_name: string | null;
+            donor_email: string | null;
+            participant_id: string | null;
             status: string;
           }>(
-            `SELECT id, checkout_id, amount, donor_name, status
+            `SELECT id, checkout_id, amount, donor_name, donor_email, participant_id, status
                FROM universe.elo_checkouts
               WHERE checkout_reference = $1`,
             [ref],
@@ -86,11 +89,12 @@ export const Route = createFileRoute("/api/donation")({
 
           /* On successful payment, create an elo_donation record automatically */
           if (isPaid) {
-            await query(
+            const donation = await query<{ id: string }>(
               `INSERT INTO universe.elo_donations
                  (participant_id, amount, donation_date, payment_method, status, notes, checkout_id)
                VALUES ($1, $2, now(), 'sumup_online', 'completed', $3, $4)
-               ON CONFLICT (checkout_id) DO NOTHING`,
+               ON CONFLICT (checkout_id) DO NOTHING
+               RETURNING id`,
               [
                 checkout.participant_id ?? null,
                 checkout.amount,
@@ -99,24 +103,26 @@ export const Route = createFileRoute("/api/donation")({
               ],
             );
 
-            void sendEloDonationNotification(
-              checkout.donor_name ?? undefined,
-              checkout.donor_email ?? undefined,
-              Number(checkout.amount),
-            );
+            if (donation.rowCount) {
+              void sendEloDonationNotification(
+                checkout.donor_name ?? undefined,
+                checkout.donor_email ?? undefined,
+                Number(checkout.amount),
+              );
 
-            await query(
-              `INSERT INTO universe.audit_logs(actor_id, action, entity_type, entity_id, metadata)
-               VALUES(NULL, 'elo.donation.online', 'elo_checkout', $1, $2::jsonb)`,
-              [
-                checkout.id,
-                JSON.stringify({
-                  amount: Number(checkout.amount),
-                  donor: checkout.donor_name,
-                  sumupStatus: sumup.status,
-                }),
-              ],
-            );
+              await query(
+                `INSERT INTO universe.audit_logs(actor_id, action, entity_type, entity_id, metadata)
+                 VALUES(NULL, 'elo.donation.online', 'elo_checkout', $1, $2::jsonb)`,
+                [
+                  checkout.id,
+                  JSON.stringify({
+                    amount: Number(checkout.amount),
+                    donor: checkout.donor_name,
+                    sumupStatus: sumup.status,
+                  }),
+                ],
+              );
+            }
           }
 
           return Response.json({
@@ -150,10 +156,18 @@ export const Route = createFileRoute("/api/donation")({
           );
 
           await query(
-            `INSERT INTO universe.elo_checkouts
+            `WITH participant AS (
+               INSERT INTO universe.elo_participants
+                 (kind, full_name, email, status, notes, consent_at, consent_text, lgpd_accepted)
+               VALUES ('donor', coalesce(NULLIF($4, ''), 'Doador anônimo'), NULLIF($5, ''),
+                       'active', NULLIF($6, ''), now(), 'Consentimento fornecido no formulário de doação online.', true)
+               RETURNING id
+             )
+             INSERT INTO universe.elo_checkouts
                (checkout_id, checkout_reference, amount, donor_name, donor_email,
-                donor_message, hosted_checkout_url)
-             VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), $7)`,
+                donor_message, hosted_checkout_url, participant_id)
+             SELECT $1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), $7, id
+               FROM participant`,
             [
               sumup.id,
               reference,
