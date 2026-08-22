@@ -21,7 +21,7 @@ async function getServerEntry(): Promise<ServerEntry> {
 const STORE_HOSTNAME = "loja.carolsol.com.br";
 const ACADEMY_HOSTNAME = "academy.carolsol.com.br";
 
-function routeStoreSubdomain(request: Request): Request {
+function routeSubdomain(request: Request): Request | Response {
   const url = new URL(request.url);
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
   const hostname = (forwardedHost ?? request.headers.get("host") ?? url.hostname)
@@ -31,10 +31,12 @@ function routeStoreSubdomain(request: Request): Request {
   if (hostname === ACADEMY_HOSTNAME) {
     if (url.pathname === "/") {
       url.pathname = "/invisible-academy";
+      return Response.redirect(url, 308);
     } else if (url.pathname === "/aluno") {
       url.pathname = "/invisible-academy/aluno";
+      return Response.redirect(url, 308);
     }
-    return new Request(url, request);
+    return request;
   }
 
   if (hostname !== STORE_HOSTNAME) return request;
@@ -96,7 +98,9 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
-      const response = await handler.fetch(routeStoreSubdomain(request), env, ctx);
+      const routedRequest = routeSubdomain(request);
+      if (routedRequest instanceof Response) return routedRequest;
+      const response = await handler.fetch(routedRequest, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
