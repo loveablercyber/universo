@@ -14,6 +14,7 @@ export const PIX_DISCOUNT_PERCENT = 5;
 export function useStore() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favs, setFavs] = useState<string[]>([]);
+  const [storageLoaded, setStorageLoaded] = useState(false);
   const [openDrawer, setOpenDrawer] = useState<null | "cat" | "search" | "cart" | "fav">(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -33,25 +34,29 @@ export function useStore() {
       }
     } catch {
       /* ignore */
+    } finally {
+      setStorageLoaded(true);
     }
   }, []);
 
   // Salvar no localStorage
   useEffect(() => {
+    if (!storageLoaded) return;
     try {
       localStorage.setItem("sol-cart", JSON.stringify(cart));
     } catch {
       /* ignore */
     }
-  }, [cart]);
+  }, [cart, storageLoaded]);
 
   useEffect(() => {
+    if (!storageLoaded) return;
     try {
       localStorage.setItem("sol-fav", JSON.stringify(favs));
     } catch {
       /* ignore */
     }
-  }, [favs]);
+  }, [favs, storageLoaded]);
 
   // Timer do toast
   useEffect(() => {

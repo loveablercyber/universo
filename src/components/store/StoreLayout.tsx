@@ -53,10 +53,9 @@ export function StoreLayout({
   storeState,
 }: {
   children: ReactNode;
-  storeState?: ReturnType<typeof useStore>;
+  storeState: ReturnType<typeof useStore>;
 }) {
-  const fallbackStore = useStore();
-  const store = storeState || fallbackStore;
+  const store = storeState;
 
   return (
     <div className="theme-sol min-h-dvh bg-cream text-text-primary flex flex-col selection:bg-copper selection:text-warm-white">
