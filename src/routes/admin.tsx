@@ -22,6 +22,9 @@ type Summary = {
   users: { total: number; active: number };
   sessions: { active: number };
   audit: { total: number };
+  store: { orders: number; pending: number; revenue: number };
+  academy: { enrollments: number; pending: number; active: number; revenue: number };
+  elo: { donations: number; total: number };
 };
 type Section =
   | "overview"
@@ -448,10 +451,54 @@ function SectionContent({
 }) {
   if (section === "overview") {
     const cards = [
-      { label: "Usuários", value: summary?.users.total ?? "—", icon: Users },
-      { label: "Usuários ativos", value: summary?.users.active ?? "—", icon: ShieldCheck },
-      { label: "Sessões ativas", value: summary?.sessions.active ?? "—", icon: Activity },
-      { label: "Eventos auditados", value: summary?.audit.total ?? "—", icon: Database },
+      {
+        label: "Pedidos da loja",
+        value: summary?.store.orders ?? "—",
+        detail: `${summary?.store.pending ?? 0} aguardando`,
+        icon: ShoppingBag,
+      },
+      {
+        label: "Receita da loja",
+        value: summary
+          ? `R$ ${summary.store.revenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+          : "—",
+        detail: "pagos e em atendimento",
+        icon: Activity,
+      },
+      {
+        label: "Matrículas",
+        value: summary?.academy.enrollments ?? "—",
+        detail: `${summary?.academy.active ?? 0} ativas · ${summary?.academy.pending ?? 0} pendentes`,
+        icon: GraduationCap,
+      },
+      {
+        label: "Receita Academy",
+        value: summary
+          ? `R$ ${summary.academy.revenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+          : "—",
+        detail: "matrículas confirmadas",
+        icon: BookOpen,
+      },
+      {
+        label: "Doações Elo",
+        value: summary?.elo.donations ?? "—",
+        detail: summary
+          ? `R$ ${summary.elo.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+          : "",
+        icon: HeartHandshake,
+      },
+      {
+        label: "Usuários ativos",
+        value: summary?.users.active ?? "—",
+        detail: `${summary?.sessions.active ?? 0} sessões`,
+        icon: ShieldCheck,
+      },
+      {
+        label: "Eventos auditados",
+        value: summary?.audit.total ?? "—",
+        detail: "rastreabilidade operacional",
+        icon: Database,
+      },
     ];
     return (
       <>
@@ -463,6 +510,7 @@ function SectionContent({
               <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-brown/55">
                 {card.label}
               </p>
+              <p className="mt-2 text-xs text-brown/50">{card.detail}</p>
             </article>
           ))}
         </div>
@@ -475,12 +523,12 @@ function SectionContent({
           <StatusCard
             icon={ShoppingBag}
             title="Loja"
-            text="Estrutura isolada preparada para evolução."
+            text={`${summary?.store.pending ?? 0} pedidos aguardam ação.`}
           />
           <StatusCard
             icon={BookOpen}
             title="Academy"
-            text="Estrutura isolada preparada para evolução."
+            text={`${summary?.academy.pending ?? 0} matrículas aguardam pagamento.`}
           />
         </div>
       </>

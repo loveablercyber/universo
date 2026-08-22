@@ -3,7 +3,7 @@ import { z } from "zod";
 import { query } from "@/lib/db.server";
 import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
 import { sendAcademyEnrollmentNotification } from "@/lib/notifications.server";
-import { readSession } from "@/lib/auth.server";
+import { createSession, readSession, sessionCookie, type SessionUser } from "@/lib/auth.server";
 import bcrypt from "bcryptjs";
 
 const enrollSchema = z.object({
@@ -20,6 +20,11 @@ const completeLessonSchema = z.object({
   enrollmentId: z.string().uuid(),
   lessonId: z.string().uuid(),
   completed: z.boolean().default(true),
+});
+
+const retryPaymentSchema = z.object({
+  action: z.literal("retry_payment"),
+  enrollmentId: z.string().uuid(),
 });
 
 function errorResponse(error: unknown) {
@@ -77,7 +82,9 @@ async function confirmPendingPayments(userId: string) {
         }
       } else if (["FAILED", "EXPIRED"].includes(checkout.status)) {
         await query(
-          `UPDATE universe.academy_enrollments SET status='cancelled' WHERE id=$1 AND status='pending'`,
+          `UPDATE universe.academy_enrollments
+              SET sumup_checkout_id=NULL
+            WHERE id=$1 AND status='pending'`,
           [enrollment.id],
         );
       }
@@ -191,10 +198,11 @@ export const Route = createFileRoute("/api/academy")({
 
             const { rows } = await query(
               `SELECT e.id as "enrollmentId", e.status as "enrollmentStatus", e.enrolled_at as "enrolledAt",
+                      e.amount_paid as amount,
                       c.id as "courseId", c.slug, c.title, c.subtitle, c.image_url as image, c.badge, c.level
                  FROM universe.academy_enrollments e
                  JOIN universe.academy_courses c ON c.id = e.course_id
-                WHERE e.user_id = $1 AND e.status IN ('active', 'completed')
+                WHERE e.user_id = $1 AND e.status IN ('pending', 'active', 'completed')
                 ORDER BY e.enrolled_at DESC`,
               [user.id],
             );
@@ -326,6 +334,53 @@ export const Route = createFileRoute("/api/academy")({
             return Response.json({ ok: true });
           }
 
+          if (body?.action === "retry_payment") {
+            const user = await requireStudent(request);
+            const input = retryPaymentSchema.safeParse(body);
+            if (!input.success)
+              return Response.json({ ok: false, message: "Matrícula inválida." }, { status: 400 });
+
+            const enrollmentResult = await query<{
+              id: string;
+              title: string;
+              amount_paid: string;
+            }>(
+              `SELECT e.id, e.amount_paid, c.title
+                 FROM universe.academy_enrollments e
+                 JOIN universe.academy_courses c ON c.id=e.course_id
+                WHERE e.id=$1 AND e.user_id=$2 AND e.status='pending'`,
+              [input.data.enrollmentId, user.id],
+            );
+            const enrollment = enrollmentResult.rows[0];
+            if (!enrollment)
+              return Response.json(
+                { ok: false, message: "Matrícula pendente não encontrada." },
+                { status: 404 },
+              );
+
+            const reference = `acad-${crypto.randomUUID()}`;
+            const academyReturnUrl =
+              process.env.SUMUP_ACADEMY_RETURN_URL ||
+              "https://www.carolsol.com.br/invisible-academy/aluno";
+            const sumup = await createSumUpCheckout(
+              Number(enrollment.amount_paid),
+              reference,
+              `Inscrição ${enrollment.title} – Invisible Academy`,
+              academyReturnUrl,
+            );
+            if (!sumup.hosted_checkout_url)
+              return Response.json(
+                { ok: false, message: "SumUp não retornou URL de checkout." },
+                { status: 502 },
+              );
+
+            await query(
+              `UPDATE universe.academy_enrollments SET sumup_checkout_id=$2 WHERE id=$1`,
+              [enrollment.id, sumup.id],
+            );
+            return Response.json({ ok: true, checkoutUrl: sumup.hosted_checkout_url });
+          }
+
           const enroll = enrollSchema.safeParse(body);
           if (enroll.success) {
             const { courseId, studentName, studentEmail, studentPhone, password } = enroll.data;
@@ -352,8 +407,15 @@ export const Route = createFileRoute("/api/academy")({
             const reference = `acad-${crypto.randomUUID()}`;
 
             const passwordHash = await bcrypt.hash(password, 12);
-            const existingStudent = await query<{ id: string; password_hash: string }>(
-              `SELECT id, password_hash FROM universe.users
+            const existingStudent = await query<{
+              id: string;
+              email: string;
+              full_name: string;
+              role: SessionUser["role"];
+              permissions: string[];
+              password_hash: string;
+            }>(
+              `SELECT id, email, full_name, role, permissions, password_hash FROM universe.users
                 WHERE lower(email)=lower($1) AND status <> 'deleted' LIMIT 1`,
               [studentEmail],
             );
@@ -403,31 +465,13 @@ export const Route = createFileRoute("/api/academy")({
               );
             }
 
-            const academyReturnUrl =
-              process.env.SUMUP_ACADEMY_RETURN_URL ||
-              "https://www.carolsol.com.br/invisible-academy/aluno";
-            const sumup = await createSumUpCheckout(
-              amount,
-              reference,
-              `Inscrição ${course.title} – Invisible Academy`,
-              academyReturnUrl,
-            );
-
-            /* Save enrollment to DB */
+            /* Save a recoverable pending enrollment before contacting the payment provider. */
             const enrollResult = await query<{ id: string }>(
               `INSERT INTO universe.academy_enrollments
-                 (user_id, course_id, student_name, student_email, student_phone, sumup_checkout_id, amount_paid, status)
-               VALUES ($1, $2, $3, lower($4), $5, $6, $7, 'pending')
+                 (user_id, course_id, student_name, student_email, student_phone, amount_paid, status)
+               VALUES ($1, $2, $3, lower($4), $5, $6, 'pending')
                RETURNING id`,
-              [
-                studentId,
-                courseId,
-                studentName,
-                studentEmail,
-                studentPhone ?? null,
-                sumup.id,
-                amount,
-              ],
+              [studentId, courseId, studentName, studentEmail, studentPhone ?? null, amount],
             );
 
             await query(
@@ -439,17 +483,57 @@ export const Route = createFileRoute("/api/academy")({
               ],
             );
 
-            if (!sumup.hosted_checkout_url) {
+            const sessionUser: SessionUser = existingStudent.rows[0]
+              ? {
+                  id: studentId,
+                  email: existingStudent.rows[0].email,
+                  fullName: studentName,
+                  role: existingStudent.rows[0].role,
+                  permissions: existingStudent.rows[0].permissions ?? [],
+                }
+              : {
+                  id: studentId,
+                  email: studentEmail.toLowerCase(),
+                  fullName: studentName,
+                  role: "student",
+                  permissions: [],
+                };
+            const sessionToken = await createSession(request, sessionUser);
+            const headers = { "Set-Cookie": sessionCookie(request, sessionToken) };
+
+            try {
+              const academyReturnUrl =
+                process.env.SUMUP_ACADEMY_RETURN_URL ||
+                "https://www.carolsol.com.br/invisible-academy/aluno";
+              const sumup = await createSumUpCheckout(
+                amount,
+                reference,
+                `Inscrição ${course.title} – Invisible Academy`,
+                academyReturnUrl,
+              );
+              if (!sumup.hosted_checkout_url)
+                throw new Error("SumUp não retornou URL de checkout.");
+              await query(
+                `UPDATE universe.academy_enrollments SET sumup_checkout_id=$2 WHERE id=$1`,
+                [enrollResult.rows[0].id, sumup.id],
+              );
               return Response.json(
-                { ok: false, message: "SumUp não retornou URL de checkout." },
-                { status: 502 },
+                { ok: true, checkoutUrl: sumup.hosted_checkout_url },
+                { headers },
+              );
+            } catch (paymentError) {
+              console.error("[Academy API] Matrícula salva; checkout pendente", paymentError);
+              return Response.json(
+                {
+                  ok: true,
+                  paymentPending: true,
+                  panelUrl: "/invisible-academy/aluno",
+                  message:
+                    "Sua matrícula foi salva. Finalize o pagamento pela Área do Aluno quando a SumUp estiver disponível.",
+                },
+                { status: 201, headers },
               );
             }
-
-            return Response.json({
-              ok: true,
-              checkoutUrl: sumup.hosted_checkout_url,
-            });
           }
 
           return Response.json({ ok: false, message: "Dados inválidos." }, { status: 400 });

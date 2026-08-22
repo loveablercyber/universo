@@ -54,6 +54,8 @@ type CourseClassroomData = {
 
 type StudentCourse = {
   enrollmentId: string;
+  enrollmentStatus: "pending" | "active" | "completed";
+  amount: string | number;
   slug: string;
   title: string;
   subtitle?: string;
@@ -74,6 +76,7 @@ function StudentClassroomPage() {
       : null,
   );
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [payingEnrollmentId, setPayingEnrollmentId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadClassroom() {
@@ -193,6 +196,29 @@ function StudentClassroomPage() {
     }
   };
 
+  const retryPayment = async (enrollmentId: string) => {
+    setPayingEnrollmentId(enrollmentId);
+    setError("");
+    try {
+      const response = await fetch("/api/academy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "retry_payment", enrollmentId }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok)
+        throw new Error(payload.message || "Não foi possível iniciar o pagamento.");
+      window.location.href = payload.checkoutUrl;
+    } catch (paymentError) {
+      setError(
+        paymentError instanceof Error
+          ? paymentError.message
+          : "Não foi possível iniciar o pagamento.",
+      );
+      setPayingEnrollmentId(null);
+    }
+  };
+
   /* Calculate Progress % */
   const allLessons = data?.modules.flatMap((m) => m.lessons) || [];
   const completedCount = allLessons.filter((l) => l.completed).length;
@@ -294,33 +320,54 @@ function StudentClassroomPage() {
             ) : (
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {myCourses.map((course) => (
-                  <button
+                  <article
                     key={course.enrollmentId}
-                    onClick={() => {
-                      setError("");
-                      setLoading(true);
-                      setCourseSlug(course.slug);
-                      window.history.replaceState(
-                        null,
-                        "",
-                        `/invisible-academy/aluno?course=${encodeURIComponent(course.slug)}`,
-                      );
-                    }}
                     className="overflow-hidden rounded-3xl border border-[#C97945]/20 bg-[#171412] text-left transition hover:-translate-y-1 hover:border-[#C97945]/60"
                   >
                     {course.image && (
                       <img src={course.image} alt="" className="aspect-video w-full object-cover" />
                     )}
-                    <div className="p-5 space-y-2">
+                    <div className="p-5 space-y-3">
                       <span className="text-[10px] font-bold tracking-widest text-[#C97945]">
-                        {course.badge || course.level}
+                        {course.enrollmentStatus === "pending"
+                          ? "PAGAMENTO PENDENTE"
+                          : course.badge || course.level}
                       </span>
                       <h2 className="font-serif text-xl font-bold text-white">{course.title}</h2>
                       {course.subtitle && (
                         <p className="text-xs text-[#8E7569]">{course.subtitle}</p>
                       )}
+                      {course.enrollmentStatus === "pending" ? (
+                        <button
+                          type="button"
+                          disabled={payingEnrollmentId === course.enrollmentId}
+                          onClick={() => void retryPayment(course.enrollmentId)}
+                          className="w-full rounded-xl bg-[#C97945] px-4 py-3 text-xs font-bold text-white disabled:opacity-60"
+                        >
+                          {payingEnrollmentId === course.enrollmentId
+                            ? "ABRINDO PAGAMENTO..."
+                            : `FINALIZAR PAGAMENTO · R$ ${Number(course.amount).toFixed(2).replace(".", ",")}`}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError("");
+                            setLoading(true);
+                            setCourseSlug(course.slug);
+                            window.history.replaceState(
+                              null,
+                              "",
+                              `/invisible-academy/aluno?course=${encodeURIComponent(course.slug)}`,
+                            );
+                          }}
+                          className="w-full rounded-xl border border-[#C97945]/40 px-4 py-3 text-xs font-bold text-[#C97945]"
+                        >
+                          ACESSAR CURSO
+                        </button>
+                      )}
                     </div>
-                  </button>
+                  </article>
                 ))}
               </div>
             )}

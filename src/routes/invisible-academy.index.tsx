@@ -118,13 +118,13 @@ function MainHeader() {
           </Link>
         </nav>
         <div className="flex items-center gap-3">
-          <a
-            href="#area-aluno"
+          <Link
+            to="/invisible-academy/aluno"
             className="btn-copper btn-copper-hover text-[10px] px-5 py-3 hidden sm:inline-flex"
           >
             <UserRound size={14} strokeWidth={1.8} />
             ÁREA DO ALUNO
-          </a>
+          </Link>
           <button
             onClick={() => setOpen(!open)}
             className="lg:hidden text-[#4B2C1E]"
@@ -147,12 +147,12 @@ function MainHeader() {
                 {n.label}
               </a>
             ))}
-            <a
-              href="#area-aluno"
+            <Link
+              to="/invisible-academy/aluno"
               className="btn-copper btn-copper-hover text-[10px] mt-2 sm:hidden"
             >
               <UserRound size={14} /> ÁREA DO ALUNO
-            </a>
+            </Link>
           </div>
         </div>
       )}
@@ -272,6 +272,7 @@ function LearningBenefits() {
 
 type CourseItem = {
   id?: string;
+  slug: string;
   badge: string;
   image: string;
   title: string;
@@ -294,6 +295,12 @@ function CoursesSection() {
         const json = await res.json();
         if (res.ok && json.ok && Array.isArray(json.courses) && json.courses.length > 0) {
           setAcademyCourses(json.courses);
+          const requested = new URLSearchParams(window.location.search).get("curso");
+          if (requested) {
+            setSelectedCourseForEnroll(
+              json.courses.find((course: CourseItem) => course.slug === requested) ?? null,
+            );
+          }
         }
       } catch (e) {
         /* fallback to static courses */
@@ -356,7 +363,14 @@ function CoursesSection() {
                     Certificado
                   </span>
                 </div>
-                <div className="mt-5 flex justify-center">
+                <div className="mt-5 grid gap-2">
+                  <Link
+                    to="/invisible-academy/curso/$slug"
+                    params={{ slug: c.slug }}
+                    className="text-center text-[10px] font-bold tracking-widest text-[#C97945] hover:underline"
+                  >
+                    VER DETALHES E CONTEÚDO
+                  </Link>
                   <button
                     onClick={() => setSelectedCourseForEnroll(c)}
                     className="btn-copper btn-copper-hover text-[10px] px-5 py-2.5 flex items-center gap-1.5"
@@ -407,6 +421,52 @@ function StatsSection() {
             })}
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function AcademyInfoSections() {
+  const cards = [
+    {
+      id: "sobre",
+      eyebrow: "NOSSA METODOLOGIA",
+      title: "Técnica, prática e visão de carreira",
+      text: "A Invisible Academy organiza o aprendizado em trilhas progressivas, combinando fundamentos, demonstrações práticas, atendimento premium e gestão profissional.",
+    },
+    {
+      id: "mentorias",
+      eyebrow: "MENTORIAS",
+      title: "Acompanhamento para aplicar de verdade",
+      text: "Encontros, suporte e comunidade podem ser configurados por curso no painel administrativo conforme o formato de cada turma.",
+    },
+    {
+      id: "certificacao",
+      eyebrow: "CERTIFICAÇÃO",
+      title: "Conclusão baseada em progresso",
+      text: "Cada curso pode ter carga horária, módulos e critérios próprios. A certificação é vinculada à conclusão das aulas configuradas pela equipe.",
+    },
+    {
+      id: "blog",
+      eyebrow: "CONTEÚDOS",
+      title: "Novidades e conhecimento profissional",
+      text: "O blog da Academy está em preparação. Até a publicação dos artigos, acompanhe conteúdos técnicos e novidades pelo Instagram oficial.",
+    },
+  ];
+  return (
+    <section className="bg-[#F5ECE5]/55 py-16">
+      <div className="container-max grid gap-5 md:grid-cols-2">
+        {cards.map((card) => (
+          <article
+            id={card.id}
+            key={card.id}
+            className="scroll-mt-28 rounded-3xl border border-[#C97945]/15 bg-[#FFFDFC] p-8"
+          >
+            <p className="text-[10px] font-bold tracking-[0.28em] text-[#C97945]">{card.eyebrow}</p>
+            <h2 className="mt-3 font-display text-3xl text-[#4B2C1E]">{card.title}</h2>
+            <p className="mt-4 text-sm leading-7 text-[#6F5B52]">{card.text}</p>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -574,7 +634,14 @@ function Footer() {
               {footerNav.flat().map((l) => (
                 <a
                   key={l}
-                  href="https://academy.carolsol.com.br"
+                  href={
+                    l === "Área do Aluno"
+                      ? "/invisible-academy/aluno"
+                      : `#${l
+                          .normalize("NFD")
+                          .replace(/[\u0300-\u036f]/g, "")
+                          .toLowerCase()}`
+                  }
                   className="text-[12px] text-[#E0A37F] hover:text-white transition"
                 >
                   {l}
@@ -664,6 +731,7 @@ function Index() {
         <HeroSection />
         <LearningBenefits />
         <CoursesSection />
+        <AcademyInfoSections />
         <StatsSection />
         <TestimonialsSection />
         <FinalCTA />
@@ -703,8 +771,8 @@ function EnrollmentModal({ course, onClose }: { course: CourseItem; onClose: () 
         throw new Error(json.message || "Não foi possível criar sua matrícula.");
       }
 
-      /* Redirect to SumUp Hosted Checkout */
-      window.location.href = json.checkoutUrl;
+      /* The enrollment remains recoverable even if the provider is temporarily unavailable. */
+      window.location.href = json.paymentPending ? json.panelUrl : json.checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro no checkout");
       setLoading(false);

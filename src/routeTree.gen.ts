@@ -49,6 +49,7 @@ import { Route as ApiAdminStoreRouteImport } from './routes/api.admin.store'
 import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin.users'
 import { Route as ApiWebhookSumupRouteImport } from './routes/api.webhook.sumup'
+import { Route as InvisibleAcademyCursoSlugRouteImport } from './routes/invisible-academy.curso.$slug'
 import { Route as SolHairClosetCategoriaSlugRouteImport } from './routes/sol-hair-closet.categoria.$slug'
 import { Route as SolHairClosetColecaoSlugRouteImport } from './routes/sol-hair-closet.colecao.$slug'
 import { Route as SolHairClosetProdutoSlugRouteImport } from './routes/sol-hair-closet.produto.$slug'
@@ -253,6 +254,12 @@ const ApiWebhookSumupRoute = ApiWebhookSumupRouteImport.update({
   path: '/api/webhook/sumup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvisibleAcademyCursoSlugRoute =
+  InvisibleAcademyCursoSlugRouteImport.update({
+    id: '/curso/$slug',
+    path: '/curso/$slug',
+    getParentRoute: () => InvisibleAcademyRoute,
+  } as any)
 const SolHairClosetCategoriaSlugRoute =
   SolHairClosetCategoriaSlugRouteImport.update({
     id: '/categoria/$slug',
@@ -313,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/webhook/sumup': typeof ApiWebhookSumupRoute
+  '/invisible-academy/curso/$slug': typeof InvisibleAcademyCursoSlugRoute
   '/sol-hair-closet/categoria/$slug': typeof SolHairClosetCategoriaSlugRoute
   '/sol-hair-closet/colecao/$slug': typeof SolHairClosetColecaoSlugRoute
   '/sol-hair-closet/produto/$slug': typeof SolHairClosetProdutoSlugRoute
@@ -356,6 +364,7 @@ export interface FileRoutesByTo {
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/webhook/sumup': typeof ApiWebhookSumupRoute
+  '/invisible-academy/curso/$slug': typeof InvisibleAcademyCursoSlugRoute
   '/sol-hair-closet/categoria/$slug': typeof SolHairClosetCategoriaSlugRoute
   '/sol-hair-closet/colecao/$slug': typeof SolHairClosetColecaoSlugRoute
   '/sol-hair-closet/produto/$slug': typeof SolHairClosetProdutoSlugRoute
@@ -402,6 +411,7 @@ export interface FileRoutesById {
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/webhook/sumup': typeof ApiWebhookSumupRoute
+  '/invisible-academy/curso/$slug': typeof InvisibleAcademyCursoSlugRoute
   '/sol-hair-closet/categoria/$slug': typeof SolHairClosetCategoriaSlugRoute
   '/sol-hair-closet/colecao/$slug': typeof SolHairClosetColecaoSlugRoute
   '/sol-hair-closet/produto/$slug': typeof SolHairClosetProdutoSlugRoute
@@ -449,6 +459,7 @@ export interface FileRouteTypes {
     | '/api/admin/summary'
     | '/api/admin/users'
     | '/api/webhook/sumup'
+    | '/invisible-academy/curso/$slug'
     | '/sol-hair-closet/categoria/$slug'
     | '/sol-hair-closet/colecao/$slug'
     | '/sol-hair-closet/produto/$slug'
@@ -492,6 +503,7 @@ export interface FileRouteTypes {
     | '/api/admin/summary'
     | '/api/admin/users'
     | '/api/webhook/sumup'
+    | '/invisible-academy/curso/$slug'
     | '/sol-hair-closet/categoria/$slug'
     | '/sol-hair-closet/colecao/$slug'
     | '/sol-hair-closet/produto/$slug'
@@ -537,6 +549,7 @@ export interface FileRouteTypes {
     | '/api/admin/summary'
     | '/api/admin/users'
     | '/api/webhook/sumup'
+    | '/invisible-academy/curso/$slug'
     | '/sol-hair-closet/categoria/$slug'
     | '/sol-hair-closet/colecao/$slug'
     | '/sol-hair-closet/produto/$slug'
@@ -857,6 +870,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhookSumupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invisible-academy/curso/$slug': {
+      id: '/invisible-academy/curso/$slug'
+      path: '/curso/$slug'
+      fullPath: '/invisible-academy/curso/$slug'
+      preLoaderRoute: typeof InvisibleAcademyCursoSlugRouteImport
+      parentRoute: typeof InvisibleAcademyRoute
+    }
     '/sol-hair-closet/categoria/$slug': {
       id: '/sol-hair-closet/categoria/$slug'
       path: '/categoria/$slug'
@@ -895,11 +915,13 @@ const DoacaoRouteWithChildren =
 interface InvisibleAcademyRouteChildren {
   InvisibleAcademyAlunoRoute: typeof InvisibleAcademyAlunoRoute
   InvisibleAcademyIndexRoute: typeof InvisibleAcademyIndexRoute
+  InvisibleAcademyCursoSlugRoute: typeof InvisibleAcademyCursoSlugRoute
 }
 
 const InvisibleAcademyRouteChildren: InvisibleAcademyRouteChildren = {
   InvisibleAcademyAlunoRoute: InvisibleAcademyAlunoRoute,
   InvisibleAcademyIndexRoute: InvisibleAcademyIndexRoute,
+  InvisibleAcademyCursoSlugRoute: InvisibleAcademyCursoSlugRoute,
 }
 
 const InvisibleAcademyRouteWithChildren =

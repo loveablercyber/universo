@@ -47,6 +47,7 @@ export const learningBenefits = [
 ];
 
 export type Course = {
+  slug: string;
   badge: string;
   image: string;
   title: string;
@@ -58,6 +59,7 @@ export type Course = {
 
 export const courses: Course[] = [
   {
+    slug: "mega-hair-metodos-classicos",
     badge: "MAIS PROCURADO",
     image: "/images/curso-metodos-classicos.jpg",
     title: "MEGA HAIR",
@@ -67,6 +69,7 @@ export const courses: Course[] = [
     cert: "Certificado",
   },
   {
+    slug: "mega-hair-fita-invisible",
     badge: "EXCLUSIVO",
     image: "/images/curso-fita-invisible.jpg",
     title: "MEGA HAIR",
@@ -76,6 +79,7 @@ export const courses: Course[] = [
     cert: "Certificado",
   },
   {
+    slug: "mega-hair-micro-link",
     badge: "AVANÇADO",
     image: "/images/curso-micro-link.jpg",
     title: "MEGA HAIR",
@@ -85,6 +89,7 @@ export const courses: Course[] = [
     cert: "Certificado",
   },
   {
+    slug: "colorimetria-para-mega-hair",
     badge: "TENDÊNCIA",
     image: "/images/curso-colorimetria.jpg",
     title: "COLORIMETRIA",
@@ -94,6 +99,7 @@ export const courses: Course[] = [
     cert: "Certificado",
   },
   {
+    slug: "gestao-e-marketing-mega-hair",
     badge: "BÔNUS",
     image: "/images/curso-gestao-marketing.jpg",
     title: "GESTÃO E MARKETING",
