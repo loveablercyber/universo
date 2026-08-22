@@ -95,6 +95,7 @@ export async function createSumUpCheckout(
         payload.errors ?? payload.message ?? payload.error_message ?? payload.error_code;
       if (typeof candidate === "string") detail = candidate.slice(0, 500);
       else if (candidate) detail = JSON.stringify(candidate).slice(0, 500);
+      if (detail === "Validation error") detail = JSON.stringify(payload).slice(0, 1000);
     } catch {
       // A resposta pode não ser JSON; o corpo completo permanece apenas no log do servidor.
     }
