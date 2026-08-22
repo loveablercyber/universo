@@ -31,6 +31,7 @@ import { Route as ApiStoreRouteImport } from './routes/api.store'
 import { Route as ApiStoreCustomerRouteImport } from './routes/api.store-customer'
 import { Route as DoacaoRetornoRouteImport } from './routes/doacao.retorno'
 import { Route as InvisibleAcademyAlunoRouteImport } from './routes/invisible-academy.aluno'
+import { Route as SolHairClosetIndexRouteImport } from './routes/sol-hair-closet.index'
 import { Route as SolHairClosetBuscaRouteImport } from './routes/sol-hair-closet.busca'
 import { Route as SolHairClosetContaRouteImport } from './routes/sol-hair-closet.conta'
 import { Route as SolHairClosetFavoritosRouteImport } from './routes/sol-hair-closet.favoritos'
@@ -161,6 +162,11 @@ const InvisibleAcademyAlunoRoute = InvisibleAcademyAlunoRouteImport.update({
   path: '/aluno',
   getParentRoute: () => InvisibleAcademyRoute,
 } as any)
+const SolHairClosetIndexRoute = SolHairClosetIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SolHairClosetRoute,
+} as any)
 const SolHairClosetBuscaRoute = SolHairClosetBuscaRouteImport.update({
   id: '/busca',
   path: '/busca',
@@ -289,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
   '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
+  '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
@@ -315,7 +322,6 @@ export interface FileRoutesByTo {
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
-  '/sol-hair-closet': typeof SolHairClosetRouteWithChildren
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/api/academy': typeof ApiAcademyRoute
   '/api/auth': typeof ApiAuthRoute
@@ -332,6 +338,7 @@ export interface FileRoutesByTo {
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
   '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
+  '/sol-hair-closet': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
@@ -376,6 +383,7 @@ export interface FileRoutesById {
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
   '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
+  '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
@@ -421,6 +429,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/pedido'
     | '/sol-hair-closet/pedidos'
     | '/sol-hair-closet/produtos'
+    | '/sol-hair-closet/'
     | '/api/admin/academy'
     | '/api/admin/cms'
     | '/api/admin/data'
@@ -447,7 +456,6 @@ export interface FileRouteTypes {
     | '/salao'
     | '/servicos'
     | '/sobre'
-    | '/sol-hair-closet'
     | '/termos-de-uso'
     | '/api/academy'
     | '/api/auth'
@@ -464,6 +472,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/pedido'
     | '/sol-hair-closet/pedidos'
     | '/sol-hair-closet/produtos'
+    | '/sol-hair-closet'
     | '/api/admin/academy'
     | '/api/admin/cms'
     | '/api/admin/data'
@@ -507,6 +516,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/pedido'
     | '/sol-hair-closet/pedidos'
     | '/sol-hair-closet/produtos'
+    | '/sol-hair-closet/'
     | '/api/admin/academy'
     | '/api/admin/cms'
     | '/api/admin/data'
@@ -711,6 +721,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvisibleAcademyAlunoRouteImport
       parentRoute: typeof InvisibleAcademyRoute
     }
+    '/sol-hair-closet/': {
+      id: '/sol-hair-closet/'
+      path: '/'
+      fullPath: '/sol-hair-closet/'
+      preLoaderRoute: typeof SolHairClosetIndexRouteImport
+      parentRoute: typeof SolHairClosetRoute
+    }
     '/sol-hair-closet/busca': {
       id: '/sol-hair-closet/busca'
       path: '/busca'
@@ -876,6 +893,7 @@ interface SolHairClosetRouteChildren {
   SolHairClosetPedidoRoute: typeof SolHairClosetPedidoRoute
   SolHairClosetPedidosRoute: typeof SolHairClosetPedidosRoute
   SolHairClosetProdutosRoute: typeof SolHairClosetProdutosRoute
+  SolHairClosetIndexRoute: typeof SolHairClosetIndexRoute
   SolHairClosetCategoriaSlugRoute: typeof SolHairClosetCategoriaSlugRoute
   SolHairClosetColecaoSlugRoute: typeof SolHairClosetColecaoSlugRoute
   SolHairClosetProdutoSlugRoute: typeof SolHairClosetProdutoSlugRoute
@@ -888,6 +906,7 @@ const SolHairClosetRouteChildren: SolHairClosetRouteChildren = {
   SolHairClosetPedidoRoute: SolHairClosetPedidoRoute,
   SolHairClosetPedidosRoute: SolHairClosetPedidosRoute,
   SolHairClosetProdutosRoute: SolHairClosetProdutosRoute,
+  SolHairClosetIndexRoute: SolHairClosetIndexRoute,
   SolHairClosetCategoriaSlugRoute: SolHairClosetCategoriaSlugRoute,
   SolHairClosetColecaoSlugRoute: SolHairClosetColecaoSlugRoute,
   SolHairClosetProdutoSlugRoute: SolHairClosetProdutoSlugRoute,
