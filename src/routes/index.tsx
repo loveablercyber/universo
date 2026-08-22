@@ -33,10 +33,22 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   useEffect(() => {
+    if (window.location.hostname === "academy.carolsol.com.br") {
+      window.location.replace(`/invisible-academy${window.location.search}${window.location.hash}`);
+      return;
+    }
+
     if (window.location.hostname !== "loja.carolsol.com.br") return;
 
     window.location.replace(`/sol-hair-closet${window.location.search}${window.location.hash}`);
   }, []);
+
+  if (
+    typeof window !== "undefined" &&
+    ["loja.carolsol.com.br", "academy.carolsol.com.br"].includes(window.location.hostname)
+  ) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-cream">
