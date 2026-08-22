@@ -30,6 +30,7 @@ import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiStoreRouteImport } from './routes/api.store'
 import { Route as ApiStoreCustomerRouteImport } from './routes/api.store-customer'
 import { Route as DoacaoRetornoRouteImport } from './routes/doacao.retorno'
+import { Route as InvisibleAcademyIndexRouteImport } from './routes/invisible-academy.index'
 import { Route as InvisibleAcademyAlunoRouteImport } from './routes/invisible-academy.aluno'
 import { Route as SolHairClosetIndexRouteImport } from './routes/sol-hair-closet.index'
 import { Route as SolHairClosetBuscaRouteImport } from './routes/sol-hair-closet.busca'
@@ -156,6 +157,11 @@ const DoacaoRetornoRoute = DoacaoRetornoRouteImport.update({
   id: '/retorno',
   path: '/retorno',
   getParentRoute: () => DoacaoRoute,
+} as any)
+const InvisibleAcademyIndexRoute = InvisibleAcademyIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => InvisibleAcademyRoute,
 } as any)
 const InvisibleAcademyAlunoRoute = InvisibleAcademyAlunoRouteImport.update({
   id: '/aluno',
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
   '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
+  '/invisible-academy/': typeof InvisibleAcademyIndexRoute
   '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
@@ -315,7 +322,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
-  '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/projeto-elo': typeof ProjetoEloRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
@@ -338,6 +344,7 @@ export interface FileRoutesByTo {
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
   '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
+  '/invisible-academy': typeof InvisibleAcademyIndexRoute
   '/sol-hair-closet': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
@@ -383,6 +390,7 @@ export interface FileRoutesById {
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
   '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
+  '/invisible-academy/': typeof InvisibleAcademyIndexRoute
   '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
@@ -429,6 +437,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/pedido'
     | '/sol-hair-closet/pedidos'
     | '/sol-hair-closet/produtos'
+    | '/invisible-academy/'
     | '/sol-hair-closet/'
     | '/api/admin/academy'
     | '/api/admin/cms'
@@ -449,7 +458,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/contato'
     | '/doacao'
-    | '/invisible-academy'
     | '/politica-de-privacidade'
     | '/projeto-elo'
     | '/redefinir-senha'
@@ -472,6 +480,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/pedido'
     | '/sol-hair-closet/pedidos'
     | '/sol-hair-closet/produtos'
+    | '/invisible-academy'
     | '/sol-hair-closet'
     | '/api/admin/academy'
     | '/api/admin/cms'
@@ -516,6 +525,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/pedido'
     | '/sol-hair-closet/pedidos'
     | '/sol-hair-closet/produtos'
+    | '/invisible-academy/'
     | '/sol-hair-closet/'
     | '/api/admin/academy'
     | '/api/admin/cms'
@@ -714,6 +724,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoacaoRetornoRouteImport
       parentRoute: typeof DoacaoRoute
     }
+    '/invisible-academy/': {
+      id: '/invisible-academy/'
+      path: '/'
+      fullPath: '/invisible-academy/'
+      preLoaderRoute: typeof InvisibleAcademyIndexRouteImport
+      parentRoute: typeof InvisibleAcademyRoute
+    }
     '/invisible-academy/aluno': {
       id: '/invisible-academy/aluno'
       path: '/aluno'
@@ -877,10 +894,12 @@ const DoacaoRouteWithChildren =
 
 interface InvisibleAcademyRouteChildren {
   InvisibleAcademyAlunoRoute: typeof InvisibleAcademyAlunoRoute
+  InvisibleAcademyIndexRoute: typeof InvisibleAcademyIndexRoute
 }
 
 const InvisibleAcademyRouteChildren: InvisibleAcademyRouteChildren = {
   InvisibleAcademyAlunoRoute: InvisibleAcademyAlunoRoute,
+  InvisibleAcademyIndexRoute: InvisibleAcademyIndexRoute,
 }
 
 const InvisibleAcademyRouteWithChildren =

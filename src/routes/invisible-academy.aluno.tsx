@@ -52,15 +52,27 @@ type CourseClassroomData = {
   modules: Module[];
 };
 
+type StudentCourse = {
+  enrollmentId: string;
+  slug: string;
+  title: string;
+  subtitle?: string;
+  image?: string;
+  badge?: string;
+  level?: string;
+};
+
 function StudentClassroomPage() {
   const [data, setData] = useState<CourseClassroomData | null>(null);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const urlParams =
-    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const courseSlug = urlParams?.get("course") || "mega-hair-metodos-classicos";
+  const [myCourses, setMyCourses] = useState<StudentCourse[]>([]);
+  const [courseSlug, setCourseSlug] = useState(() =>
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("course")
+      : null,
+  );
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -74,6 +86,17 @@ function StudentClassroomPage() {
           return;
         }
         setAuthenticated(true);
+        if (!courseSlug) {
+          const coursesRes = await fetch("/api/academy?action=my_courses");
+          const coursesJson = await coursesRes.json();
+          if (!coursesRes.ok || !coursesJson.ok) {
+            setError(coursesJson.message || "Não foi possível carregar seus cursos.");
+          } else {
+            setMyCourses(coursesJson.enrollments || []);
+          }
+          setLoading(false);
+          return;
+        }
         const res = await fetch(
           `/api/academy?action=classroom&course_slug=${encodeURIComponent(courseSlug)}`,
         );
@@ -138,7 +161,7 @@ function StudentClassroomPage() {
     }
 
     try {
-      await fetch("/api/academy", {
+      const response = await fetch("/api/academy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -148,8 +171,25 @@ function StudentClassroomPage() {
           completed: newCompleted,
         }),
       });
+      if (!response.ok) throw new Error("Não foi possível salvar o progresso.");
     } catch (e) {
       console.error("Erro ao registrar conclusão da aula:", e);
+      setError("Não foi possível salvar o progresso da aula. Tente novamente.");
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          modules: prev.modules.map((m) => ({
+            ...m,
+            lessons: m.lessons.map((l) =>
+              l.id === lesson.id ? { ...l, completed: lesson.completed } : l,
+            ),
+          })),
+        };
+      });
+      setActiveLesson((prev) =>
+        prev?.id === lesson.id ? { ...prev, completed: lesson.completed } : prev,
+      );
     }
   };
 
@@ -225,6 +265,65 @@ function StudentClassroomPage() {
           <div className="py-24 text-center space-y-4">
             <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#C97945]/30 border-t-[#C97945]" />
             <h2 className="font-serif text-2xl">Carregando sala de aula...</h2>
+          </div>
+        ) : authenticated && !courseSlug ? (
+          <div className="mx-auto max-w-5xl py-12 space-y-8">
+            <div className="text-center space-y-2">
+              <GraduationCap className="mx-auto text-[#C97945]" size={48} strokeWidth={1.5} />
+              <h1 className="font-serif text-4xl font-bold text-white">Meus cursos</h1>
+              <p className="text-sm text-[#8E7569]">
+                Escolha um curso para continuar seus estudos.
+              </p>
+            </div>
+            {error ? (
+              <p className="text-center text-sm text-red-400">{error}</p>
+            ) : myCourses.length === 0 ? (
+              <div className="rounded-3xl border border-[#C97945]/20 bg-[#171412] p-10 text-center space-y-4">
+                <BookOpen className="mx-auto text-[#C97945]" size={42} strokeWidth={1.5} />
+                <h2 className="font-serif text-2xl text-white">Nenhuma matrícula ativa</h2>
+                <p className="text-sm text-[#8E7569]">
+                  Pagamentos recentes podem levar alguns instantes para serem confirmados.
+                </p>
+                <Link
+                  to="/invisible-academy"
+                  className="inline-flex rounded-xl bg-[#C97945] px-6 py-3 text-xs font-bold text-white"
+                >
+                  VER CURSOS DISPONÍVEIS
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {myCourses.map((course) => (
+                  <button
+                    key={course.enrollmentId}
+                    onClick={() => {
+                      setError("");
+                      setLoading(true);
+                      setCourseSlug(course.slug);
+                      window.history.replaceState(
+                        null,
+                        "",
+                        `/invisible-academy/aluno?course=${encodeURIComponent(course.slug)}`,
+                      );
+                    }}
+                    className="overflow-hidden rounded-3xl border border-[#C97945]/20 bg-[#171412] text-left transition hover:-translate-y-1 hover:border-[#C97945]/60"
+                  >
+                    {course.image && (
+                      <img src={course.image} alt="" className="aspect-video w-full object-cover" />
+                    )}
+                    <div className="p-5 space-y-2">
+                      <span className="text-[10px] font-bold tracking-widest text-[#C97945]">
+                        {course.badge || course.level}
+                      </span>
+                      <h2 className="font-serif text-xl font-bold text-white">{course.title}</h2>
+                      {course.subtitle && (
+                        <p className="text-xs text-[#8E7569]">{course.subtitle}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : error || !data ? (
           <div className="mx-auto max-w-md my-16 text-center space-y-4 rounded-3xl border border-[#C97945]/20 bg-[#171412] p-8">

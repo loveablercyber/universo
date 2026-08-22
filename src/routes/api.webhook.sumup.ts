@@ -1,18 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@/lib/db.server";
 import { getSumUpCheckoutStatus } from "@/lib/sumup.server";
+import { sendAcademyEnrollmentNotification } from "@/lib/notifications.server";
 
 export const Route = createFileRoute("/api/webhook/sumup")({
   server: {
     handlers: {
-      GET: async () =>
-        Response.json({ ok: true, message: "SumUp Webhook Endpoint is active." }),
+      GET: async () => Response.json({ ok: true, message: "SumUp Webhook Endpoint is active." }),
 
       POST: async ({ request }) => {
         const body = await request.json().catch(() => ({}));
-        const checkoutId = (body.checkout_id || body.resource_id || body.id) as
-          | string
-          | undefined;
+        const checkoutId = (body.checkout_id || body.resource_id || body.id) as string | undefined;
         const eventType = (body.event_type || body.type || "CHECKOUT_STATUS_CHANGED") as string;
 
         if (!checkoutId) {
@@ -25,7 +23,10 @@ export const Route = createFileRoute("/api/webhook/sumup")({
           officialStatus = (await getSumUpCheckoutStatus(checkoutId)).status;
         } catch (error) {
           console.error("[SumUp Webhook] Falha na confirmação oficial:", error);
-          return Response.json({ ok: false, message: "Official verification failed" }, { status: 503 });
+          return Response.json(
+            { ok: false, message: "Official verification failed" },
+            { status: 503 },
+          );
         }
 
         if (!db) {
@@ -65,6 +66,73 @@ export const Route = createFileRoute("/api/webhook/sumup")({
           const order = orderRes.rows[0];
 
           if (!order) {
+            const enrollmentRes = await client.query<{
+              id: string;
+              status: string;
+              student_name: string;
+              student_email: string;
+              student_phone: string | null;
+              course_title: string;
+            }>(
+              `SELECT e.id, e.status, e.student_name, e.student_email, e.student_phone,
+                      c.title as course_title
+                 FROM universe.academy_enrollments e
+                 JOIN universe.academy_courses c ON c.id=e.course_id
+                WHERE e.sumup_checkout_id=$1
+                FOR UPDATE OF e`,
+              [checkoutId],
+            );
+            const enrollment = enrollmentRes.rows[0];
+
+            if (enrollment) {
+              let activated = false;
+              if (officialStatus === "PAID" && enrollment.status === "pending") {
+                await client.query(
+                  `UPDATE universe.academy_enrollments
+                      SET status='active', payment_confirmed_at=coalesce(payment_confirmed_at, now())
+                    WHERE id=$1`,
+                  [enrollment.id],
+                );
+                await client.query(
+                  `INSERT INTO universe.audit_logs(actor_id, action, entity_type, entity_id, metadata)
+                   VALUES(NULL, 'academy.enrollment.paid_via_webhook', 'academy_enrollment', $1, $2::jsonb)`,
+                  [enrollment.id, JSON.stringify({ checkoutId })],
+                );
+                activated = true;
+              } else if (
+                ["FAILED", "EXPIRED", "CANCELLED"].includes(officialStatus) &&
+                enrollment.status === "pending"
+              ) {
+                await client.query(
+                  `UPDATE universe.academy_enrollments SET status='cancelled' WHERE id=$1`,
+                  [enrollment.id],
+                );
+              }
+
+              await client.query(
+                `UPDATE universe.store_webhook_events
+                    SET status='processed', processed_at=now()
+                  WHERE id=$1`,
+                [webhookLogId],
+              );
+              await client.query("COMMIT");
+
+              if (activated) {
+                void sendAcademyEnrollmentNotification(
+                  enrollment.student_name,
+                  enrollment.student_email,
+                  enrollment.student_phone ?? undefined,
+                  enrollment.course_title,
+                );
+              }
+              return Response.json({
+                ok: true,
+                processed: true,
+                matchedAcademyEnrollment: true,
+                status: officialStatus,
+              });
+            }
+
             await client.query(
               `UPDATE universe.store_webhook_events
                   SET status = 'processed', processed_at = now(),
@@ -73,7 +141,11 @@ export const Route = createFileRoute("/api/webhook/sumup")({
               [webhookLogId],
             );
             await client.query("COMMIT");
-            return Response.json({ ok: true, matchedStoreOrder: false });
+            return Response.json({
+              ok: true,
+              matchedStoreOrder: false,
+              matchedAcademyEnrollment: false,
+            });
           }
 
           if (officialStatus === "PAID" && order.status !== "paid") {

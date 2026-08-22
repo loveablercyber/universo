@@ -40,8 +40,19 @@ async function requireStudent(request: Request) {
 }
 
 async function confirmPendingPayments(userId: string) {
-  const pending = await query<{ id: string; sumup_checkout_id: string | null }>(
-    `SELECT id, sumup_checkout_id FROM universe.academy_enrollments WHERE user_id=$1 AND status='pending'`,
+  const pending = await query<{
+    id: string;
+    sumup_checkout_id: string | null;
+    student_name: string;
+    student_email: string;
+    student_phone: string | null;
+    course_title: string;
+  }>(
+    `SELECT e.id, e.sumup_checkout_id, e.student_name, e.student_email, e.student_phone,
+            c.title as course_title
+       FROM universe.academy_enrollments e
+       JOIN universe.academy_courses c ON c.id=e.course_id
+      WHERE e.user_id=$1 AND e.status='pending'`,
     [userId],
   );
   for (const enrollment of pending.rows) {
@@ -49,10 +60,21 @@ async function confirmPendingPayments(userId: string) {
     try {
       const checkout = await getSumUpCheckoutStatus(enrollment.sumup_checkout_id);
       if (checkout.status === "PAID") {
-        await query(
-          `UPDATE universe.academy_enrollments SET status='active', payment_confirmed_at=now() WHERE id=$1 AND status='pending'`,
+        const activated = await query<{ id: string }>(
+          `UPDATE universe.academy_enrollments
+              SET status='active', payment_confirmed_at=now()
+            WHERE id=$1 AND status='pending'
+          RETURNING id`,
           [enrollment.id],
         );
+        if (activated.rowCount) {
+          void sendAcademyEnrollmentNotification(
+            enrollment.student_name,
+            enrollment.student_email,
+            enrollment.student_phone ?? undefined,
+            enrollment.course_title,
+          );
+        }
       } else if (["FAILED", "EXPIRED"].includes(checkout.status)) {
         await query(
           `UPDATE universe.academy_enrollments SET status='cancelled' WHERE id=$1 AND status='pending'`,
@@ -329,18 +351,6 @@ export const Route = createFileRoute("/api/academy")({
               : Number(course.price);
             const reference = `acad-${crypto.randomUUID()}`;
 
-            /* Create SumUp Checkout */
-            const returnUrl =
-              process.env.SUMUP_RETURN_URL || "https://carolsol.com.br/doacao/retorno";
-            const acadReturnUrl = returnUrl.replace("/doacao/retorno", "/invisible-academy/aluno");
-
-            const sumup = await createSumUpCheckout(
-              amount,
-              reference,
-              `Inscrição ${course.title} – Invisible Academy`,
-              acadReturnUrl,
-            );
-
             const passwordHash = await bcrypt.hash(password, 12);
             const existingStudent = await query<{ id: string; password_hash: string }>(
               `SELECT id, password_hash FROM universe.users
@@ -374,6 +384,35 @@ export const Route = createFileRoute("/api/academy")({
               studentId = studentResult.rows[0].id;
             }
 
+            const currentEnrollment = await query<{ status: string }>(
+              `SELECT status FROM universe.academy_enrollments
+                WHERE user_id=$1 AND course_id=$2 AND status <> 'cancelled'
+                LIMIT 1`,
+              [studentId, courseId],
+            );
+            if (currentEnrollment.rowCount) {
+              return Response.json(
+                {
+                  ok: false,
+                  message:
+                    currentEnrollment.rows[0].status === "pending"
+                      ? "Já existe uma matrícula aguardando pagamento para este curso."
+                      : "Você já possui matrícula neste curso.",
+                },
+                { status: 409 },
+              );
+            }
+
+            const academyReturnUrl =
+              process.env.SUMUP_ACADEMY_RETURN_URL ||
+              "https://www.carolsol.com.br/invisible-academy/aluno";
+            const sumup = await createSumUpCheckout(
+              amount,
+              reference,
+              `Inscrição ${course.title} – Invisible Academy`,
+              academyReturnUrl,
+            );
+
             /* Save enrollment to DB */
             const enrollResult = await query<{ id: string }>(
               `INSERT INTO universe.academy_enrollments
@@ -398,13 +437,6 @@ export const Route = createFileRoute("/api/academy")({
                 enrollResult.rows[0].id,
                 JSON.stringify({ courseTitle: course.title, studentEmail, amount }),
               ],
-            );
-
-            void sendAcademyEnrollmentNotification(
-              studentName,
-              studentEmail,
-              studentPhone ?? undefined,
-              course.title,
             );
 
             if (!sumup.hosted_checkout_url) {

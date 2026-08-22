@@ -19,6 +19,7 @@ async function getServerEntry(): Promise<ServerEntry> {
 }
 
 const STORE_HOSTNAME = "loja.carolsol.com.br";
+const ACADEMY_HOSTNAME = "academy.carolsol.com.br";
 
 function routeStoreSubdomain(request: Request): Request {
   const url = new URL(request.url);
@@ -26,6 +27,15 @@ function routeStoreSubdomain(request: Request): Request {
   const hostname = (forwardedHost ?? request.headers.get("host") ?? url.hostname)
     .split(":")[0]
     .toLowerCase();
+
+  if (hostname === ACADEMY_HOSTNAME) {
+    if (url.pathname === "/") {
+      url.pathname = "/invisible-academy";
+    } else if (url.pathname === "/aluno") {
+      url.pathname = "/invisible-academy/aluno";
+    }
+    return new Request(url, request);
+  }
 
   if (hostname !== STORE_HOSTNAME) return request;
 
