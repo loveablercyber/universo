@@ -89,9 +89,12 @@ export async function createSumUpCheckout(
         message?: unknown;
         error_message?: unknown;
         error_code?: unknown;
+        errors?: unknown;
       };
-      const candidate = payload.message ?? payload.error_message ?? payload.error_code;
-      if (typeof candidate === "string") detail = candidate.slice(0, 240);
+      const candidate =
+        payload.errors ?? payload.message ?? payload.error_message ?? payload.error_code;
+      if (typeof candidate === "string") detail = candidate.slice(0, 500);
+      else if (candidate) detail = JSON.stringify(candidate).slice(0, 500);
     } catch {
       // A resposta pode não ser JSON; o corpo completo permanece apenas no log do servidor.
     }
