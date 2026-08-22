@@ -24,13 +24,12 @@ const ACADEMY_HOSTNAME = "academy.carolsol.com.br";
 function routeSubdomain(request: Request): Request | Response {
   const url = new URL(request.url);
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const hostname = (forwardedHost ?? request.headers.get("host") ?? url.hostname)
     .split(":")[0]
     .toLowerCase();
 
   if (hostname === ACADEMY_HOSTNAME) {
-    if (forwardedProto === "https") url.protocol = "https:";
+    url.protocol = "https:";
     if (url.pathname === "/") {
       url.pathname = "/invisible-academy";
       return Response.redirect(url, 308);
