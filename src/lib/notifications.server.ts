@@ -132,6 +132,14 @@ function generateEmailHtml(template: string, payload: Record<string, unknown>): 
       <p>Você pode acompanhar o status do seu pedido a qualquer momento em nosso site.</p>`;
   }
 
+  if (template === "store_history_access") {
+    return `${brandHeader}
+      <h2>Acesse seus pedidos</h2>
+      <p>Recebemos uma solicitação para consultar seu histórico na Sol Hair Closet.</p>
+      <p><a href="${payload.historyUrl}" style="display: inline-block; background: #C97945; color: white; padding: 12px 24px; text-decoration: none; border-radius: 20px;">VER MEUS PEDIDOS</a></p>
+      <p>Este link é de uso único e expira em 15 minutos. Se você não fez a solicitação, ignore este e-mail.</p>`;
+  }
+
   if (template === "store_order_shipped") {
     return `${brandHeader}
       <h2>Seu pedido foi enviado!</h2>

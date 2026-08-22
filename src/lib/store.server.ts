@@ -161,6 +161,7 @@ export async function verifyOrderHistoryAccessToken(
  */
 export async function releaseExpiredReservations(): Promise<number> {
   const pool = db;
+  if (!pool) throw new Error("Banco de dados indisponível.");
   const client = await pool.connect();
   let releasedCount = 0;
 
@@ -196,6 +197,30 @@ export async function releaseExpiredReservations(): Promise<number> {
       }
 
       await client.query("BEGIN");
+
+      // Serializa cron e webhook para que apenas um deles possa consumir a reserva.
+      const lockedRes = await client.query<{
+        status: string;
+        stock_reserved: boolean;
+        reservation_expires_at: string | null;
+      }>(
+        `SELECT status, stock_reserved, reservation_expires_at
+           FROM universe.store_orders
+          WHERE id = $1
+          FOR UPDATE`,
+        [ord.id],
+      );
+      const locked = lockedRes.rows[0];
+      if (
+        !locked ||
+        locked.status !== "pending" ||
+        !locked.stock_reserved ||
+        !locked.reservation_expires_at ||
+        new Date(locked.reservation_expires_at).getTime() >= Date.now()
+      ) {
+        await client.query("ROLLBACK");
+        continue;
+      }
 
       if (isActuallyPaid) {
         await client.query(

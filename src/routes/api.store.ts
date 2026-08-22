@@ -3,7 +3,7 @@ import { z } from "zod";
 import { query, db, hashToken } from "@/lib/db.server";
 import { readSession, checkRateLimit, recordFailedLogin, clearFailedLogins } from "@/lib/auth.server";
 import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
-import { sendStoreOrderNotification } from "@/lib/notifications.server";
+import { dispatchNotification, sendStoreOrderNotification } from "@/lib/notifications.server";
 import {
   generateOrderAccessToken,
   generateUniqueOrderNumber,
@@ -403,7 +403,17 @@ export const Route = createFileRoute("/api/store")({
 
             const token = await createOrderHistoryAccessToken(email, clientIp);
 
-            // Em produção aqui enviamos o link via e-mail
+            const storeBaseUrl =
+              process.env.STORE_PUBLIC_URL || "https://loja.carolsol.com.br";
+            const historyUrl = `${storeBaseUrl}/sol-hair-closet/pedidos?email=${encodeURIComponent(email.trim().toLowerCase())}&token=${encodeURIComponent(token)}`;
+            await dispatchNotification({
+              channel: "email",
+              recipient: email.trim().toLowerCase(),
+              subject: "Acesso aos seus pedidos – Sol Hair Closet",
+              templateName: "store_history_access",
+              payload: { historyUrl },
+            });
+
             return Response.json({
               ok: true,
               message: "Link de acesso gerado com sucesso. Verifique seu e-mail.",
@@ -439,6 +449,9 @@ export const Route = createFileRoute("/api/store")({
       /* ───── POST: Checkout Seguro, Idempotente e sem Lock Externo ───── */
       POST: async ({ request }) => {
         const pool = db;
+        if (!pool) {
+          return Response.json({ ok: false, message: "Banco de dados indisponível." }, { status: 503 });
+        }
         const client = await pool.connect();
 
         let orderId: string | null = null;
@@ -449,6 +462,9 @@ export const Route = createFileRoute("/api/store")({
         let discountType: string | null = null;
         let shippingCost = 0;
         let subtotal = 0;
+        let notificationCustomerName = "";
+        let notificationCustomerEmail = "";
+        let notificationCustomerPhone = "";
         let authoritativeItems: {
           productId: string;
           variantId?: string | null;
@@ -477,6 +493,9 @@ export const Route = createFileRoute("/api/store")({
             shippingAddress,
             items,
           } = input.data;
+          notificationCustomerName = customerName;
+          notificationCustomerEmail = customerEmail;
+          notificationCustomerPhone = customerPhone;
 
           // Se fornecida chave de idempotência, verificar se já existe pedido recente
           if (idempotencyKey) {
@@ -493,9 +512,13 @@ export const Route = createFileRoute("/api/store")({
               [idempotencyKey],
             );
             if (existingOrder.rowCount && existingOrder.rows[0]?.sumup_checkout_id) {
+              const existingCheckout = await getSumUpCheckoutStatus(
+                existingOrder.rows[0].sumup_checkout_id,
+              );
               return Response.json({
                 ok: true,
                 orderNumber: existingOrder.rows[0].order_number,
+                checkoutUrl: existingCheckout.hosted_checkout_url,
                 message: "Pedido existente recuperado com sucesso.",
               });
             }
@@ -503,13 +526,6 @@ export const Route = createFileRoute("/api/store")({
 
           // ─── PASSO 1: TRANSAÇÃO DE BANCO RÁPIDA (RESERVA DE ESTOQUE E CRIAÇÃO DO PEDIDO) ───
           await client.query("BEGIN");
-
-          // Liberar reservas expiradas previamente
-          await client.query(
-            `UPDATE universe.store_orders
-                SET status = 'cancelled', stock_reserved = false, updated_at = now()
-              WHERE status = 'pending' AND stock_reserved = true AND reservation_expires_at < now()`,
-          );
 
           // Validação estrita de estoque e preços com FOR UPDATE
           for (const item of items) {
@@ -588,16 +604,25 @@ export const Route = createFileRoute("/api/store")({
               }
             }
 
-            // Decrementar estoque base do produto
-            await client.query(
-              `UPDATE universe.store_products
-                  SET stock_quantity = GREATEST(0, stock_quantity - $1),
-                      sold_count = sold_count + $1,
-                      status = CASE WHEN stock_quantity - $1 <= 0 THEN 'out_of_stock' ELSE status END,
-                      updated_at = now()
-                WHERE id = $2`,
-              [item.qty, item.productId],
-            );
+            // Produtos com variação são sincronizados pelo trigger da migration 013.
+            if (!item.variantId) {
+              await client.query(
+                `UPDATE universe.store_products
+                    SET stock_quantity = stock_quantity - $1,
+                        sold_count = sold_count + $1,
+                        status = CASE WHEN stock_quantity - $1 <= 0 THEN 'out_of_stock' ELSE status END,
+                        updated_at = now()
+                  WHERE id = $2`,
+                [item.qty, item.productId],
+              );
+            } else {
+              await client.query(
+                `UPDATE universe.store_products
+                    SET sold_count = sold_count + $1, updated_at = now()
+                  WHERE id = $2`,
+                [item.qty, item.productId],
+              );
+            }
 
             subtotal += unitPrice * item.qty;
             authoritativeItems.push({
@@ -752,9 +777,9 @@ export const Route = createFileRoute("/api/store")({
           // Notificação e auditoria
           void sendStoreOrderNotification(
             orderNumber,
-            input.data.customerName,
-            input.data.customerEmail,
-            input.data.customerPhone,
+            notificationCustomerName,
+            notificationCustomerEmail,
+            notificationCustomerPhone,
             totalAmount,
           );
 

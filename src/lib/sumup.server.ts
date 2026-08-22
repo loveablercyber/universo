@@ -5,6 +5,7 @@
  *   SUMUP_API_KEY          – Bearer token for SumUp API
  *   SUMUP_MERCHANT_CODE    – Merchant identifier
  *   SUMUP_RETURN_URL       – Public URL the customer returns to after payment
+ *   SUMUP_WEBHOOK_URL      – Public backend callback for checkout status changes
  */
 
 const API_BASE = "https://api.sumup.com";
@@ -51,7 +52,10 @@ export async function createSumUpCheckout(
     checkout_reference: reference,
     merchant_code: merchantCode,
     description,
+    return_url:
+      process.env.SUMUP_WEBHOOK_URL || "https://loja.carolsol.com.br/api/webhook/sumup",
     redirect_url: `${returnUrl}?checkout_ref=${encodeURIComponent(reference)}`,
+    valid_until: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     hosted_checkout: {
       enabled: true,
     },

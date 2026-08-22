@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, ShieldCheck, Truck, CreditCard, QrCode, AlertCircle, Loader2, Sparkles } from "lucide-react";
 import type { CartItem } from "@/hooks/use-store";
 import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_COST, PIX_DISCOUNT_PERCENT } from "@/hooks/use-store";
@@ -19,6 +19,7 @@ export function CheckoutModal({
   const [error, setError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [searchingCep, setSearchingCep] = useState(false);
+  const idempotencyKey = useRef(crypto.randomUUID());
 
   const [address, setAddress] = useState({
     zipCode: "",
@@ -107,6 +108,7 @@ export function CheckoutModal({
 
     try {
       const payload = {
+        idempotencyKey: idempotencyKey.current,
         customerName: customer.fullName.trim(),
         customerEmail: customer.email.trim(),
         customerPhone: customer.phone.trim(),
@@ -140,6 +142,10 @@ export function CheckoutModal({
       });
 
       const data = await res.json();
+
+      if (!res.ok || !data.ok || !data.checkoutUrl) {
+        throw new Error(data.message || "Não foi possível iniciar o pagamento.");
+      }
 
       if (data.accessToken && data.orderNumber) {
         try {
