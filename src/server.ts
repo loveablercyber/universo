@@ -33,6 +33,22 @@ function routeStoreSubdomain(request: Request): Request {
     url.pathname = "/sol-hair-closet";
   } else if (url.pathname === "/pedido") {
     url.pathname = "/sol-hair-closet/pedido";
+  } else if (url.pathname === "/pedidos") {
+    url.pathname = "/sol-hair-closet/pedidos";
+  } else if (url.pathname === "/produtos") {
+    url.pathname = "/sol-hair-closet/produtos";
+  } else if (url.pathname.startsWith("/produto/")) {
+    url.pathname = url.pathname.replace("/produto/", "/sol-hair-closet/produto/");
+  } else if (url.pathname.startsWith("/categoria/")) {
+    url.pathname = url.pathname.replace("/categoria/", "/sol-hair-closet/categoria/");
+  } else if (url.pathname.startsWith("/colecao/")) {
+    url.pathname = url.pathname.replace("/colecao/", "/sol-hair-closet/colecao/");
+  } else if (url.pathname === "/busca") {
+    url.pathname = "/sol-hair-closet/busca";
+  } else if (url.pathname === "/favoritos") {
+    url.pathname = "/sol-hair-closet/favoritos";
+  } else if (url.pathname === "/conta") {
+    url.pathname = "/sol-hair-closet/conta";
   } else {
     return request;
   }

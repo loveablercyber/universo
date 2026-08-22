@@ -1,8 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { assertSameOrigin, requirePermission } from "@/lib/auth.server";
-import { query } from "@/lib/db.server";
+import { query, db } from "@/lib/db.server";
 import { sendStoreShippingNotification } from "@/lib/notifications.server";
+
+const variantSchema = z.object({
+  id: z.string().uuid().optional(),
+  sku: z.string().optional(),
+  title: z.string().min(1, "Título da variação é obrigatório"),
+  color: z.string().optional(),
+  colorHex: z.string().optional(),
+  lengthCm: z.number().int().optional(),
+  weightG: z.number().int().optional(),
+  texture: z.string().optional(),
+  priceOverride: z.number().min(0).nullable().optional(),
+  promotionalPriceOverride: z.number().min(0).nullable().optional(),
+  stockQuantity: z.number().int().min(0),
+  imageUrl: z.string().optional(),
+  status: z.enum(["active", "out_of_stock", "inactive"]).default("active"),
+});
 
 const productSchema = z.object({
   action: z.literal("save-product"),
@@ -10,15 +26,26 @@ const productSchema = z.object({
   slug: z.string().min(2).max(100),
   name: z.string().min(2).max(160),
   info: z.string().max(200).optional(),
-  description: z.string().max(2000).optional(),
+  description: z.string().max(5000).optional(),
   price: z.number().min(0),
   promotionalPrice: z.number().min(0).nullable().optional(),
   stockQuantity: z.number().int().min(0),
   categoryId: z.string().nullable().optional(),
   image: z.string().min(1),
+  images: z.array(z.string()).optional(),
   badgeLabel: z.string().max(50).nullable().optional(),
   badgeTone: z.string().max(30).nullable().optional(),
   status: z.enum(["active", "draft", "out_of_stock", "archived"]),
+  variants: z.array(variantSchema).optional(),
+});
+
+const categorySchema = z.object({
+  action: z.literal("save-category"),
+  id: z.string().min(1),
+  name: z.string().min(2),
+  description: z.string().optional(),
+  image: z.string().optional(),
+  sortOrder: z.number().int().default(0),
 });
 
 const updateOrderStatusSchema = z.object({
@@ -53,10 +80,8 @@ async function audit(
 function errorResponse(error: unknown) {
   if (error instanceof Response) return error;
   console.error("[Admin Store API]", error);
-  return Response.json(
-    { ok: false, message: "Não foi possível concluir a operação." },
-    { status: 503 },
-  );
+  const message = error instanceof Error ? error.message : "Não foi possível concluir a operação.";
+  return Response.json({ ok: false, message }, { status: 500 });
 }
 
 export const Route = createFileRoute("/api/admin/store")({
@@ -68,16 +93,47 @@ export const Route = createFileRoute("/api/admin/store")({
           const url = new URL(request.url);
           const action = url.searchParams.get("action") ?? "products";
 
+          if (action === "categories") {
+            const { rows } = await query(
+              `SELECT id, coalesce(slug, id) as slug, name, description,
+                      image_url as image, sort_order as "sortOrder",
+                      (SELECT count(*)::int FROM universe.store_products WHERE category_id = c.id) as "productCount"
+                 FROM universe.store_categories c
+                ORDER BY sort_order ASC, name ASC`,
+            );
+            return Response.json({ ok: true, categories: rows });
+          }
+
           if (action === "products") {
             const { rows } = await query(
               `SELECT p.id, p.slug, p.name, p.info, p.description,
                       p.price::float as price, p.promotional_price::float as "promotionalPrice",
                       p.stock_quantity as "stockQuantity", p.category_id as "categoryId",
-                      p.image_url as image, p.badge_label as "badgeLabel", p.badge_tone as "badgeTone",
+                      p.image_url as image, p.images, p.badge_label as "badgeLabel", p.badge_tone as "badgeTone",
                       p.rating::float as rating, p.reviews_count as reviews, p.sold_count as sold,
-                      p.status, p.created_at as "createdAt", c.name as "categoryName"
+                      p.status, p.created_at as "createdAt", c.name as "categoryName",
+                      coalesce(
+                        json_agg(
+                          json_build_object(
+                            'id', v.id, 'sku', v.sku, 'title', v.title,
+                            'color', v.color, 'colorHex', v.color_hex,
+                            'lengthCm', v.length_cm, 'weightG', v.weight_g,
+                            'texture', v.texture,
+                            'priceOverride', v.price_override::float,
+                            'promotionalPriceOverride', v.promotional_price_override::float,
+                            'stockQuantity', v.stock_quantity,
+                            'imageUrl', v.image_url, 'status', v.status
+                          )
+                        ) FILTER (WHERE v.id IS NOT NULL),
+                        '[]'::json
+                      ) as variants
                  FROM universe.store_products p
                  LEFT JOIN universe.store_categories c ON c.id = p.category_id
+                 LEFT JOIN universe.store_product_variants v ON v.product_id = p.id
+                GROUP BY p.id, p.slug, p.name, p.info, p.description, p.price,
+                         p.promotional_price, p.stock_quantity, p.category_id,
+                         p.image_url, p.images, p.badge_label, p.badge_tone,
+                         p.rating, p.reviews_count, p.sold_count, p.status, p.created_at, c.name
                 ORDER BY p.created_at DESC`,
             );
             return Response.json({ ok: true, products: rows });
@@ -89,9 +145,23 @@ export const Route = createFileRoute("/api/admin/store")({
                               o.customer_email as "customerEmail", o.customer_phone as "customerPhone",
                               o.customer_document as "customerDocument", o.shipping_address as "shippingAddress",
                               o.shipping_cost::float as "shippingCost", o.subtotal::float as subtotal,
+                              o.discount_amount::float as "discountAmount",
                               o.total_amount::float as "totalAmount", o.status, o.tracking_code as "trackingCode",
-                              o.paid_at as "paidAt", o.created_at as "createdAt"
-                         FROM universe.store_orders o`;
+                              o.paid_at as "paidAt", o.created_at as "createdAt",
+                              coalesce(
+                                json_agg(
+                                  json_build_object(
+                                    'productName', i.product_name,
+                                    'variantName', i.variant_name,
+                                    'unitPrice', i.unit_price::float,
+                                    'quantity', i.quantity,
+                                    'totalPrice', i.total_price::float
+                                  )
+                                ) FILTER (WHERE i.id IS NOT NULL),
+                                '[]'::json
+                              ) as items
+                         FROM universe.store_orders o
+                         LEFT JOIN universe.store_order_items i ON i.order_id = o.id`;
             const params: unknown[] = [];
 
             if (statusFilter) {
@@ -99,7 +169,11 @@ export const Route = createFileRoute("/api/admin/store")({
               sql += ` WHERE o.status = $1`;
             }
 
-            sql += ` ORDER BY o.created_at DESC LIMIT 200`;
+            sql += ` GROUP BY o.id, o.order_number, o.customer_name, o.customer_email,
+                              o.customer_phone, o.customer_document, o.shipping_address,
+                              o.shipping_cost, o.subtotal, o.discount_amount, o.total_amount,
+                              o.status, o.tracking_code, o.paid_at, o.created_at
+                     ORDER BY o.created_at DESC LIMIT 200`;
 
             const { rows } = await query(sql, params);
             return Response.json({ ok: true, orders: rows });
@@ -118,38 +192,37 @@ export const Route = createFileRoute("/api/admin/store")({
                         'status', o.status, 'trackingCode', o.tracking_code, 'createdAt', o.created_at
                       ) order by o.created_at desc) filter (where o.id is not null), '[]'::json) as orders
                  FROM universe.store_customers c
-                 LEFT JOIN universe.store_orders o ON o.customer_id = c.id
+                 LEFT JOIN universe.store_orders o on lower(o.customer_email)=lower(c.email)
                 GROUP BY c.id
-                ORDER BY max(o.created_at) desc nulls last, c.created_at desc
-                LIMIT 500`,
+                ORDER BY c.created_at DESC
+                LIMIT 200`,
             );
             return Response.json({ ok: true, customers: rows });
           }
 
           if (action === "stats") {
-            const [salesResult, countResult] = await Promise.all([
-              query(
-                `SELECT sum(total_amount)::float as total FROM universe.store_orders WHERE status IN ('paid', 'processing', 'shipped', 'delivered')`,
-              ),
-              query(`SELECT status, count(*) FROM universe.store_orders GROUP BY status`),
-            ]);
+            const revenue = await query<{ sum: string | null }>(
+              `SELECT sum(total_amount) FROM universe.store_orders WHERE status in ('paid', 'processing', 'shipped', 'delivered')`,
+            );
+            const count = await query<{ count: string }>(
+              `SELECT count(*) FROM universe.store_orders WHERE status != 'cancelled'`,
+            );
+            const productsCount = await query<{ count: string }>(
+              `SELECT count(*) FROM universe.store_products WHERE status = 'active'`,
+            );
+            const lowStock = await query<{ count: string }>(
+              `SELECT count(*) FROM universe.store_products WHERE stock_quantity <= 5 AND status = 'active'`,
+            );
 
-            const stats = {
-              totalRevenue: Number(salesResult.rows[0]?.total || 0),
-              pendingOrders: 0,
-              paidOrders: 0,
-              shippedOrders: 0,
-            };
-
-            for (const row of countResult.rows) {
-              if (row.status === "pending") stats.pendingOrders = Number(row.count);
-              else if (row.status === "paid" || row.status === "processing")
-                stats.paidOrders += Number(row.count);
-              else if (row.status === "shipped" || row.status === "delivered")
-                stats.shippedOrders += Number(row.count);
-            }
-
-            return Response.json({ ok: true, stats });
+            return Response.json({
+              ok: true,
+              stats: {
+                totalRevenue: Number(revenue.rows[0].sum || 0),
+                totalOrders: Number(count.rows[0].count),
+                activeProducts: Number(productsCount.rows[0].count),
+                lowStockCount: Number(lowStock.rows[0].count),
+              },
+            });
           }
 
           return Response.json({ ok: false, message: "Ação inválida." }, { status: 400 });
@@ -159,105 +232,239 @@ export const Route = createFileRoute("/api/admin/store")({
       },
 
       POST: async ({ request }) => {
+        const pool = db;
+        const client = await pool.connect();
+
         try {
           assertSameOrigin(request);
-          const actor = await requirePermission(request, "store.write");
+          const user = await requirePermission(request, "store.write");
           const body = await request.json();
 
-          const prod = productSchema.safeParse(body);
-          if (prod.success) {
-            const v = prod.data;
-            let id = v.id;
+          // 1. Salvar Categoria
+          if (body.action === "save-category") {
+            const parsed = categorySchema.safeParse(body);
+            if (!parsed.success) {
+              return Response.json(
+                { ok: false, message: parsed.error.issues.map((i) => i.message).join("; ") },
+                { status: 400 },
+              );
+            }
+            const { id, name, description, image, sortOrder } = parsed.data;
 
-            if (id) {
-              await query(
+            await client.query(
+              `INSERT INTO universe.store_categories(id, slug, name, description, image_url, sort_order)
+               VALUES ($1, $1, $2, $3, $4, $5)
+               ON CONFLICT (id) DO UPDATE
+                 SET name = excluded.name,
+                     description = excluded.description,
+                     image_url = coalesce(excluded.image_url, universe.store_categories.image_url),
+                     sort_order = excluded.sort_order,
+                     updated_at = now()`,
+              [id, name, description || null, image || null, sortOrder],
+            );
+
+            await audit(user.id, "store.category.saved", "store_category", id, { name });
+            return Response.json({ ok: true, message: "Categoria salva com sucesso!" });
+          }
+
+          // 2. Salvar Produto (com galeria de imagens e variações)
+          if (body.action === "save-product") {
+            const parsed = productSchema.safeParse(body);
+            if (!parsed.success) {
+              return Response.json(
+                { ok: false, message: parsed.error.issues.map((i) => i.message).join("; ") },
+                { status: 400 },
+              );
+            }
+
+            const {
+              id,
+              slug,
+              name,
+              info,
+              description,
+              price,
+              promotionalPrice,
+              stockQuantity,
+              categoryId,
+              image,
+              images,
+              badgeLabel,
+              badgeTone,
+              status,
+              variants,
+            } = parsed.data;
+
+            await client.query("BEGIN");
+
+            let productId = id;
+
+            if (productId) {
+              // Update produto existente
+              await client.query(
                 `UPDATE universe.store_products
-                    SET slug=$2, name=$3, info=NULLIF($4, ''), description=NULLIF($5, ''),
-                        price=$6, promotional_price=$7, stock_quantity=$8, category_id=NULLIF($9, ''),
-                        image_url=$10, badge_label=NULLIF($11, ''), badge_tone=NULLIF($12, ''),
-                        status=$13, updated_at=now()
-                  WHERE id=$1`,
+                    SET slug = $1, name = $2, info = $3, description = $4, price = $5,
+                        promotional_price = $6, stock_quantity = $7, category_id = $8,
+                        image_url = $9, images = $10::jsonb, badge_label = $11, badge_tone = $12,
+                        status = $13, updated_at = now()
+                  WHERE id = $14`,
                 [
-                  id,
-                  v.slug,
-                  v.name,
-                  v.info ?? "",
-                  v.description ?? "",
-                  v.price,
-                  v.promotionalPrice ?? null,
-                  v.stockQuantity,
-                  v.categoryId ?? "",
-                  v.image,
-                  v.badgeLabel ?? "",
-                  v.badgeTone ?? "gold",
-                  v.status,
+                  slug,
+                  name,
+                  info ?? null,
+                  description ?? null,
+                  price,
+                  promotionalPrice ?? null,
+                  stockQuantity,
+                  categoryId ?? null,
+                  image,
+                  JSON.stringify(images || []),
+                  badgeLabel ?? null,
+                  badgeTone ?? "gold",
+                  status,
+                  productId,
                 ],
               );
             } else {
-              const { rows } = await query<{ id: string }>(
+              // Insert novo produto
+              const insertRes = await client.query<{ id: string }>(
                 `INSERT INTO universe.store_products
-                   (slug, name, info, description, price, promotional_price, stock_quantity, category_id, image_url, badge_label, badge_tone, status)
-                 VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), $5, $6, $7, NULLIF($8, ''), $9, NULLIF($10, ''), NULLIF($11, ''), $12)
+                   (slug, name, info, description, price, promotional_price, stock_quantity,
+                    category_id, image_url, images, badge_label, badge_tone, status)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)
                  RETURNING id`,
                 [
-                  v.slug,
-                  v.name,
-                  v.info ?? "",
-                  v.description ?? "",
-                  v.price,
-                  v.promotionalPrice ?? null,
-                  v.stockQuantity,
-                  v.categoryId ?? "",
-                  v.image,
-                  v.badgeLabel ?? "",
-                  v.badgeTone ?? "gold",
-                  v.status,
+                  slug,
+                  name,
+                  info ?? null,
+                  description ?? null,
+                  price,
+                  promotionalPrice ?? null,
+                  stockQuantity,
+                  categoryId ?? null,
+                  image,
+                  JSON.stringify(images || []),
+                  badgeLabel ?? null,
+                  badgeTone ?? "gold",
+                  status,
                 ],
               );
-              id = rows[0]?.id;
+              productId = insertRes.rows[0].id;
             }
 
-            await audit(
-              actor.id,
-              v.id ? "store.product.updated" : "store.product.created",
-              "store_product",
-              id,
-            );
-            return Response.json({ ok: true, id });
+            // Atualizar variações do produto se enviadas
+            if (variants && Array.isArray(variants)) {
+              for (const v of variants) {
+                if (v.id) {
+                  await client.query(
+                    `UPDATE universe.store_product_variants
+                        SET title = $1, color = $2, color_hex = $3, length_cm = $4, weight_g = $5,
+                            texture = $6, price_override = $7, promotional_price_override = $8,
+                            stock_quantity = $9, image_url = $10, status = $11, updated_at = now()
+                      WHERE id = $12 AND product_id = $13`,
+                    [
+                      v.title,
+                      v.color || null,
+                      v.colorHex || null,
+                      v.lengthCm || null,
+                      v.weightG || null,
+                      v.texture || null,
+                      v.priceOverride || null,
+                      v.promotionalPriceOverride || null,
+                      v.stockQuantity,
+                      v.imageUrl || null,
+                      v.status,
+                      v.id,
+                      productId,
+                    ],
+                  );
+                } else {
+                  await client.query(
+                    `INSERT INTO universe.store_product_variants
+                       (product_id, sku, title, color, color_hex, length_cm, weight_g, texture,
+                        price_override, promotional_price_override, stock_quantity, image_url, status)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                    [
+                      productId,
+                      v.sku || `${slug}-${Date.now()}`,
+                      v.title,
+                      v.color || null,
+                      v.colorHex || null,
+                      v.lengthCm || null,
+                      v.weightG || null,
+                      v.texture || null,
+                      v.priceOverride || null,
+                      v.promotionalPriceOverride || null,
+                      v.stockQuantity,
+                      v.imageUrl || null,
+                      v.status,
+                    ],
+                  );
+                }
+              }
+            }
+
+            await audit(user.id, "store.product.saved", "store_product", productId!, { name, slug, price });
+
+            await client.query("COMMIT");
+            return Response.json({ ok: true, message: "Produto salvo com sucesso!", productId });
           }
 
-          const orderUpdate = updateOrderStatusSchema.safeParse(body);
-          if (orderUpdate.success) {
-            const { orderId, status, trackingCode } = orderUpdate.data;
-            const { rows } = await query<{ order_number: string; customer_email: string }>(
+          // 3. Atualizar Status de Pedido e Rastreio
+          if (body.action === "update-order-status") {
+            const parsed = updateOrderStatusSchema.safeParse(body);
+            if (!parsed.success) {
+              return Response.json(
+                { ok: false, message: parsed.error.issues.map((i) => i.message).join("; ") },
+                { status: 400 },
+              );
+            }
+
+            const { orderId, status, trackingCode } = parsed.data;
+
+            const orderRes = await client.query<{
+              id: string;
+              order_number: string;
+              customer_name: string;
+              customer_email: string;
+              tracking_code: string | null;
+            }>(
               `UPDATE universe.store_orders
-                  SET status = $2,
-                      tracking_code = COALESCE(NULLIF($3, ''), tracking_code),
-                      paid_at = CASE WHEN $2 = 'paid' AND paid_at IS NULL THEN now() ELSE paid_at END,
+                  SET status = $1,
+                      tracking_code = coalesce($2, tracking_code),
+                      paid_at = CASE WHEN $1 = 'paid' AND paid_at IS NULL THEN now() ELSE paid_at END,
                       updated_at = now()
-                WHERE id = $1
-                RETURNING order_number, customer_email`,
-              [orderId, status, trackingCode ?? ""],
+                WHERE id = $3
+                RETURNING id, order_number, customer_name, customer_email, tracking_code`,
+              [status, trackingCode ?? null, orderId],
             );
 
-            if (trackingCode && rows[0]) {
+            const order = orderRes.rows[0];
+
+            if (status === "shipped" && trackingCode) {
               void sendStoreShippingNotification(
-                rows[0].order_number,
-                rows[0].customer_email,
+                order.order_number,
+                order.customer_name,
+                order.customer_email,
                 trackingCode,
               );
             }
 
-            await audit(actor.id, "store.order.status_updated", "store_order", orderId, {
+            await audit(user.id, "store.order.status_updated", "store_order", orderId, {
               status,
               trackingCode,
+              orderNumber: order.order_number,
             });
-            return Response.json({ ok: true });
+
+            return Response.json({ ok: true, message: "Status do pedido atualizado com sucesso!" });
           }
 
-          return Response.json({ ok: false, message: "Dados inválidos." }, { status: 400 });
+          return Response.json({ ok: false, message: "Ação desconhecida." }, { status: 400 });
         } catch (error) {
+          await client.query("ROLLBACK");
           return errorResponse(error);
+        } finally {
+          client.release();
         }
       },
     },

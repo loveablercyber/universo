@@ -1,92 +1,111 @@
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  sku?: string;
+  title: string;
+  color?: string;
+  colorHex?: string;
+  lengthCm?: number;
+  weightG?: number;
+  texture?: string;
+  priceOverride?: number | null;
+  promotionalPriceOverride?: number | null;
+  stockQuantity: number;
+  imageUrl?: string;
+  status: "active" | "out_of_stock" | "inactive";
+  sortOrder?: number;
+}
+
+export interface ProductBadge {
+  label: string;
+  tone: "gold" | "rose" | "copper" | "cream";
+}
+
 export interface Product {
   id: string;
+  slug: string;
   name: string;
-  info: string;
+  info?: string;
+  description?: string;
   price: number;
+  promotionalPrice?: number | null;
+  stockQuantity: number;
+  categoryId?: string;
+  image: string;
+  images?: string[];
+  badge?: ProductBadge;
   rating: number;
   reviews: number;
-  sold: string;
-  image: string;
-  badge: { label: string; tone: "gold" | "rose" | "copper" | "cream" };
+  sold?: string;
+  variants?: ProductVariant[];
 }
 
 export interface Category {
   id: string;
+  slug: string;
   name: string;
+  description?: string;
   image: string;
+  sortOrder?: number;
+  productCount?: number;
 }
 
-export const products: Product[] = [
-  {
-    id: "fibra-russa-lisa",
-    name: "Fibra Russa Lisa Natural",
-    info: "Preto • 150g • 60cm",
-    price: 219.9,
-    rating: 4.7,
-    reviews: 146,
-    sold: "+1.200 vendidas",
-    image: "/images/produto-fibra-russa.jpg",
-    badge: { label: "✦ MAIS VENDIDO", tone: "gold" },
-  },
-  {
-    id: "crochet-cacheado",
-    name: "Crochet Cacheado",
-    info: "Preto • 300g • 40cm",
-    price: 39.9,
-    rating: 4.6,
-    reviews: 156,
-    sold: "+1.800 vendidas",
-    image: "/images/produto-crochet-cacheado.jpg",
-    badge: { label: "✦ QUERIDINHA", tone: "cream" },
-  },
-  {
-    id: "rabo-cavalo-liso",
-    name: "Rabo de Cavalo Liso",
-    info: "Preto • 80cm • 120g",
-    price: 149.9,
-    rating: 4.5,
-    reviews: 87,
-    sold: "+670 vendidas",
-    image: "/images/produto-rabo-cavalo.jpg",
-    badge: { label: "♥ FAVORITA", tone: "rose" },
-  },
-  {
-    id: "lace-morena-iluminada",
-    name: "Lace Front Morena Iluminada",
-    info: "70cm • Fibra Premium • 180%",
-    price: 549.9,
-    rating: 4.6,
-    reviews: 97,
-    sold: "+950 vendidas",
-    image: "/images/produto-lace-morena.jpg",
-    badge: { label: "✦ LANÇAMENTO", tone: "copper" },
-  },
-];
+export interface CustomerProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  document?: string;
+  defaultAddress?: {
+    zipCode?: string;
+    street?: string;
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+  };
+  isRegistered?: boolean;
+}
 
-export const categories: Category[] = [
-  { id: "fibra-russa", name: "FIBRA RUSSA", image: "/images/produto-fibra-russa.jpg" },
-  { id: "apliques", name: "APLIQUES", image: "/images/produto-rabo-cavalo.jpg" },
-  { id: "perucas", name: "PERUCAS", image: "/images/categoria-perucas.jpg" },
-  { id: "acessorios", name: "ACESSÓRIOS", image: "/images/categoria-acessorios.jpg" },
-  { id: "manutencao", name: "MANUTENÇÃO", image: "/images/categoria-manutencao.jpg" },
-  { id: "fibra-europeia", name: "FIBRA EUROPEIA", image: "/images/categoria-fibra-europeia.jpg" },
-];
+export interface StoreOrderItem {
+  id: string;
+  productId: string;
+  variantId?: string;
+  productName: string;
+  variantName?: string;
+  unitPrice: number;
+  quantity: number;
+  totalPrice: number;
+}
 
-export const drawerCategories = [
-  "Fibra Russa",
-  "Fibra Europeia",
-  "Jumbo e Kanekalon",
-  "Apliques Tic-Tac",
-  "Rabo de Cavalo",
-  "Perucas",
-  "Lace Front",
-  "Crochet",
-  "Box Braids",
-  "Passion Twist",
-  "Water Wave",
-  "Dread",
-  "Acessórios",
-  "Manutenção",
-  "Produtos profissionais",
-  "Ofertas",
-];
+export interface StoreOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerDocument: string;
+  shippingAddress: {
+    zipCode: string;
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+  };
+  shippingCost: number;
+  subtotal: number;
+  discountAmount?: number;
+  discountType?: string;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentMethodSelected?: string;
+  status: "pending" | "paid" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
+  trackingCode?: string;
+  notes?: string;
+  paidAt?: string;
+  createdAt: string;
+  items?: StoreOrderItem[];
+}

@@ -28,9 +28,15 @@ import { Route as ApiCmsContentRouteImport } from './routes/api.cms-content'
 import { Route as ApiDonationRouteImport } from './routes/api.donation'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiStoreRouteImport } from './routes/api.store'
+import { Route as ApiStoreCustomerRouteImport } from './routes/api.store-customer'
 import { Route as DoacaoRetornoRouteImport } from './routes/doacao.retorno'
 import { Route as InvisibleAcademyAlunoRouteImport } from './routes/invisible-academy.aluno'
+import { Route as SolHairClosetBuscaRouteImport } from './routes/sol-hair-closet.busca'
+import { Route as SolHairClosetContaRouteImport } from './routes/sol-hair-closet.conta'
+import { Route as SolHairClosetFavoritosRouteImport } from './routes/sol-hair-closet.favoritos'
 import { Route as SolHairClosetPedidoRouteImport } from './routes/sol-hair-closet.pedido'
+import { Route as SolHairClosetPedidosRouteImport } from './routes/sol-hair-closet.pedidos'
+import { Route as SolHairClosetProdutosRouteImport } from './routes/sol-hair-closet.produtos'
 import { Route as ApiAdminAcademyRouteImport } from './routes/api.admin.academy'
 import { Route as ApiAdminCmsRouteImport } from './routes/api.admin.cms'
 import { Route as ApiAdminDataRouteImport } from './routes/api.admin.data'
@@ -40,6 +46,10 @@ import { Route as ApiAdminNotificationsRouteImport } from './routes/api.admin.no
 import { Route as ApiAdminStoreRouteImport } from './routes/api.admin.store'
 import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin.users'
+import { Route as ApiWebhookSumupRouteImport } from './routes/api.webhook.sumup'
+import { Route as SolHairClosetCategoriaSlugRouteImport } from './routes/sol-hair-closet.categoria.$slug'
+import { Route as SolHairClosetColecaoSlugRouteImport } from './routes/sol-hair-closet.colecao.$slug'
+import { Route as SolHairClosetProdutoSlugRouteImport } from './routes/sol-hair-closet.produto.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -136,6 +146,11 @@ const ApiStoreRoute = ApiStoreRouteImport.update({
   path: '/api/store',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStoreCustomerRoute = ApiStoreCustomerRouteImport.update({
+  id: '/api/store-customer',
+  path: '/api/store-customer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DoacaoRetornoRoute = DoacaoRetornoRouteImport.update({
   id: '/retorno',
   path: '/retorno',
@@ -146,9 +161,34 @@ const InvisibleAcademyAlunoRoute = InvisibleAcademyAlunoRouteImport.update({
   path: '/aluno',
   getParentRoute: () => InvisibleAcademyRoute,
 } as any)
+const SolHairClosetBuscaRoute = SolHairClosetBuscaRouteImport.update({
+  id: '/busca',
+  path: '/busca',
+  getParentRoute: () => SolHairClosetRoute,
+} as any)
+const SolHairClosetContaRoute = SolHairClosetContaRouteImport.update({
+  id: '/conta',
+  path: '/conta',
+  getParentRoute: () => SolHairClosetRoute,
+} as any)
+const SolHairClosetFavoritosRoute = SolHairClosetFavoritosRouteImport.update({
+  id: '/favoritos',
+  path: '/favoritos',
+  getParentRoute: () => SolHairClosetRoute,
+} as any)
 const SolHairClosetPedidoRoute = SolHairClosetPedidoRouteImport.update({
   id: '/pedido',
   path: '/pedido',
+  getParentRoute: () => SolHairClosetRoute,
+} as any)
+const SolHairClosetPedidosRoute = SolHairClosetPedidosRouteImport.update({
+  id: '/pedidos',
+  path: '/pedidos',
+  getParentRoute: () => SolHairClosetRoute,
+} as any)
+const SolHairClosetProdutosRoute = SolHairClosetProdutosRouteImport.update({
+  id: '/produtos',
+  path: '/produtos',
   getParentRoute: () => SolHairClosetRoute,
 } as any)
 const ApiAdminAcademyRoute = ApiAdminAcademyRouteImport.update({
@@ -196,6 +236,29 @@ const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
   path: '/api/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhookSumupRoute = ApiWebhookSumupRouteImport.update({
+  id: '/api/webhook/sumup',
+  path: '/api/webhook/sumup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SolHairClosetCategoriaSlugRoute =
+  SolHairClosetCategoriaSlugRouteImport.update({
+    id: '/categoria/$slug',
+    path: '/categoria/$slug',
+    getParentRoute: () => SolHairClosetRoute,
+  } as any)
+const SolHairClosetColecaoSlugRoute =
+  SolHairClosetColecaoSlugRouteImport.update({
+    id: '/colecao/$slug',
+    path: '/colecao/$slug',
+    getParentRoute: () => SolHairClosetRoute,
+  } as any)
+const SolHairClosetProdutoSlugRoute =
+  SolHairClosetProdutoSlugRouteImport.update({
+    id: '/produto/$slug',
+    path: '/produto/$slug',
+    getParentRoute: () => SolHairClosetRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -217,9 +280,15 @@ export interface FileRoutesByFullPath {
   '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
   '/api/store': typeof ApiStoreRoute
+  '/api/store-customer': typeof ApiStoreCustomerRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
   '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
+  '/sol-hair-closet/busca': typeof SolHairClosetBuscaRoute
+  '/sol-hair-closet/conta': typeof SolHairClosetContaRoute
+  '/sol-hair-closet/favoritos': typeof SolHairClosetFavoritosRoute
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
+  '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
+  '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
@@ -229,6 +298,10 @@ export interface FileRoutesByFullPath {
   '/api/admin/store': typeof ApiAdminStoreRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
+  '/api/webhook/sumup': typeof ApiWebhookSumupRoute
+  '/sol-hair-closet/categoria/$slug': typeof SolHairClosetCategoriaSlugRoute
+  '/sol-hair-closet/colecao/$slug': typeof SolHairClosetColecaoSlugRoute
+  '/sol-hair-closet/produto/$slug': typeof SolHairClosetProdutoSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -250,9 +323,15 @@ export interface FileRoutesByTo {
   '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
   '/api/store': typeof ApiStoreRoute
+  '/api/store-customer': typeof ApiStoreCustomerRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
   '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
+  '/sol-hair-closet/busca': typeof SolHairClosetBuscaRoute
+  '/sol-hair-closet/conta': typeof SolHairClosetContaRoute
+  '/sol-hair-closet/favoritos': typeof SolHairClosetFavoritosRoute
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
+  '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
+  '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
@@ -262,6 +341,10 @@ export interface FileRoutesByTo {
   '/api/admin/store': typeof ApiAdminStoreRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
+  '/api/webhook/sumup': typeof ApiWebhookSumupRoute
+  '/sol-hair-closet/categoria/$slug': typeof SolHairClosetCategoriaSlugRoute
+  '/sol-hair-closet/colecao/$slug': typeof SolHairClosetColecaoSlugRoute
+  '/sol-hair-closet/produto/$slug': typeof SolHairClosetProdutoSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -284,9 +367,15 @@ export interface FileRoutesById {
   '/api/donation': typeof ApiDonationRoute
   '/api/health': typeof ApiHealthRoute
   '/api/store': typeof ApiStoreRoute
+  '/api/store-customer': typeof ApiStoreCustomerRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
   '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
+  '/sol-hair-closet/busca': typeof SolHairClosetBuscaRoute
+  '/sol-hair-closet/conta': typeof SolHairClosetContaRoute
+  '/sol-hair-closet/favoritos': typeof SolHairClosetFavoritosRoute
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
+  '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
+  '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
@@ -296,6 +385,10 @@ export interface FileRoutesById {
   '/api/admin/store': typeof ApiAdminStoreRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
+  '/api/webhook/sumup': typeof ApiWebhookSumupRoute
+  '/sol-hair-closet/categoria/$slug': typeof SolHairClosetCategoriaSlugRoute
+  '/sol-hair-closet/colecao/$slug': typeof SolHairClosetColecaoSlugRoute
+  '/sol-hair-closet/produto/$slug': typeof SolHairClosetProdutoSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -319,9 +412,15 @@ export interface FileRouteTypes {
     | '/api/donation'
     | '/api/health'
     | '/api/store'
+    | '/api/store-customer'
     | '/doacao/retorno'
     | '/invisible-academy/aluno'
+    | '/sol-hair-closet/busca'
+    | '/sol-hair-closet/conta'
+    | '/sol-hair-closet/favoritos'
     | '/sol-hair-closet/pedido'
+    | '/sol-hair-closet/pedidos'
+    | '/sol-hair-closet/produtos'
     | '/api/admin/academy'
     | '/api/admin/cms'
     | '/api/admin/data'
@@ -331,6 +430,10 @@ export interface FileRouteTypes {
     | '/api/admin/store'
     | '/api/admin/summary'
     | '/api/admin/users'
+    | '/api/webhook/sumup'
+    | '/sol-hair-closet/categoria/$slug'
+    | '/sol-hair-closet/colecao/$slug'
+    | '/sol-hair-closet/produto/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -352,9 +455,15 @@ export interface FileRouteTypes {
     | '/api/donation'
     | '/api/health'
     | '/api/store'
+    | '/api/store-customer'
     | '/doacao/retorno'
     | '/invisible-academy/aluno'
+    | '/sol-hair-closet/busca'
+    | '/sol-hair-closet/conta'
+    | '/sol-hair-closet/favoritos'
     | '/sol-hair-closet/pedido'
+    | '/sol-hair-closet/pedidos'
+    | '/sol-hair-closet/produtos'
     | '/api/admin/academy'
     | '/api/admin/cms'
     | '/api/admin/data'
@@ -364,6 +473,10 @@ export interface FileRouteTypes {
     | '/api/admin/store'
     | '/api/admin/summary'
     | '/api/admin/users'
+    | '/api/webhook/sumup'
+    | '/sol-hair-closet/categoria/$slug'
+    | '/sol-hair-closet/colecao/$slug'
+    | '/sol-hair-closet/produto/$slug'
   id:
     | '__root__'
     | '/'
@@ -385,9 +498,15 @@ export interface FileRouteTypes {
     | '/api/donation'
     | '/api/health'
     | '/api/store'
+    | '/api/store-customer'
     | '/doacao/retorno'
     | '/invisible-academy/aluno'
+    | '/sol-hair-closet/busca'
+    | '/sol-hair-closet/conta'
+    | '/sol-hair-closet/favoritos'
     | '/sol-hair-closet/pedido'
+    | '/sol-hair-closet/pedidos'
+    | '/sol-hair-closet/produtos'
     | '/api/admin/academy'
     | '/api/admin/cms'
     | '/api/admin/data'
@@ -397,6 +516,10 @@ export interface FileRouteTypes {
     | '/api/admin/store'
     | '/api/admin/summary'
     | '/api/admin/users'
+    | '/api/webhook/sumup'
+    | '/sol-hair-closet/categoria/$slug'
+    | '/sol-hair-closet/colecao/$slug'
+    | '/sol-hair-closet/produto/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -419,6 +542,7 @@ export interface RootRouteChildren {
   ApiDonationRoute: typeof ApiDonationRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiStoreRoute: typeof ApiStoreRoute
+  ApiStoreCustomerRoute: typeof ApiStoreCustomerRoute
   ApiAdminAcademyRoute: typeof ApiAdminAcademyRoute
   ApiAdminCmsRoute: typeof ApiAdminCmsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
@@ -428,6 +552,7 @@ export interface RootRouteChildren {
   ApiAdminStoreRoute: typeof ApiAdminStoreRoute
   ApiAdminSummaryRoute: typeof ApiAdminSummaryRoute
   ApiAdminUsersRoute: typeof ApiAdminUsersRoute
+  ApiWebhookSumupRoute: typeof ApiWebhookSumupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -565,6 +690,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStoreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/store-customer': {
+      id: '/api/store-customer'
+      path: '/api/store-customer'
+      fullPath: '/api/store-customer'
+      preLoaderRoute: typeof ApiStoreCustomerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/doacao/retorno': {
       id: '/doacao/retorno'
       path: '/retorno'
@@ -579,11 +711,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvisibleAcademyAlunoRouteImport
       parentRoute: typeof InvisibleAcademyRoute
     }
+    '/sol-hair-closet/busca': {
+      id: '/sol-hair-closet/busca'
+      path: '/busca'
+      fullPath: '/sol-hair-closet/busca'
+      preLoaderRoute: typeof SolHairClosetBuscaRouteImport
+      parentRoute: typeof SolHairClosetRoute
+    }
+    '/sol-hair-closet/conta': {
+      id: '/sol-hair-closet/conta'
+      path: '/conta'
+      fullPath: '/sol-hair-closet/conta'
+      preLoaderRoute: typeof SolHairClosetContaRouteImport
+      parentRoute: typeof SolHairClosetRoute
+    }
+    '/sol-hair-closet/favoritos': {
+      id: '/sol-hair-closet/favoritos'
+      path: '/favoritos'
+      fullPath: '/sol-hair-closet/favoritos'
+      preLoaderRoute: typeof SolHairClosetFavoritosRouteImport
+      parentRoute: typeof SolHairClosetRoute
+    }
     '/sol-hair-closet/pedido': {
       id: '/sol-hair-closet/pedido'
       path: '/pedido'
       fullPath: '/sol-hair-closet/pedido'
       preLoaderRoute: typeof SolHairClosetPedidoRouteImport
+      parentRoute: typeof SolHairClosetRoute
+    }
+    '/sol-hair-closet/pedidos': {
+      id: '/sol-hair-closet/pedidos'
+      path: '/pedidos'
+      fullPath: '/sol-hair-closet/pedidos'
+      preLoaderRoute: typeof SolHairClosetPedidosRouteImport
+      parentRoute: typeof SolHairClosetRoute
+    }
+    '/sol-hair-closet/produtos': {
+      id: '/sol-hair-closet/produtos'
+      path: '/produtos'
+      fullPath: '/sol-hair-closet/produtos'
+      preLoaderRoute: typeof SolHairClosetProdutosRouteImport
       parentRoute: typeof SolHairClosetRoute
     }
     '/api/admin/academy': {
@@ -649,6 +816,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhook/sumup': {
+      id: '/api/webhook/sumup'
+      path: '/api/webhook/sumup'
+      fullPath: '/api/webhook/sumup'
+      preLoaderRoute: typeof ApiWebhookSumupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sol-hair-closet/categoria/$slug': {
+      id: '/sol-hair-closet/categoria/$slug'
+      path: '/categoria/$slug'
+      fullPath: '/sol-hair-closet/categoria/$slug'
+      preLoaderRoute: typeof SolHairClosetCategoriaSlugRouteImport
+      parentRoute: typeof SolHairClosetRoute
+    }
+    '/sol-hair-closet/colecao/$slug': {
+      id: '/sol-hair-closet/colecao/$slug'
+      path: '/colecao/$slug'
+      fullPath: '/sol-hair-closet/colecao/$slug'
+      preLoaderRoute: typeof SolHairClosetColecaoSlugRouteImport
+      parentRoute: typeof SolHairClosetRoute
+    }
+    '/sol-hair-closet/produto/$slug': {
+      id: '/sol-hair-closet/produto/$slug'
+      path: '/produto/$slug'
+      fullPath: '/sol-hair-closet/produto/$slug'
+      preLoaderRoute: typeof SolHairClosetProdutoSlugRouteImport
+      parentRoute: typeof SolHairClosetRoute
+    }
   }
 }
 
@@ -675,11 +870,27 @@ const InvisibleAcademyRouteWithChildren =
   InvisibleAcademyRoute._addFileChildren(InvisibleAcademyRouteChildren)
 
 interface SolHairClosetRouteChildren {
+  SolHairClosetBuscaRoute: typeof SolHairClosetBuscaRoute
+  SolHairClosetContaRoute: typeof SolHairClosetContaRoute
+  SolHairClosetFavoritosRoute: typeof SolHairClosetFavoritosRoute
   SolHairClosetPedidoRoute: typeof SolHairClosetPedidoRoute
+  SolHairClosetPedidosRoute: typeof SolHairClosetPedidosRoute
+  SolHairClosetProdutosRoute: typeof SolHairClosetProdutosRoute
+  SolHairClosetCategoriaSlugRoute: typeof SolHairClosetCategoriaSlugRoute
+  SolHairClosetColecaoSlugRoute: typeof SolHairClosetColecaoSlugRoute
+  SolHairClosetProdutoSlugRoute: typeof SolHairClosetProdutoSlugRoute
 }
 
 const SolHairClosetRouteChildren: SolHairClosetRouteChildren = {
+  SolHairClosetBuscaRoute: SolHairClosetBuscaRoute,
+  SolHairClosetContaRoute: SolHairClosetContaRoute,
+  SolHairClosetFavoritosRoute: SolHairClosetFavoritosRoute,
   SolHairClosetPedidoRoute: SolHairClosetPedidoRoute,
+  SolHairClosetPedidosRoute: SolHairClosetPedidosRoute,
+  SolHairClosetProdutosRoute: SolHairClosetProdutosRoute,
+  SolHairClosetCategoriaSlugRoute: SolHairClosetCategoriaSlugRoute,
+  SolHairClosetColecaoSlugRoute: SolHairClosetColecaoSlugRoute,
+  SolHairClosetProdutoSlugRoute: SolHairClosetProdutoSlugRoute,
 }
 
 const SolHairClosetRouteWithChildren = SolHairClosetRoute._addFileChildren(
@@ -706,6 +917,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDonationRoute: ApiDonationRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiStoreRoute: ApiStoreRoute,
+  ApiStoreCustomerRoute: ApiStoreCustomerRoute,
   ApiAdminAcademyRoute: ApiAdminAcademyRoute,
   ApiAdminCmsRoute: ApiAdminCmsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
@@ -715,6 +927,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminStoreRoute: ApiAdminStoreRoute,
   ApiAdminSummaryRoute: ApiAdminSummaryRoute,
   ApiAdminUsersRoute: ApiAdminUsersRoute,
+  ApiWebhookSumupRoute: ApiWebhookSumupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
