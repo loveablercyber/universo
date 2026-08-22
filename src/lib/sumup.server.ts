@@ -11,7 +11,7 @@
 const API_BASE = "https://api.sumup.com";
 
 function requireEnv(name: string): string {
-  const value = process.env[name];
+  const value = process.env[name]?.trim().replace(/^['"]|['"]$/g, "");
   if (!value) throw new Error(`Variável de ambiente ${name} não configurada.`);
   return value;
 }
@@ -43,7 +43,7 @@ export async function createSumUpCheckout(
   description: string,
   redirectUrl?: string,
 ): Promise<SumUpCheckoutResponse> {
-  const merchantCode = requireEnv("SUMUP_MERCHANT_CODE");
+  const merchantCode = requireEnv("SUMUP_MERCHANT_CODE").toUpperCase();
   const returnUrl = redirectUrl ?? requireEnv("SUMUP_RETURN_URL");
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Valor inválido para o checkout SumUp.");
@@ -90,12 +90,15 @@ export async function createSumUpCheckout(
         error_message?: unknown;
         error_code?: unknown;
         errors?: unknown;
+        param?: unknown;
       };
       const candidate =
         payload.errors ?? payload.message ?? payload.error_message ?? payload.error_code;
       if (typeof candidate === "string") detail = candidate.slice(0, 500);
       else if (candidate) detail = JSON.stringify(candidate).slice(0, 500);
-      if (detail === "Validation error") detail = JSON.stringify(payload).slice(0, 1000);
+      if (detail === "Validation error" && typeof payload.param === "string") {
+        detail = `campo inválido: ${payload.param}`;
+      }
     } catch {
       // A resposta pode não ser JSON; o corpo completo permanece apenas no log do servidor.
     }
