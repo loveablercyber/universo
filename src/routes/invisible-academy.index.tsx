@@ -287,6 +287,9 @@ type CourseItem = {
 function CoursesSection() {
   const [academyCourses, setAcademyCourses] = useState<CourseItem[]>(courses);
   const [selectedCourseForEnroll, setSelectedCourseForEnroll] = useState<CourseItem | null>(null);
+  const visibleCourses = Array.from(
+    new Map(academyCourses.map((course) => [course.slug, course])).values(),
+  );
 
   useEffect(() => {
     async function loadLiveCourses() {
@@ -327,7 +330,7 @@ function CoursesSection() {
         </div>
 
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-          {academyCourses.map((c) => (
+          {visibleCourses.map((c) => (
             <article
               key={c.id || c.subtitle}
               className="bg-[#FFFDFC] rounded-2xl border border-[rgba(201,121,69,0.15)] overflow-hidden flex flex-col hover:shadow-[0_20px_40px_-24px_rgba(75,44,30,0.35)] hover:-translate-y-0.5 transition"
