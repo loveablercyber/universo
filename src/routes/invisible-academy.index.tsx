@@ -332,7 +332,7 @@ function CoursesSection() {
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
           {visibleCourses.map((c) => (
             <article
-              key={c.id || c.subtitle}
+              key={c.slug}
               className="bg-[#FFFDFC] rounded-2xl border border-[rgba(201,121,69,0.15)] overflow-hidden flex flex-col hover:shadow-[0_20px_40px_-24px_rgba(75,44,30,0.35)] hover:-translate-y-0.5 transition"
             >
               <div className="relative aspect-[4/3]">
