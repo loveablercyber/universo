@@ -24,6 +24,8 @@ import {
   ShieldCheck,
   Award,
   Download,
+  Upload,
+  Trash2,
 } from "lucide-react";
 
 type Course = {
@@ -44,6 +46,7 @@ type Course = {
   completionPercentage: number;
   certificateSignatory: string;
   certificateSignatoryRole: string;
+  certificateSignatureConfigured: boolean;
 };
 
 type Module = {
@@ -1106,6 +1109,19 @@ function CourseEditorModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signatureRemoved, setSignatureRemoved] = useState(false);
+  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!signatureFile) {
+      setSignaturePreview(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(signatureFile);
+    setSignaturePreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [signatureFile]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1144,6 +1160,33 @@ function CourseEditorModal({
 
       const payload = await res.json();
       if (!res.ok) throw new Error(payload.message || "Erro ao salvar curso");
+
+      const savedCourseId = String(payload.id);
+      if (signatureFile) {
+        const signatureForm = new FormData();
+        signatureForm.set("courseId", savedCourseId);
+        signatureForm.set("file", signatureFile);
+        const signatureResponse = await fetch("/api/admin/academy-signature", {
+          method: "POST",
+          body: signatureForm,
+        });
+        const signaturePayload = await signatureResponse.json().catch(() => ({}));
+        if (!signatureResponse.ok)
+          throw new Error(
+            signaturePayload.message || "O curso foi salvo, mas a assinatura não foi enviada.",
+          );
+      } else if (signatureRemoved && course?.certificateSignatureConfigured) {
+        const signatureResponse = await fetch("/api/admin/academy-signature", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "remove", courseId: savedCourseId }),
+        });
+        const signaturePayload = await signatureResponse.json().catch(() => ({}));
+        if (!signatureResponse.ok)
+          throw new Error(
+            signaturePayload.message || "O curso foi salvo, mas a assinatura não foi removida.",
+          );
+      }
 
       onUpdate();
       onClose();
@@ -1330,6 +1373,57 @@ function CourseEditorModal({
                   className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm"
                 />
               </div>
+            </div>
+            <div className="space-y-2 rounded-xl border border-dashed border-copper/25 bg-white/70 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold text-brown">
+                    Imagem da assinatura profissional
+                  </p>
+                  <p className="text-[10px] text-brown/55">
+                    PNG transparente recomendado ou JPEG, até 1 MB.
+                  </p>
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-copper px-3 py-2 text-xs font-semibold text-white hover:bg-copper-dark">
+                  <Upload size={14} /> Selecionar imagem
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0] ?? null;
+                      setSignatureFile(file);
+                      if (file) setSignatureRemoved(false);
+                    }}
+                  />
+                </label>
+              </div>
+              {signaturePreview || (course?.certificateSignatureConfigured && !signatureRemoved) ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-cream/40 p-3">
+                  <img
+                    src={
+                      signaturePreview ??
+                      `/api/admin/academy-signature?courseId=${encodeURIComponent(course!.id)}`
+                    }
+                    alt="Pré-visualização da assinatura do certificado"
+                    className="h-16 max-w-[220px] object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignatureFile(null);
+                      setSignatureRemoved(true);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 size={13} /> Remover
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-brown/55">
+                  Sem imagem: o certificado exibirá apenas a linha, o nome e o cargo.
+                </p>
+              )}
             </div>
           </div>
 

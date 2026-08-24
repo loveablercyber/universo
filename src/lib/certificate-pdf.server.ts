@@ -173,6 +173,25 @@ export async function createCertificatePdf(
     color: ink,
     thickness: 0.7,
   });
+  if (certificate.signatureImage && certificate.signatureImageMime) {
+    try {
+      const signature =
+        certificate.signatureImageMime === "image/png"
+          ? await pdf.embedPng(certificate.signatureImage)
+          : await pdf.embedJpg(certificate.signatureImage);
+      const scale = Math.min(150 / signature.width, 52 / signature.height, 1);
+      const signatureWidth = signature.width * scale;
+      const signatureHeight = signature.height * scale;
+      page.drawImage(signature, {
+        x: (width - signatureWidth) / 2,
+        y: 154,
+        width: signatureWidth,
+        height: signatureHeight,
+      });
+    } catch (error) {
+      console.error("[Certificate PDF] Imagem de assinatura inválida.", error);
+    }
+  }
   const signer = printable(certificate.signatoryName);
   page.drawText(signer, {
     x: centeredX(signer, 14, serifBold, width),

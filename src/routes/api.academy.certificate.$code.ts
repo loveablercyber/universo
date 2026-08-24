@@ -11,7 +11,8 @@ export const Route = createFileRoute("/api/academy/certificate/$code")({
           `SELECT id,enrollment_id as "enrollmentId",verification_code as "verificationCode",
                 certificate_number as "certificateNumber",student_name as "studentName",course_title as "courseTitle",
                 workload_hours as "workloadHours",completion_percentage as "completionPercentage",
-                signatory_name as "signatoryName",signatory_role as "signatoryRole",issued_at as "issuedAt",
+                signatory_name as "signatoryName",signatory_role as "signatoryRole",
+                signature_image as "signatureImage",signature_image_mime as "signatureImageMime",issued_at as "issuedAt",
                 revoked_at as "revokedAt",revocation_reason as "revocationReason"
            FROM universe.academy_certificates WHERE verification_code=$1`,
           [params.code.toUpperCase()],

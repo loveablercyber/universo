@@ -41,6 +41,7 @@ import { Route as SolHairClosetPedidosRouteImport } from './routes/sol-hair-clos
 import { Route as SolHairClosetProdutosRouteImport } from './routes/sol-hair-closet.produtos'
 import { Route as ApiAdminAcademyRouteImport } from './routes/api.admin.academy'
 import { Route as ApiAdminAcademyCertificatesRouteImport } from './routes/api.admin.academy-certificates'
+import { Route as ApiAdminAcademySignatureRouteImport } from './routes/api.admin.academy-signature'
 import { Route as ApiAdminCmsRouteImport } from './routes/api.admin.cms'
 import { Route as ApiAdminDataRouteImport } from './routes/api.admin.data'
 import { Route as ApiAdminEloRouteImport } from './routes/api.admin.elo'
@@ -218,6 +219,12 @@ const ApiAdminAcademyCertificatesRoute =
     path: '/api/admin/academy-certificates',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminAcademySignatureRoute =
+  ApiAdminAcademySignatureRouteImport.update({
+    id: '/api/admin/academy-signature',
+    path: '/api/admin/academy-signature',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminCmsRoute = ApiAdminCmsRouteImport.update({
   id: '/api/admin/cms',
   path: '/api/admin/cms',
@@ -333,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/academy-certificates': typeof ApiAdminAcademyCertificatesRoute
+  '/api/admin/academy-signature': typeof ApiAdminAcademySignatureRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
@@ -380,6 +388,7 @@ export interface FileRoutesByTo {
   '/sol-hair-closet': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/academy-certificates': typeof ApiAdminAcademyCertificatesRoute
+  '/api/admin/academy-signature': typeof ApiAdminAcademySignatureRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
@@ -430,6 +439,7 @@ export interface FileRoutesById {
   '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
   '/api/admin/academy-certificates': typeof ApiAdminAcademyCertificatesRoute
+  '/api/admin/academy-signature': typeof ApiAdminAcademySignatureRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
@@ -481,6 +491,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/'
     | '/api/admin/academy'
     | '/api/admin/academy-certificates'
+    | '/api/admin/academy-signature'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
@@ -528,6 +539,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet'
     | '/api/admin/academy'
     | '/api/admin/academy-certificates'
+    | '/api/admin/academy-signature'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
@@ -577,6 +589,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/'
     | '/api/admin/academy'
     | '/api/admin/academy-certificates'
+    | '/api/admin/academy-signature'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
@@ -617,6 +630,7 @@ export interface RootRouteChildren {
   ApiStoreCustomerRoute: typeof ApiStoreCustomerRoute
   ApiAdminAcademyRoute: typeof ApiAdminAcademyRoute
   ApiAdminAcademyCertificatesRoute: typeof ApiAdminAcademyCertificatesRoute
+  ApiAdminAcademySignatureRoute: typeof ApiAdminAcademySignatureRoute
   ApiAdminCmsRoute: typeof ApiAdminCmsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
   ApiAdminEloRoute: typeof ApiAdminEloRoute
@@ -854,6 +868,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAcademyCertificatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/academy-signature': {
+      id: '/api/admin/academy-signature'
+      path: '/api/admin/academy-signature'
+      fullPath: '/api/admin/academy-signature'
+      preLoaderRoute: typeof ApiAdminAcademySignatureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/cms': {
       id: '/api/admin/cms'
       path: '/api/admin/cms'
@@ -1055,6 +1076,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStoreCustomerRoute: ApiStoreCustomerRoute,
   ApiAdminAcademyRoute: ApiAdminAcademyRoute,
   ApiAdminAcademyCertificatesRoute: ApiAdminAcademyCertificatesRoute,
+  ApiAdminAcademySignatureRoute: ApiAdminAcademySignatureRoute,
   ApiAdminCmsRoute: ApiAdminCmsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
   ApiAdminEloRoute: ApiAdminEloRoute,

@@ -12,6 +12,8 @@ export type CertificateRecord = {
   completionPercentage: number;
   signatoryName: string;
   signatoryRole: string;
+  signatureImage?: Uint8Array | null;
+  signatureImageMime?: string | null;
   issuedAt: string | Date;
   revokedAt?: string | Date | null;
   revocationReason?: string | null;
@@ -40,11 +42,14 @@ export async function syncEnrollmentCompletion(
     completion_percentage: number;
     certificate_signatory: string;
     certificate_signatory_role: string;
+    certificate_signature_image: Buffer | null;
+    certificate_signature_mime: string | null;
     total_lessons: number;
     completed_lessons: number;
   }>(
     `SELECT e.status,e.student_name,c.title as course_title,c.workload_hours,c.certificate_enabled,
             c.completion_percentage,c.certificate_signatory,c.certificate_signatory_role,
+            c.certificate_signature_image,c.certificate_signature_mime,
             (SELECT count(*)::int FROM universe.academy_lessons l JOIN universe.academy_modules m ON m.id=l.module_id
               WHERE m.course_id=e.course_id AND m.status='published' AND l.status='published') as total_lessons,
             (SELECT count(*)::int FROM universe.academy_student_progress p JOIN universe.academy_lessons l ON l.id=p.lesson_id
@@ -74,8 +79,8 @@ export async function syncEnrollmentCompletion(
       await client.query(
         `INSERT INTO universe.academy_certificates
            (enrollment_id,verification_code,certificate_number,student_name,course_title,workload_hours,
-            completion_percentage,signatory_name,signatory_role,issued_by,metadata)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)
+            completion_percentage,signatory_name,signatory_role,signature_image,signature_image_mime,issued_by,metadata)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)
          ON CONFLICT(enrollment_id) DO UPDATE SET
            student_name=excluded.student_name,course_title=excluded.course_title,workload_hours=excluded.workload_hours,
            completion_percentage=excluded.completion_percentage,signatory_name=excluded.signatory_name,
@@ -90,6 +95,8 @@ export async function syncEnrollmentCompletion(
           progressPercentage,
           row.certificate_signatory,
           row.certificate_signatory_role,
+          row.certificate_signature_image,
+          row.certificate_signature_mime,
           issuedBy,
           JSON.stringify({
             totalLessons: row.total_lessons,

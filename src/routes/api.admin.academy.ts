@@ -146,6 +146,7 @@ export const Route = createFileRoute("/api/admin/academy")({
                     c.level, c.workload_hours as "workloadHours", c.status,
                     c.certificate_enabled as "certificateEnabled",c.completion_percentage as "completionPercentage",
                     c.certificate_signatory as "certificateSignatory",c.certificate_signatory_role as "certificateSignatoryRole",
+                    (c.certificate_signature_image IS NOT NULL) as "certificateSignatureConfigured",
                     c.created_at as "createdAt",
                     (SELECT count(*)::int FROM universe.academy_enrollments e WHERE e.course_id=c.id) as "studentsCount"
                FROM universe.academy_courses c ORDER BY c.created_at DESC`,
