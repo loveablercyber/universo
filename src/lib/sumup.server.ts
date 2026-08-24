@@ -3,7 +3,7 @@
  *
  * Environment variables required:
  *   SUMUP_API_KEY          – Bearer token for SumUp API
- *   SUMUP_MERCHANT_CODE    – Merchant identifier
+ *   SUMUP_MERCHANT_CODE    – Merchant identifier fallback (normally resolved from the API key)
  *   SUMUP_RETURN_URL       – Public URL the customer returns to after payment
  *   SUMUP_WEBHOOK_URL      – Public backend callback for checkout status changes
  */
@@ -21,6 +21,65 @@ function headers() {
     Authorization: `Bearer ${requireEnv("SUMUP_API_KEY")}`,
     "Content-Type": "application/json",
   };
+}
+
+type SumUpMerchantProfile = {
+  merchant_code?: unknown;
+  merchant_profile?: {
+    merchant_code?: unknown;
+  };
+};
+
+let merchantCodePromise: Promise<string> | null = null;
+
+/**
+ * Resolve the merchant owned by the configured secret API key. This prevents a
+ * merchant code copied from another account/environment from breaking every
+ * checkout. SumUp documents GET /v0.1/me as the authoritative profile lookup.
+ */
+async function resolveMerchantCode(): Promise<string> {
+  if (merchantCodePromise) return merchantCodePromise;
+
+  merchantCodePromise = (async () => {
+    const configuredCode = requireEnv("SUMUP_MERCHANT_CODE").toUpperCase();
+    try {
+      const response = await fetch(`${API_BASE}/v0.1/me`, {
+        method: "GET",
+        headers: headers(),
+      });
+      if (!response.ok) {
+        console.warn("[SumUp] Merchant profile lookup failed:", response.status);
+        return configuredCode;
+      }
+
+      const profile = (await response.json()) as SumUpMerchantProfile;
+      const detectedCode =
+        typeof profile.merchant_profile?.merchant_code === "string"
+          ? profile.merchant_profile.merchant_code
+          : typeof profile.merchant_code === "string"
+            ? profile.merchant_code
+            : "";
+      const normalizedCode = detectedCode.trim().toUpperCase();
+      if (!normalizedCode) {
+        console.warn("[SumUp] Merchant profile did not return merchant_code.");
+        return configuredCode;
+      }
+      if (normalizedCode !== configuredCode) {
+        console.warn(
+          "[SumUp] SUMUP_MERCHANT_CODE does not match SUMUP_API_KEY; using the API profile.",
+        );
+      }
+      return normalizedCode;
+    } catch (error) {
+      console.warn(
+        "[SumUp] Merchant profile lookup unavailable; using configured fallback.",
+        error,
+      );
+      return configuredCode;
+    }
+  })();
+
+  return merchantCodePromise;
 }
 
 export type SumUpCheckoutResponse = {
@@ -43,7 +102,7 @@ export async function createSumUpCheckout(
   description: string,
   redirectUrl?: string,
 ): Promise<SumUpCheckoutResponse> {
-  const merchantCode = requireEnv("SUMUP_MERCHANT_CODE").toUpperCase();
+  const merchantCode = await resolveMerchantCode();
   const returnUrl = redirectUrl ?? requireEnv("SUMUP_RETURN_URL");
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Valor inválido para o checkout SumUp.");
