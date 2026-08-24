@@ -40,6 +40,7 @@ import { Route as SolHairClosetPedidoRouteImport } from './routes/sol-hair-close
 import { Route as SolHairClosetPedidosRouteImport } from './routes/sol-hair-closet.pedidos'
 import { Route as SolHairClosetProdutosRouteImport } from './routes/sol-hair-closet.produtos'
 import { Route as ApiAdminAcademyRouteImport } from './routes/api.admin.academy'
+import { Route as ApiAdminAcademyCertificatesRouteImport } from './routes/api.admin.academy-certificates'
 import { Route as ApiAdminCmsRouteImport } from './routes/api.admin.cms'
 import { Route as ApiAdminDataRouteImport } from './routes/api.admin.data'
 import { Route as ApiAdminEloRouteImport } from './routes/api.admin.elo'
@@ -49,10 +50,12 @@ import { Route as ApiAdminStoreRouteImport } from './routes/api.admin.store'
 import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin.users'
 import { Route as ApiWebhookSumupRouteImport } from './routes/api.webhook.sumup'
+import { Route as InvisibleAcademyCertificadoCodeRouteImport } from './routes/invisible-academy.certificado.$code'
 import { Route as InvisibleAcademyCursoSlugRouteImport } from './routes/invisible-academy.curso.$slug'
 import { Route as SolHairClosetCategoriaSlugRouteImport } from './routes/sol-hair-closet.categoria.$slug'
 import { Route as SolHairClosetColecaoSlugRouteImport } from './routes/sol-hair-closet.colecao.$slug'
 import { Route as SolHairClosetProdutoSlugRouteImport } from './routes/sol-hair-closet.produto.$slug'
+import { Route as ApiAcademyCertificateCodeRouteImport } from './routes/api.academy.certificate.$code'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -209,6 +212,12 @@ const ApiAdminAcademyRoute = ApiAdminAcademyRouteImport.update({
   path: '/api/admin/academy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminAcademyCertificatesRoute =
+  ApiAdminAcademyCertificatesRouteImport.update({
+    id: '/api/admin/academy-certificates',
+    path: '/api/admin/academy-certificates',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminCmsRoute = ApiAdminCmsRouteImport.update({
   id: '/api/admin/cms',
   path: '/api/admin/cms',
@@ -254,6 +263,12 @@ const ApiWebhookSumupRoute = ApiWebhookSumupRouteImport.update({
   path: '/api/webhook/sumup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvisibleAcademyCertificadoCodeRoute =
+  InvisibleAcademyCertificadoCodeRouteImport.update({
+    id: '/certificado/$code',
+    path: '/certificado/$code',
+    getParentRoute: () => InvisibleAcademyRoute,
+  } as any)
 const InvisibleAcademyCursoSlugRoute =
   InvisibleAcademyCursoSlugRouteImport.update({
     id: '/curso/$slug',
@@ -278,6 +293,12 @@ const SolHairClosetProdutoSlugRoute =
     path: '/produto/$slug',
     getParentRoute: () => SolHairClosetRoute,
   } as any)
+const ApiAcademyCertificateCodeRoute =
+  ApiAcademyCertificateCodeRouteImport.update({
+    id: '/certificate/$code',
+    path: '/certificate/$code',
+    getParentRoute: () => ApiAcademyRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -293,7 +314,7 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRouteWithChildren
   '/termos-de-uso': typeof TermosDeUsoRoute
-  '/api/academy': typeof ApiAcademyRoute
+  '/api/academy': typeof ApiAcademyRouteWithChildren
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
@@ -311,6 +332,7 @@ export interface FileRoutesByFullPath {
   '/invisible-academy/': typeof InvisibleAcademyIndexRoute
   '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
+  '/api/admin/academy-certificates': typeof ApiAdminAcademyCertificatesRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
@@ -320,10 +342,12 @@ export interface FileRoutesByFullPath {
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/webhook/sumup': typeof ApiWebhookSumupRoute
+  '/invisible-academy/certificado/$code': typeof InvisibleAcademyCertificadoCodeRoute
   '/invisible-academy/curso/$slug': typeof InvisibleAcademyCursoSlugRoute
   '/sol-hair-closet/categoria/$slug': typeof SolHairClosetCategoriaSlugRoute
   '/sol-hair-closet/colecao/$slug': typeof SolHairClosetColecaoSlugRoute
   '/sol-hair-closet/produto/$slug': typeof SolHairClosetProdutoSlugRoute
+  '/api/academy/certificate/$code': typeof ApiAcademyCertificateCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -337,7 +361,7 @@ export interface FileRoutesByTo {
   '/servicos': typeof ServicosRoute
   '/sobre': typeof SobreRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
-  '/api/academy': typeof ApiAcademyRoute
+  '/api/academy': typeof ApiAcademyRouteWithChildren
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
@@ -355,6 +379,7 @@ export interface FileRoutesByTo {
   '/invisible-academy': typeof InvisibleAcademyIndexRoute
   '/sol-hair-closet': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
+  '/api/admin/academy-certificates': typeof ApiAdminAcademyCertificatesRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
@@ -364,10 +389,12 @@ export interface FileRoutesByTo {
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/webhook/sumup': typeof ApiWebhookSumupRoute
+  '/invisible-academy/certificado/$code': typeof InvisibleAcademyCertificadoCodeRoute
   '/invisible-academy/curso/$slug': typeof InvisibleAcademyCursoSlugRoute
   '/sol-hair-closet/categoria/$slug': typeof SolHairClosetCategoriaSlugRoute
   '/sol-hair-closet/colecao/$slug': typeof SolHairClosetColecaoSlugRoute
   '/sol-hair-closet/produto/$slug': typeof SolHairClosetProdutoSlugRoute
+  '/api/academy/certificate/$code': typeof ApiAcademyCertificateCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -384,7 +411,7 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/sol-hair-closet': typeof SolHairClosetRouteWithChildren
   '/termos-de-uso': typeof TermosDeUsoRoute
-  '/api/academy': typeof ApiAcademyRoute
+  '/api/academy': typeof ApiAcademyRouteWithChildren
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
@@ -402,6 +429,7 @@ export interface FileRoutesById {
   '/invisible-academy/': typeof InvisibleAcademyIndexRoute
   '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
+  '/api/admin/academy-certificates': typeof ApiAdminAcademyCertificatesRoute
   '/api/admin/cms': typeof ApiAdminCmsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/elo': typeof ApiAdminEloRoute
@@ -411,10 +439,12 @@ export interface FileRoutesById {
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/webhook/sumup': typeof ApiWebhookSumupRoute
+  '/invisible-academy/certificado/$code': typeof InvisibleAcademyCertificadoCodeRoute
   '/invisible-academy/curso/$slug': typeof InvisibleAcademyCursoSlugRoute
   '/sol-hair-closet/categoria/$slug': typeof SolHairClosetCategoriaSlugRoute
   '/sol-hair-closet/colecao/$slug': typeof SolHairClosetColecaoSlugRoute
   '/sol-hair-closet/produto/$slug': typeof SolHairClosetProdutoSlugRoute
+  '/api/academy/certificate/$code': typeof ApiAcademyCertificateCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -450,6 +480,7 @@ export interface FileRouteTypes {
     | '/invisible-academy/'
     | '/sol-hair-closet/'
     | '/api/admin/academy'
+    | '/api/admin/academy-certificates'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
@@ -459,10 +490,12 @@ export interface FileRouteTypes {
     | '/api/admin/summary'
     | '/api/admin/users'
     | '/api/webhook/sumup'
+    | '/invisible-academy/certificado/$code'
     | '/invisible-academy/curso/$slug'
     | '/sol-hair-closet/categoria/$slug'
     | '/sol-hair-closet/colecao/$slug'
     | '/sol-hair-closet/produto/$slug'
+    | '/api/academy/certificate/$code'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -494,6 +527,7 @@ export interface FileRouteTypes {
     | '/invisible-academy'
     | '/sol-hair-closet'
     | '/api/admin/academy'
+    | '/api/admin/academy-certificates'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
@@ -503,10 +537,12 @@ export interface FileRouteTypes {
     | '/api/admin/summary'
     | '/api/admin/users'
     | '/api/webhook/sumup'
+    | '/invisible-academy/certificado/$code'
     | '/invisible-academy/curso/$slug'
     | '/sol-hair-closet/categoria/$slug'
     | '/sol-hair-closet/colecao/$slug'
     | '/sol-hair-closet/produto/$slug'
+    | '/api/academy/certificate/$code'
   id:
     | '__root__'
     | '/'
@@ -540,6 +576,7 @@ export interface FileRouteTypes {
     | '/invisible-academy/'
     | '/sol-hair-closet/'
     | '/api/admin/academy'
+    | '/api/admin/academy-certificates'
     | '/api/admin/cms'
     | '/api/admin/data'
     | '/api/admin/elo'
@@ -549,10 +586,12 @@ export interface FileRouteTypes {
     | '/api/admin/summary'
     | '/api/admin/users'
     | '/api/webhook/sumup'
+    | '/invisible-academy/certificado/$code'
     | '/invisible-academy/curso/$slug'
     | '/sol-hair-closet/categoria/$slug'
     | '/sol-hair-closet/colecao/$slug'
     | '/sol-hair-closet/produto/$slug'
+    | '/api/academy/certificate/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -569,7 +608,7 @@ export interface RootRouteChildren {
   SobreRoute: typeof SobreRoute
   SolHairClosetRoute: typeof SolHairClosetRouteWithChildren
   TermosDeUsoRoute: typeof TermosDeUsoRoute
-  ApiAcademyRoute: typeof ApiAcademyRoute
+  ApiAcademyRoute: typeof ApiAcademyRouteWithChildren
   ApiAuthRoute: typeof ApiAuthRoute
   ApiCmsContentRoute: typeof ApiCmsContentRoute
   ApiDonationRoute: typeof ApiDonationRoute
@@ -577,6 +616,7 @@ export interface RootRouteChildren {
   ApiStoreRoute: typeof ApiStoreRoute
   ApiStoreCustomerRoute: typeof ApiStoreCustomerRoute
   ApiAdminAcademyRoute: typeof ApiAdminAcademyRoute
+  ApiAdminAcademyCertificatesRoute: typeof ApiAdminAcademyCertificatesRoute
   ApiAdminCmsRoute: typeof ApiAdminCmsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
   ApiAdminEloRoute: typeof ApiAdminEloRoute
@@ -807,6 +847,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAcademyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/academy-certificates': {
+      id: '/api/admin/academy-certificates'
+      path: '/api/admin/academy-certificates'
+      fullPath: '/api/admin/academy-certificates'
+      preLoaderRoute: typeof ApiAdminAcademyCertificatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/cms': {
       id: '/api/admin/cms'
       path: '/api/admin/cms'
@@ -870,6 +917,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhookSumupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invisible-academy/certificado/$code': {
+      id: '/invisible-academy/certificado/$code'
+      path: '/certificado/$code'
+      fullPath: '/invisible-academy/certificado/$code'
+      preLoaderRoute: typeof InvisibleAcademyCertificadoCodeRouteImport
+      parentRoute: typeof InvisibleAcademyRoute
+    }
     '/invisible-academy/curso/$slug': {
       id: '/invisible-academy/curso/$slug'
       path: '/curso/$slug'
@@ -898,6 +952,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SolHairClosetProdutoSlugRouteImport
       parentRoute: typeof SolHairClosetRoute
     }
+    '/api/academy/certificate/$code': {
+      id: '/api/academy/certificate/$code'
+      path: '/certificate/$code'
+      fullPath: '/api/academy/certificate/$code'
+      preLoaderRoute: typeof ApiAcademyCertificateCodeRouteImport
+      parentRoute: typeof ApiAcademyRoute
+    }
   }
 }
 
@@ -915,12 +976,14 @@ const DoacaoRouteWithChildren =
 interface InvisibleAcademyRouteChildren {
   InvisibleAcademyAlunoRoute: typeof InvisibleAcademyAlunoRoute
   InvisibleAcademyIndexRoute: typeof InvisibleAcademyIndexRoute
+  InvisibleAcademyCertificadoCodeRoute: typeof InvisibleAcademyCertificadoCodeRoute
   InvisibleAcademyCursoSlugRoute: typeof InvisibleAcademyCursoSlugRoute
 }
 
 const InvisibleAcademyRouteChildren: InvisibleAcademyRouteChildren = {
   InvisibleAcademyAlunoRoute: InvisibleAcademyAlunoRoute,
   InvisibleAcademyIndexRoute: InvisibleAcademyIndexRoute,
+  InvisibleAcademyCertificadoCodeRoute: InvisibleAcademyCertificadoCodeRoute,
   InvisibleAcademyCursoSlugRoute: InvisibleAcademyCursoSlugRoute,
 }
 
@@ -957,6 +1020,18 @@ const SolHairClosetRouteWithChildren = SolHairClosetRoute._addFileChildren(
   SolHairClosetRouteChildren,
 )
 
+interface ApiAcademyRouteChildren {
+  ApiAcademyCertificateCodeRoute: typeof ApiAcademyCertificateCodeRoute
+}
+
+const ApiAcademyRouteChildren: ApiAcademyRouteChildren = {
+  ApiAcademyCertificateCodeRoute: ApiAcademyCertificateCodeRoute,
+}
+
+const ApiAcademyRouteWithChildren = ApiAcademyRoute._addFileChildren(
+  ApiAcademyRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
@@ -971,7 +1046,7 @@ const rootRouteChildren: RootRouteChildren = {
   SobreRoute: SobreRoute,
   SolHairClosetRoute: SolHairClosetRouteWithChildren,
   TermosDeUsoRoute: TermosDeUsoRoute,
-  ApiAcademyRoute: ApiAcademyRoute,
+  ApiAcademyRoute: ApiAcademyRouteWithChildren,
   ApiAuthRoute: ApiAuthRoute,
   ApiCmsContentRoute: ApiCmsContentRoute,
   ApiDonationRoute: ApiDonationRoute,
@@ -979,6 +1054,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStoreRoute: ApiStoreRoute,
   ApiStoreCustomerRoute: ApiStoreCustomerRoute,
   ApiAdminAcademyRoute: ApiAdminAcademyRoute,
+  ApiAdminAcademyCertificatesRoute: ApiAdminAcademyCertificatesRoute,
   ApiAdminCmsRoute: ApiAdminCmsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
   ApiAdminEloRoute: ApiAdminEloRoute,

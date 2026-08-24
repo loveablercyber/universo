@@ -20,6 +20,10 @@ const courseSchema = z.object({
   level: z.string().max(50).default("Iniciante"),
   workloadHours: z.number().int().min(1).default(10),
   status: z.enum(["active", "draft", "archived"]),
+  certificateEnabled: z.boolean().default(true),
+  completionPercentage: z.number().int().min(1).max(100).default(100),
+  certificateSignatory: z.string().min(2).max(160).default("Carol Sol"),
+  certificateSignatoryRole: z.string().min(2).max(160).default("Diretora da Invisible Academy"),
 });
 const moduleSchema = z.object({
   action: z.literal("save-module"),
@@ -139,7 +143,10 @@ export const Route = createFileRoute("/api/admin/academy")({
             const { rows } = await query(
               `SELECT c.id, c.slug, c.title, c.subtitle, c.description, c.price::float as price,
                     c.promotional_price::float as "promotionalPrice", c.image_url as "imageUrl", c.badge,
-                    c.level, c.workload_hours as "workloadHours", c.status, c.created_at as "createdAt",
+                    c.level, c.workload_hours as "workloadHours", c.status,
+                    c.certificate_enabled as "certificateEnabled",c.completion_percentage as "completionPercentage",
+                    c.certificate_signatory as "certificateSignatory",c.certificate_signatory_role as "certificateSignatoryRole",
+                    c.created_at as "createdAt",
                     (SELECT count(*)::int FROM universe.academy_enrollments e WHERE e.course_id=c.id) as "studentsCount"
                FROM universe.academy_courses c ORDER BY c.created_at DESC`,
             );
@@ -276,7 +283,8 @@ export const Route = createFileRoute("/api/admin/academy")({
               if (v.id) {
                 const updated = await client.query<{ id: string }>(
                   `UPDATE universe.academy_courses SET slug=$2,title=$3,subtitle=NULLIF($4,''),description=$5,price=$6,
-                  promotional_price=$7,image_url=$8,badge=$9,level=$10,workload_hours=$11,status=$12,updated_at=now()
+                  promotional_price=$7,image_url=$8,badge=$9,level=$10,workload_hours=$11,status=$12,
+                  certificate_enabled=$13,completion_percentage=$14,certificate_signatory=$15,certificate_signatory_role=$16,updated_at=now()
                  WHERE id=$1 RETURNING id`,
                   [
                     v.id,
@@ -291,6 +299,10 @@ export const Route = createFileRoute("/api/admin/academy")({
                     v.level,
                     v.workloadHours,
                     v.status,
+                    v.certificateEnabled,
+                    v.completionPercentage,
+                    v.certificateSignatory,
+                    v.certificateSignatoryRole,
                   ],
                 );
                 if (!updated.rowCount) throw new Response("Curso não encontrado.", { status: 404 });
@@ -298,8 +310,9 @@ export const Route = createFileRoute("/api/admin/academy")({
                 return v.id;
               }
               const inserted = await client.query<{ id: string }>(
-                `INSERT INTO universe.academy_courses(slug,title,subtitle,description,price,promotional_price,image_url,badge,level,workload_hours,status)
-               VALUES($1,$2,NULLIF($3,''),$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+                `INSERT INTO universe.academy_courses(slug,title,subtitle,description,price,promotional_price,image_url,badge,level,workload_hours,status,
+                   certificate_enabled,completion_percentage,certificate_signatory,certificate_signatory_role)
+               VALUES($1,$2,NULLIF($3,''),$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
                 [
                   v.slug,
                   v.title,
@@ -312,6 +325,10 @@ export const Route = createFileRoute("/api/admin/academy")({
                   v.level,
                   v.workloadHours,
                   v.status,
+                  v.certificateEnabled,
+                  v.completionPercentage,
+                  v.certificateSignatory,
+                  v.certificateSignatoryRole,
                 ],
               );
               await audit(

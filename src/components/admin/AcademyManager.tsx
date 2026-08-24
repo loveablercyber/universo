@@ -22,6 +22,8 @@ import {
   KeyRound,
   ShieldBan,
   ShieldCheck,
+  Award,
+  Download,
 } from "lucide-react";
 
 type Course = {
@@ -38,6 +40,10 @@ type Course = {
   workloadHours: number;
   status: "active" | "draft" | "archived";
   studentsCount: number;
+  certificateEnabled: boolean;
+  completionPercentage: number;
+  certificateSignatory: string;
+  certificateSignatoryRole: string;
 };
 
 type Module = {
@@ -84,10 +90,33 @@ type Enrollment = {
   totalLessons: number;
 };
 
+type AdminCertificate = {
+  enrollmentId: string;
+  studentName: string;
+  studentEmail: string;
+  enrollmentStatus: string;
+  courseTitle: string;
+  courseSubtitle?: string;
+  certificateEnabled: boolean;
+  requiredPercentage: number;
+  totalLessons: number;
+  completedLessons: number;
+  progressPercentage: number;
+  certificateId?: string | null;
+  verificationCode?: string | null;
+  certificateNumber?: string | null;
+  issuedAt?: string | null;
+  revokedAt?: string | null;
+  revocationReason?: string | null;
+};
+
 export function AcademyManager() {
-  const [activeTab, setActiveTab] = useState<"courses" | "content" | "enrollments">("courses");
+  const [activeTab, setActiveTab] = useState<
+    "courses" | "content" | "enrollments" | "certificates"
+  >("courses");
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [certificates, setCertificates] = useState<AdminCertificate[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
 
@@ -113,18 +142,21 @@ export function AcademyManager() {
     setLoading(true);
     setError("");
     try {
-      const [resC, resE] = await Promise.all([
+      const [resC, resE, resCert] = await Promise.all([
         fetch("/api/admin/academy?action=courses"),
         fetch("/api/admin/academy?action=enrollments"),
+        fetch("/api/admin/academy-certificates"),
       ]);
 
       const dataC = await resC.json();
       const dataE = await resE.json();
+      const dataCert = await resCert.json();
 
       if (!resC.ok) throw new Error(dataC.message || "Erro ao carregar cursos");
 
       setCourses(dataC.courses || []);
       setEnrollments(dataE.enrollments || []);
+      setCertificates(dataCert.certificates || []);
       setSelectedCourseId((current) => current ?? dataC.courses?.[0]?.id ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar dados EAD");
@@ -238,6 +270,13 @@ export function AcademyManager() {
             }`}
           >
             <Users size={16} /> Alunas ({enrollments.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("certificates")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold transition ${activeTab === "certificates" ? "bg-copper text-white shadow-sm" : "bg-cream/40 text-brown/70 hover:bg-cream"}`}
+          >
+            <Award size={16} /> Certificados (
+            {certificates.filter((item) => item.certificateId).length})
           </button>
         </div>
 
@@ -738,6 +777,14 @@ export function AcademyManager() {
         </div>
       )}
 
+      {activeTab === "certificates" && (
+        <CertificatesPanel
+          certificates={certificates}
+          searchQuery={searchQuery}
+          onUpdate={loadData}
+        />
+      )}
+
       {/* Modal Edição de Curso */}
       {editingCourse && (
         <CourseEditorModal
@@ -829,6 +876,225 @@ function StatusBadge({ status }: { status: "draft" | "published" | "archived" })
   );
 }
 
+function CertificatesPanel({
+  certificates,
+  searchQuery,
+  onUpdate,
+}: {
+  certificates: AdminCertificate[];
+  searchQuery: string;
+  onUpdate: () => void | Promise<void>;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const visible = certificates.filter(
+    (item) =>
+      !normalizedSearch ||
+      item.studentName.toLowerCase().includes(normalizedSearch) ||
+      item.studentEmail.toLowerCase().includes(normalizedSearch) ||
+      item.courseTitle.toLowerCase().includes(normalizedSearch) ||
+      item.certificateNumber?.toLowerCase().includes(normalizedSearch),
+  );
+  const mutate = async (body: Record<string, unknown>, id: string) => {
+    setBusyId(id);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/academy-certificates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(payload.message || "Não foi possível atualizar o certificado");
+      await onUpdate();
+    } catch (failure) {
+      setError(
+        failure instanceof Error ? failure.message : "Não foi possível atualizar o certificado",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <MetricCard
+          label="Emitidos"
+          value={certificates.filter((item) => item.certificateId).length}
+        />
+        <MetricCard
+          label="Válidos"
+          value={certificates.filter((item) => item.certificateId && !item.revokedAt).length}
+        />
+        <MetricCard
+          label="Elegíveis sem emissão"
+          value={
+            certificates.filter(
+              (item) =>
+                !item.certificateId &&
+                item.certificateEnabled &&
+                item.totalLessons > 0 &&
+                item.progressPercentage >= item.requiredPercentage,
+            ).length
+          }
+        />
+      </div>
+      {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      <div className="overflow-hidden rounded-2xl border border-copper/10 bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-cream/30 text-xs uppercase text-brown/60">
+              <tr>
+                <th className="px-5 py-4">Aluna</th>
+                <th className="px-5 py-4">Curso</th>
+                <th className="px-5 py-4">Conclusão</th>
+                <th className="px-5 py-4">Certificado</th>
+                <th className="px-5 py-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-copper/10">
+              {visible.length ? (
+                visible.map((item) => {
+                  const eligible =
+                    item.certificateEnabled &&
+                    item.totalLessons > 0 &&
+                    item.progressPercentage >= item.requiredPercentage;
+                  return (
+                    <tr key={item.enrollmentId} className="hover:bg-cream/20">
+                      <td className="px-5 py-4">
+                        <p className="font-medium text-brown">{item.studentName}</p>
+                        <p className="text-xs text-brown/50">{item.studentEmail}</p>
+                      </td>
+                      <td className="px-5 py-4 text-xs font-semibold text-copper">
+                        {item.courseTitle}
+                        <br />
+                        <span className="font-normal text-brown/50">{item.courseSubtitle}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="text-xs font-semibold text-brown">
+                          {item.progressPercentage}% ({item.completedLessons}/{item.totalLessons})
+                        </p>
+                        <p className="text-[10px] text-brown/50">
+                          Critério: {item.requiredPercentage}%
+                        </p>
+                      </td>
+                      <td className="px-5 py-4">
+                        {item.certificateId ? (
+                          <div>
+                            <span
+                              className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase ${item.revokedAt ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}
+                            >
+                              {item.revokedAt ? "Revogado" : "Válido"}
+                            </span>
+                            <p className="mt-1 font-mono text-[10px] text-brown/50">
+                              {item.certificateNumber}
+                            </p>
+                          </div>
+                        ) : (
+                          <span
+                            className={`text-xs ${eligible ? "text-emerald-700" : "text-brown/40"}`}
+                          >
+                            {eligible ? "Pronto para emitir" : "Ainda não elegível"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end gap-1">
+                          {item.certificateId && item.verificationCode ? (
+                            <>
+                              <a
+                                title="Baixar PDF"
+                                aria-label="Baixar certificado PDF"
+                                href={`/api/academy/certificate/${item.verificationCode}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-lg p-2 text-copper hover:bg-copper/10"
+                              >
+                                <Download size={16} />
+                              </a>
+                              <a
+                                title="Verificar certificado"
+                                aria-label="Verificar certificado"
+                                href={`/invisible-academy/certificado/${item.verificationCode}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-lg p-2 text-copper hover:bg-copper/10"
+                              >
+                                <Eye size={16} />
+                              </a>
+                            </>
+                          ) : null}
+                          {item.certificateId && !item.revokedAt ? (
+                            <button
+                              type="button"
+                              disabled={busyId === item.enrollmentId}
+                              onClick={() => {
+                                const reason = window.prompt("Informe o motivo da revogação:");
+                                if (reason?.trim())
+                                  void mutate(
+                                    {
+                                      action: "revoke",
+                                      certificateId: item.certificateId,
+                                      reason: reason.trim(),
+                                    },
+                                    item.enrollmentId,
+                                  );
+                              }}
+                              className="rounded-lg p-2 text-red-600 hover:bg-red-50"
+                              title="Revogar certificado"
+                              aria-label="Revogar certificado"
+                            >
+                              <Archive size={16} />
+                            </button>
+                          ) : eligible ? (
+                            <button
+                              type="button"
+                              disabled={busyId === item.enrollmentId}
+                              onClick={() =>
+                                void mutate(
+                                  {
+                                    action: item.revokedAt ? "restore" : "issue",
+                                    enrollmentId: item.enrollmentId,
+                                  },
+                                  item.enrollmentId,
+                                )
+                              }
+                              className="rounded-xl bg-copper px-3 py-2 text-[10px] font-bold text-white disabled:opacity-50"
+                            >
+                              {item.revokedAt ? "REVALIDAR" : "EMITIR"}
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={5} className="p-10 text-center text-brown/50">
+                    Nenhuma matrícula encontrada.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-copper/10 bg-white p-4">
+      <p className="text-xs text-brown/50">{label}</p>
+      <p className="font-serif text-3xl font-bold text-brown">{value}</p>
+    </div>
+  );
+}
+
 function CourseEditorModal({
   course,
   onClose,
@@ -864,6 +1130,10 @@ function CourseEditorModal({
         level: form.get("level") || "Iniciante",
         workloadHours: parseInt(String(form.get("workloadHours")), 10),
         status: form.get("status"),
+        certificateEnabled: form.get("certificateEnabled") === "on",
+        completionPercentage: parseInt(String(form.get("completionPercentage")), 10),
+        certificateSignatory: form.get("certificateSignatory"),
+        certificateSignatoryRole: form.get("certificateSignatoryRole"),
       };
 
       const res = await fetch("/api/admin/academy", {
@@ -1017,6 +1287,50 @@ function CourseEditorModal({
               required
               className="w-full h-10 rounded-xl border border-copper/20 px-3 outline-none focus:border-copper text-sm"
             />
+          </div>
+
+          <div className="rounded-2xl border border-copper/15 bg-cream/20 p-4 space-y-3">
+            <label className="flex items-center gap-2 text-xs font-semibold text-brown">
+              <input
+                name="certificateEnabled"
+                type="checkbox"
+                defaultChecked={course?.certificateEnabled ?? true}
+                className="accent-copper"
+              />
+              Emitir certificado automaticamente
+            </label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Conclusão mínima (%)</label>
+                <input
+                  name="completionPercentage"
+                  type="number"
+                  min={1}
+                  max={100}
+                  defaultValue={course?.completionPercentage ?? 100}
+                  required
+                  className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Assinatura</label>
+                <input
+                  name="certificateSignatory"
+                  defaultValue={course?.certificateSignatory ?? "Carol Sol"}
+                  required
+                  className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Cargo da assinatura</label>
+                <input
+                  name="certificateSignatoryRole"
+                  defaultValue={course?.certificateSignatoryRole ?? "Diretora da Invisible Academy"}
+                  required
+                  className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-1">

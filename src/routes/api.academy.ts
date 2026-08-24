@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { query } from "@/lib/db.server";
+import { query, withTransaction } from "@/lib/db.server";
+import { syncEnrollmentCompletion } from "@/lib/academy-certificates.server";
 import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
 import { sendAcademyEnrollmentNotification } from "@/lib/notifications.server";
 import { createSession, readSession, sessionCookie, type SessionUser } from "@/lib/auth.server";
@@ -210,6 +211,39 @@ export const Route = createFileRoute("/api/academy")({
             return Response.json({ ok: true, enrollments: rows });
           }
 
+          if (action === "my_certificates") {
+            const user = await requireStudent(request);
+            const { rows } = await query(
+              `SELECT cert.verification_code as "verificationCode",cert.certificate_number as "certificateNumber",
+                      cert.student_name as "studentName",cert.course_title as "courseTitle",cert.workload_hours as "workloadHours",
+                      cert.completion_percentage as "completionPercentage",cert.issued_at as "issuedAt",
+                      cert.revoked_at as "revokedAt",cert.revocation_reason as "revocationReason"
+                 FROM universe.academy_certificates cert JOIN universe.academy_enrollments e ON e.id=cert.enrollment_id
+                WHERE e.user_id=$1 ORDER BY cert.issued_at DESC`,
+              [user.id],
+            );
+            return Response.json({ ok: true, certificates: rows });
+          }
+
+          if (action === "verify_certificate") {
+            const code = url.searchParams.get("code")?.trim().toUpperCase();
+            if (!code)
+              return Response.json({ ok: false, message: "Código ausente." }, { status: 400 });
+            const { rows } = await query(
+              `SELECT certificate_number as "certificateNumber",student_name as "studentName",course_title as "courseTitle",
+                      workload_hours as "workloadHours",completion_percentage as "completionPercentage",issued_at as "issuedAt",
+                      revoked_at as "revokedAt",revocation_reason as "revocationReason"
+                 FROM universe.academy_certificates WHERE verification_code=$1`,
+              [code],
+            );
+            if (!rows[0])
+              return Response.json(
+                { ok: false, valid: false, message: "Certificado não encontrado." },
+                { status: 404 },
+              );
+            return Response.json({ ok: true, valid: !rows[0].revokedAt, certificate: rows[0] });
+          }
+
           if (action === "classroom") {
             const courseSlug = url.searchParams.get("course_slug");
             const user = await requireStudent(request);
@@ -318,21 +352,29 @@ export const Route = createFileRoute("/api/academy")({
             if (!ownership.rowCount)
               return Response.json({ ok: false, message: "Acesso negado." }, { status: 403 });
 
-            if (completed) {
-              await query(
-                `INSERT INTO universe.academy_student_progress (enrollment_id, lesson_id, completed, completed_at)
+            const completionResult = await withTransaction(async (client) => {
+              if (completed) {
+                await client.query(
+                  `INSERT INTO universe.academy_student_progress (enrollment_id, lesson_id, completed, completed_at)
                  VALUES ($1, $2, true, now())
                  ON CONFLICT (enrollment_id, lesson_id) DO UPDATE SET completed = true, completed_at = now()`,
-                [enrollmentId, lessonId],
+                  [enrollmentId, lessonId],
+                );
+              } else {
+                await client.query(
+                  `DELETE FROM universe.academy_student_progress WHERE enrollment_id = $1 AND lesson_id = $2`,
+                  [enrollmentId, lessonId],
+                );
+              }
+              const progress = await syncEnrollmentCompletion(client, enrollmentId);
+              const certificate = await client.query<{ verificationCode: string }>(
+                `SELECT verification_code as "verificationCode" FROM universe.academy_certificates WHERE enrollment_id=$1 AND revoked_at IS NULL`,
+                [enrollmentId],
               );
-            } else {
-              await query(
-                `DELETE FROM universe.academy_student_progress WHERE enrollment_id = $1 AND lesson_id = $2`,
-                [enrollmentId, lessonId],
-              );
-            }
+              return { ...progress, certificate: certificate.rows[0] ?? null };
+            });
 
-            return Response.json({ ok: true });
+            return Response.json({ ok: true, ...completionResult });
           }
 
           if (body?.action === "retry_payment") {

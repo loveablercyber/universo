@@ -64,12 +64,26 @@ type StudentCourse = {
   level?: string;
 };
 
+type StudentCertificate = {
+  verificationCode: string;
+  certificateNumber: string;
+  studentName: string;
+  courseTitle: string;
+  workloadHours: number;
+  completionPercentage: number;
+  issuedAt: string;
+  revokedAt?: string | null;
+  revocationReason?: string | null;
+};
+
 function StudentClassroomPage() {
   const [data, setData] = useState<CourseClassroomData | null>(null);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [myCourses, setMyCourses] = useState<StudentCourse[]>([]);
+  const [myCertificates, setMyCertificates] = useState<StudentCertificate[]>([]);
+  const [newCertificateCode, setNewCertificateCode] = useState<string | null>(null);
   const [courseSlug, setCourseSlug] = useState(() =>
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("course")
@@ -90,12 +104,19 @@ function StudentClassroomPage() {
         }
         setAuthenticated(true);
         if (!courseSlug) {
-          const coursesRes = await fetch("/api/academy?action=my_courses");
-          const coursesJson = await coursesRes.json();
+          const [coursesRes, certificatesRes] = await Promise.all([
+            fetch("/api/academy?action=my_courses"),
+            fetch("/api/academy?action=my_certificates"),
+          ]);
+          const [coursesJson, certificatesJson] = await Promise.all([
+            coursesRes.json(),
+            certificatesRes.json(),
+          ]);
           if (!coursesRes.ok || !coursesJson.ok) {
             setError(coursesJson.message || "Não foi possível carregar seus cursos.");
           } else {
             setMyCourses(coursesJson.enrollments || []);
+            if (certificatesRes.ok) setMyCertificates(certificatesJson.certificates || []);
           }
           setLoading(false);
           return;
@@ -174,7 +195,9 @@ function StudentClassroomPage() {
           completed: newCompleted,
         }),
       });
-      if (!response.ok) throw new Error("Não foi possível salvar o progresso.");
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "Não foi possível salvar o progresso.");
+      setNewCertificateCode(payload.certificate?.verificationCode ?? null);
     } catch (e) {
       console.error("Erro ao registrar conclusão da aula:", e);
       setError("Não foi possível salvar o progresso da aula. Tente novamente.");
@@ -371,6 +394,67 @@ function StudentClassroomPage() {
                 ))}
               </div>
             )}
+            {myCertificates.length > 0 && (
+              <section className="space-y-4 border-t border-[#C97945]/20 pt-8">
+                <div className="text-center">
+                  <Award className="mx-auto text-[#C97945]" size={36} />
+                  <h2 className="mt-2 font-serif text-3xl font-bold text-white">
+                    Meus certificados
+                  </h2>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {myCertificates.map((certificate) => (
+                    <article
+                      key={certificate.verificationCode}
+                      className="rounded-3xl border border-[#C97945]/20 bg-[#171412] p-5"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-[#C97945]">
+                            {certificate.certificateNumber}
+                          </p>
+                          <h3 className="mt-1 font-serif text-xl font-bold text-white">
+                            {certificate.courseTitle}
+                          </h3>
+                          <p className="mt-1 text-xs text-[#8E7569]">
+                            {certificate.workloadHours} horas • emitido em{" "}
+                            {new Date(certificate.issuedAt).toLocaleDateString("pt-BR")}
+                          </p>
+                        </div>
+                        <Award
+                          className={certificate.revokedAt ? "text-red-400" : "text-emerald-400"}
+                          size={28}
+                        />
+                      </div>
+                      {certificate.revokedAt ? (
+                        <p className="mt-4 rounded-xl bg-red-950/40 p-3 text-xs text-red-300">
+                          Revogado: {certificate.revocationReason || "Consulte a administração."}
+                        </p>
+                      ) : (
+                        <div className="mt-4 flex gap-2">
+                          <a
+                            href={`/api/academy/certificate/${certificate.verificationCode}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-1 rounded-xl bg-[#C97945] px-4 py-3 text-center text-xs font-bold text-white"
+                          >
+                            BAIXAR PDF
+                          </a>
+                          <a
+                            href={`/invisible-academy/certificado/${certificate.verificationCode}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-xl border border-[#C97945]/40 px-4 py-3 text-xs font-bold text-[#C97945]"
+                          >
+                            VALIDAR
+                          </a>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         ) : error || !data ? (
           <div className="mx-auto max-w-md my-16 text-center space-y-4 rounded-3xl border border-[#C97945]/20 bg-[#171412] p-8">
@@ -480,6 +564,23 @@ function StudentClassroomPage() {
                   {completedCount} de {allLessons.length} aulas concluídas
                 </p>
               </div>
+              {newCertificateCode && (
+                <div className="rounded-3xl border border-emerald-500/30 bg-emerald-950/30 p-6 text-center">
+                  <Award className="mx-auto text-emerald-400" size={38} />
+                  <h3 className="mt-2 font-serif text-xl font-bold text-white">Curso concluído!</h3>
+                  <p className="mt-1 text-xs text-emerald-200/70">
+                    Seu certificado já está disponível.
+                  </p>
+                  <a
+                    href={`/api/academy/certificate/${newCertificateCode}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex rounded-xl bg-emerald-600 px-5 py-3 text-xs font-bold text-white"
+                  >
+                    BAIXAR CERTIFICADO
+                  </a>
+                </div>
+              )}
 
               {/* Índice de Módulos & Aulas */}
               <div className="rounded-3xl border border-[#C97945]/20 bg-[#171412] p-5 space-y-4 max-h-[600px] overflow-y-auto">
