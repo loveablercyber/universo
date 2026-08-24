@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import pg, { type QueryResultRow } from "pg";
+import pg, { type PoolClient, type QueryResultRow } from "pg";
 
 const { Pool } = pg;
 
@@ -29,6 +29,21 @@ export function requireDatabase() {
 
 export async function query<T extends QueryResultRow>(text: string, values: unknown[] = []) {
   return requireDatabase().query<T>(text, values);
+}
+
+export async function withTransaction<T>(callback: (client: PoolClient) => Promise<T>) {
+  const client = await requireDatabase().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await callback(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function checkDatabase() {

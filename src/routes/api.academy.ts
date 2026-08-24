@@ -158,7 +158,7 @@ export const Route = createFileRoute("/api/academy")({
             }>(
               `SELECT id, title, description, sort_order
                  FROM universe.academy_modules
-                WHERE course_id = $1
+                WHERE course_id = $1 AND status = 'published'
                 ORDER BY sort_order ASC, created_at ASC`,
               [course.id],
             );
@@ -168,7 +168,7 @@ export const Route = createFileRoute("/api/academy")({
                 const lessonsRes = await query(
                   `SELECT id, title, description, duration_minutes as "durationMinutes", is_preview as "isPreview"
                      FROM universe.academy_lessons
-                    WHERE module_id = $1
+                    WHERE module_id = $1 AND status = 'published'
                     ORDER BY sort_order ASC, created_at ASC`,
                   [m.id],
                 );
@@ -243,7 +243,7 @@ export const Route = createFileRoute("/api/academy")({
             );
 
             const modulesRes = await query<{ id: string; title: string; sort_order: number }>(
-              `SELECT id, title, sort_order FROM universe.academy_modules WHERE course_id = $1 ORDER BY sort_order ASC`,
+              `SELECT id, title, sort_order FROM universe.academy_modules WHERE course_id = $1 AND status = 'published' ORDER BY sort_order ASC`,
               [enrollment.course_id],
             );
 
@@ -265,7 +265,7 @@ export const Route = createFileRoute("/api/academy")({
                 }>(
                   `SELECT id, title, description, video_url as "videoUrl", duration_minutes as "durationMinutes"
                      FROM universe.academy_lessons
-                    WHERE module_id = $1
+                    WHERE module_id = $1 AND status = 'published'
                     ORDER BY sort_order ASC`,
                   [m.id],
                 );
@@ -311,7 +311,8 @@ export const Route = createFileRoute("/api/academy")({
               `SELECT 1 FROM universe.academy_enrollments e
                 JOIN universe.academy_lessons l ON l.id=$2
                 JOIN universe.academy_modules m ON m.id=l.module_id AND m.course_id=e.course_id
-               WHERE e.id=$1 AND e.user_id=$3 AND e.status IN ('active','completed')`,
+               WHERE e.id=$1 AND e.user_id=$3 AND e.status IN ('active','completed')
+                 AND m.status='published' AND l.status='published'`,
               [enrollmentId, lessonId, user.id],
             );
             if (!ownership.rowCount)

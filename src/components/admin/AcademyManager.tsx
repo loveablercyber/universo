@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import {
   Plus,
   Search,
@@ -12,6 +12,12 @@ import {
   Video,
   Layers,
   CheckCircle2,
+  Copy,
+  Archive,
+  ArchiveRestore,
+  ArrowUp,
+  ArrowDown,
+  Eye,
 } from "lucide-react";
 
 type Course = {
@@ -35,6 +41,7 @@ type Module = {
   title: string;
   description?: string;
   sortOrder: number;
+  status: "draft" | "published" | "archived";
   lessons: Array<{
     id: string;
     title: string;
@@ -43,8 +50,11 @@ type Module = {
     durationMinutes: number;
     sortOrder: number;
     isPreview: boolean;
+    status: "draft" | "published" | "archived";
   }>;
 };
+
+type Lesson = Module["lessons"][number];
 
 type Enrollment = {
   id: string;
@@ -81,8 +91,11 @@ export function AcademyManager() {
     lesson?: Module["lessons"][0];
   } | null>(null);
   const [showManualEnrollModal, setShowManualEnrollModal] = useState(false);
+  const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [contentBusy, setContentBusy] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -98,37 +111,68 @@ export function AcademyManager() {
 
       setCourses(dataC.courses || []);
       setEnrollments(dataE.enrollments || []);
-      if (!selectedCourseId && dataC.courses?.[0]?.id) {
-        setSelectedCourseId(dataC.courses[0].id);
-      }
+      setSelectedCourseId((current) => current ?? dataC.courses?.[0]?.id ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar dados EAD");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadCourseContent = async (courseId: string) => {
+  const loadCourseContent = useCallback(async (courseId: string) => {
+    setError("");
     try {
       const res = await fetch(`/api/admin/academy?action=modules_lessons&courseId=${courseId}`);
       const data = await res.json();
-      if (res.ok && data.ok) {
-        setModules(data.modules || []);
-      }
+      if (!res.ok || !data.ok) throw new Error(data.message || "Erro ao carregar o currículo");
+      setModules(data.modules || []);
     } catch (e) {
-      console.error("Erro ao carregar aulas do curso:", e);
+      setError(e instanceof Error ? e.message : "Erro ao carregar o currículo");
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   useEffect(() => {
     if (selectedCourseId) {
       loadCourseContent(selectedCourseId);
     }
-  }, [selectedCourseId]);
+  }, [loadCourseContent, selectedCourseId]);
+
+  const mutateContent = async (body: Record<string, unknown>) => {
+    setContentBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/academy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.message || "Não foi possível atualizar o conteúdo");
+      if (selectedCourseId) await loadCourseContent(selectedCourseId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não foi possível atualizar o conteúdo");
+    } finally {
+      setContentBusy(false);
+    }
+  };
+
+  const moveItem = (
+    items: Array<{ id: string }>,
+    index: number,
+    direction: -1 | 1,
+    action: "reorder-modules" | "reorder-lessons",
+    parentId: string,
+  ) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= items.length) return;
+    const ids = items.map((item) => item.id);
+    [ids[index], ids[nextIndex]] = [ids[nextIndex], ids[index]];
+    void mutateContent({ action, parentId, ids });
+  };
 
   const filteredCourses = courses.filter(
     (c) =>
@@ -142,6 +186,9 @@ export function AcademyManager() {
       e.studentEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
       e.courseTitle.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+  const visibleModules = showArchived
+    ? modules
+    : modules.filter((module) => module.status !== "archived");
 
   return (
     <div className="space-y-6">
@@ -286,7 +333,6 @@ export function AcademyManager() {
       {/* Aba 2: Módulos e Aulas */}
       {activeTab === "content" && (
         <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-          {/* Seletor de Curso */}
           <div className="rounded-2xl border border-copper/10 bg-white p-4 space-y-3 h-fit">
             <h3 className="font-serif text-lg font-bold text-brown border-b border-copper/10 pb-2">
               Selecione o Curso
@@ -296,11 +342,7 @@ export function AcademyManager() {
                 <button
                   key={c.id}
                   onClick={() => setSelectedCourseId(c.id)}
-                  className={`w-full text-left p-3 rounded-xl text-xs font-semibold transition ${
-                    selectedCourseId === c.id
-                      ? "bg-copper text-white"
-                      : "text-brown/80 hover:bg-cream"
-                  }`}
+                  className={`w-full text-left p-3 rounded-xl text-xs font-semibold transition ${selectedCourseId === c.id ? "bg-copper text-white" : "text-brown/80 hover:bg-cream"}`}
                 >
                   {c.title} ({c.subtitle})
                 </button>
@@ -308,78 +350,271 @@ export function AcademyManager() {
             </div>
           </div>
 
-          {/* Gerenciador de Módulos e Aulas */}
           <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-copper/10">
-              <h3 className="font-serif text-xl font-bold text-brown">Currículo de Videoaulas</h3>
+            <div className="flex flex-wrap justify-between gap-3 items-center bg-white p-4 rounded-2xl border border-copper/10">
+              <div>
+                <h3 className="font-serif text-xl font-bold text-brown">Currículo de Videoaulas</h3>
+                <label className="mt-1 flex items-center gap-2 text-xs text-brown/60">
+                  <input
+                    type="checkbox"
+                    checked={showArchived}
+                    onChange={(e) => setShowArchived(e.target.checked)}
+                    className="accent-copper"
+                  />
+                  Mostrar itens arquivados
+                </label>
+              </div>
               {selectedCourseId && (
                 <button
                   onClick={() => setEditingModule({ courseId: selectedCourseId })}
-                  className="h-9 px-4 flex items-center gap-2 rounded-xl bg-copper text-xs font-semibold text-white hover:bg-copper-dark transition"
+                  disabled={contentBusy}
+                  className="h-9 px-4 flex items-center gap-2 rounded-xl bg-copper text-xs font-semibold text-white hover:bg-copper-dark disabled:opacity-50 transition"
                 >
                   <Plus size={15} /> Novo Módulo
                 </button>
               )}
             </div>
 
-            {modules.length === 0 ? (
+            {visibleModules.length === 0 ? (
               <div className="rounded-2xl border border-copper/10 bg-white p-8 text-center text-brown/60">
-                Nenhum módulo cadastrado para este curso. Clique em "Novo Módulo" para iniciar.
+                Nenhum módulo encontrado para este curso.
               </div>
             ) : (
-              modules.map((m, idx) => (
-                <div
-                  key={m.id}
-                  className="rounded-2xl border border-copper/10 bg-white p-5 space-y-4 shadow-sm"
-                >
-                  <div className="flex justify-between items-center border-b border-copper/10 pb-3">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-copper">
-                        Módulo {idx + 1}
-                      </span>
-                      <h4 className="font-serif text-lg font-bold text-brown">{m.title}</h4>
-                      {m.description && <p className="text-xs text-brown/60">{m.description}</p>}
-                    </div>
-                    <button
-                      onClick={() => setEditingLesson({ moduleId: m.id })}
-                      className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-copper/20 text-xs font-semibold text-copper hover:bg-copper/5 transition"
-                    >
-                      <Plus size={14} /> Add Aula
-                    </button>
-                  </div>
-
-                  {/* Lista de Aulas do Módulo */}
-                  <div className="space-y-2">
-                    {m.lessons.length === 0 ? (
-                      <p className="text-xs text-brown/50 italic py-2">
-                        Nenhuma aula cadastrada neste módulo.
-                      </p>
-                    ) : (
-                      m.lessons.map((l) => (
-                        <div
-                          key={l.id}
-                          className="flex items-center justify-between p-3 rounded-xl bg-cream/30 text-xs border border-copper/10"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Video size={16} className="text-copper shrink-0" />
-                            <div>
-                              <p className="font-medium text-brown">{l.title}</p>
-                              <p className="text-[10px] text-brown/55">
-                                {l.durationMinutes} min • {l.videoUrl}
-                              </p>
-                            </div>
-                          </div>
-                          {l.isPreview && (
-                            <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                              Gratuito
-                            </span>
-                          )}
+              visibleModules.map((m, idx) => {
+                const visibleLessons = showArchived
+                  ? m.lessons
+                  : m.lessons.filter((lesson) => lesson.status !== "archived");
+                const moduleIndex = visibleModules.findIndex((module) => module.id === m.id);
+                return (
+                  <section
+                    key={m.id}
+                    className={`rounded-2xl border bg-white p-5 space-y-4 shadow-sm ${m.status === "archived" ? "border-slate-300 opacity-70" : "border-copper/10"}`}
+                  >
+                    <div className="flex flex-wrap justify-between gap-3 items-start border-b border-copper/10 pb-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-copper">
+                            Módulo {idx + 1}
+                          </span>
+                          <StatusBadge status={m.status} />
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ))
+                        <h4 className="font-serif text-lg font-bold text-brown">{m.title}</h4>
+                        {m.description && <p className="text-xs text-brown/60">{m.description}</p>}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <IconButton
+                          label="Mover módulo para cima"
+                          disabled={contentBusy || moduleIndex === 0}
+                          onClick={() =>
+                            moveItem(
+                              visibleModules,
+                              moduleIndex,
+                              -1,
+                              "reorder-modules",
+                              selectedCourseId!,
+                            )
+                          }
+                        >
+                          <ArrowUp size={16} />
+                        </IconButton>
+                        <IconButton
+                          label="Mover módulo para baixo"
+                          disabled={contentBusy || moduleIndex === visibleModules.length - 1}
+                          onClick={() =>
+                            moveItem(
+                              visibleModules,
+                              moduleIndex,
+                              1,
+                              "reorder-modules",
+                              selectedCourseId!,
+                            )
+                          }
+                        >
+                          <ArrowDown size={16} />
+                        </IconButton>
+                        <IconButton
+                          label="Editar módulo"
+                          onClick={() =>
+                            setEditingModule({ courseId: selectedCourseId!, module: m })
+                          }
+                        >
+                          <Edit3 size={16} />
+                        </IconButton>
+                        <IconButton
+                          label="Duplicar módulo"
+                          disabled={contentBusy}
+                          onClick={() =>
+                            void mutateContent({
+                              action: "duplicate-content",
+                              entity: "module",
+                              id: m.id,
+                            })
+                          }
+                        >
+                          <Copy size={16} />
+                        </IconButton>
+                        <IconButton
+                          label={m.status === "archived" ? "Restaurar módulo" : "Arquivar módulo"}
+                          disabled={contentBusy}
+                          onClick={() => {
+                            if (
+                              m.status === "archived" ||
+                              window.confirm(
+                                `Arquivar o módulo “${m.title}”? O progresso das alunas será preservado.`,
+                              )
+                            )
+                              void mutateContent({
+                                action:
+                                  m.status === "archived" ? "restore-content" : "archive-content",
+                                entity: "module",
+                                id: m.id,
+                              });
+                          }}
+                        >
+                          {m.status === "archived" ? (
+                            <ArchiveRestore size={16} />
+                          ) : (
+                            <Archive size={16} />
+                          )}
+                        </IconButton>
+                        {m.status !== "archived" && (
+                          <button
+                            onClick={() => setEditingLesson({ moduleId: m.id })}
+                            className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-copper/20 text-xs font-semibold text-copper hover:bg-copper/5"
+                          >
+                            <Plus size={14} /> Nova aula
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {visibleLessons.length === 0 ? (
+                        <p className="text-xs text-brown/50 italic py-2">
+                          Nenhuma aula cadastrada neste módulo.
+                        </p>
+                      ) : (
+                        visibleLessons.map((l) => {
+                          const lessonIndex = visibleLessons.findIndex(
+                            (lesson) => lesson.id === l.id,
+                          );
+                          return (
+                            <div
+                              key={l.id}
+                              className={`flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl text-xs border ${l.status === "archived" ? "bg-slate-50 border-slate-200 opacity-70" : "bg-cream/30 border-copper/10"}`}
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <Video size={16} className="text-copper shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="font-medium text-brown">{l.title}</p>
+                                    <StatusBadge status={l.status} />
+                                    {l.isPreview && (
+                                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold uppercase text-emerald-800">
+                                        Gratuita
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="truncate text-[10px] text-brown/55">
+                                    {l.durationMinutes} min • {l.videoUrl}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <IconButton
+                                  label="Pré-visualizar aula"
+                                  onClick={() => setPreviewLesson(l)}
+                                >
+                                  <Eye size={15} />
+                                </IconButton>
+                                <IconButton
+                                  label="Mover aula para cima"
+                                  disabled={contentBusy || lessonIndex === 0}
+                                  onClick={() =>
+                                    moveItem(
+                                      visibleLessons,
+                                      lessonIndex,
+                                      -1,
+                                      "reorder-lessons",
+                                      m.id,
+                                    )
+                                  }
+                                >
+                                  <ArrowUp size={15} />
+                                </IconButton>
+                                <IconButton
+                                  label="Mover aula para baixo"
+                                  disabled={
+                                    contentBusy || lessonIndex === visibleLessons.length - 1
+                                  }
+                                  onClick={() =>
+                                    moveItem(
+                                      visibleLessons,
+                                      lessonIndex,
+                                      1,
+                                      "reorder-lessons",
+                                      m.id,
+                                    )
+                                  }
+                                >
+                                  <ArrowDown size={15} />
+                                </IconButton>
+                                <IconButton
+                                  label="Editar aula"
+                                  onClick={() => setEditingLesson({ moduleId: m.id, lesson: l })}
+                                >
+                                  <Edit3 size={15} />
+                                </IconButton>
+                                <IconButton
+                                  label="Duplicar aula"
+                                  disabled={contentBusy}
+                                  onClick={() =>
+                                    void mutateContent({
+                                      action: "duplicate-content",
+                                      entity: "lesson",
+                                      id: l.id,
+                                    })
+                                  }
+                                >
+                                  <Copy size={15} />
+                                </IconButton>
+                                <IconButton
+                                  label={
+                                    l.status === "archived" ? "Restaurar aula" : "Arquivar aula"
+                                  }
+                                  disabled={contentBusy}
+                                  onClick={() => {
+                                    if (
+                                      l.status === "archived" ||
+                                      window.confirm(
+                                        `Arquivar a aula “${l.title}”? O progresso será preservado.`,
+                                      )
+                                    )
+                                      void mutateContent({
+                                        action:
+                                          l.status === "archived"
+                                            ? "restore-content"
+                                            : "archive-content",
+                                        entity: "lesson",
+                                        id: l.id,
+                                      });
+                                  }}
+                                >
+                                  {l.status === "archived" ? (
+                                    <ArchiveRestore size={15} />
+                                  ) : (
+                                    <Archive size={15} />
+                                  )}
+                                </IconButton>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </section>
+                );
+              })
             )}
           </div>
         </div>
@@ -487,6 +722,7 @@ export function AcademyManager() {
       {editingModule && (
         <ModuleEditorModal
           courseId={editingModule.courseId}
+          module={editingModule.module}
           onClose={() => setEditingModule(null)}
           onUpdate={() => {
             if (selectedCourseId) loadCourseContent(selectedCourseId);
@@ -498,6 +734,7 @@ export function AcademyManager() {
       {editingLesson && (
         <LessonEditorModal
           moduleId={editingLesson.moduleId}
+          lesson={editingLesson.lesson}
           onClose={() => setEditingLesson(null)}
           onUpdate={() => {
             if (selectedCourseId) loadCourseContent(selectedCourseId);
@@ -513,7 +750,45 @@ export function AcademyManager() {
           onUpdate={loadData}
         />
       )}
+
+      {previewLesson && (
+        <LessonPreviewModal lesson={previewLesson} onClose={() => setPreviewLesson(null)} />
+      )}
     </div>
+  );
+}
+
+function IconButton({
+  label,
+  children,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      {...props}
+      className="rounded-lg p-2 text-brown/60 transition hover:bg-copper/10 hover:text-copper disabled:cursor-not-allowed disabled:opacity-30"
+    >
+      {children}
+    </button>
+  );
+}
+
+function StatusBadge({ status }: { status: "draft" | "published" | "archived" }) {
+  const label =
+    status === "published" ? "Publicado" : status === "draft" ? "Rascunho" : "Arquivado";
+  const colors =
+    status === "published"
+      ? "bg-emerald-100 text-emerald-800"
+      : status === "draft"
+        ? "bg-amber-100 text-amber-800"
+        : "bg-slate-200 text-slate-700";
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${colors}`}>
+      {label}
+    </span>
   );
 }
 
@@ -743,18 +1018,22 @@ function CourseEditorModal({
 
 function ModuleEditorModal({
   courseId,
+  module,
   onClose,
   onUpdate,
 }: {
   courseId: string;
+  module?: Module;
   onClose: () => void;
   onUpdate: () => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     const form = new FormData(e.currentTarget);
 
     try {
@@ -763,18 +1042,21 @@ function ModuleEditorModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "save-module",
+          id: module?.id,
           courseId,
           title: form.get("title"),
           description: form.get("description"),
           sortOrder: parseInt(String(form.get("sortOrder")), 10),
+          status: form.get("status"),
         }),
       });
 
-      if (!res.ok) throw new Error("Erro ao salvar módulo");
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.message || "Erro ao salvar módulo");
       onUpdate();
       onClose();
     } catch (err) {
-      alert("Erro ao salvar módulo");
+      setError(err instanceof Error ? err.message : "Erro ao salvar módulo");
     } finally {
       setLoading(false);
     }
@@ -783,25 +1065,59 @@ function ModuleEditorModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
-        <h3 className="font-serif text-2xl text-brown">Novo Módulo</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-serif text-2xl text-brown">
+            {module ? "Editar Módulo" : "Novo Módulo"}
+          </h3>
+          <IconButton label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </IconButton>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-3">
+          {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div>
             <label className="text-xs font-medium">Título do Módulo</label>
             <input
               name="title"
               required
+              defaultValue={module?.title ?? ""}
               placeholder="Ex: Módulo 1: Introdução à Técnica"
               className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
             />
           </div>
           <div>
-            <label className="text-xs font-medium">Ordem</label>
-            <input
-              name="sortOrder"
-              type="number"
-              defaultValue={1}
-              className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
+            <label className="text-xs font-medium">Descrição</label>
+            <textarea
+              name="description"
+              rows={3}
+              defaultValue={module?.description ?? ""}
+              placeholder="Resumo do conteúdo e objetivos deste módulo"
+              className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium">Ordem</label>
+              <input
+                name="sortOrder"
+                type="number"
+                min={0}
+                defaultValue={module?.sortOrder ?? 1}
+                className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Status</label>
+              <select
+                name="status"
+                defaultValue={module?.status ?? "published"}
+                className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
+              >
+                <option value="published">Publicado</option>
+                <option value="draft">Rascunho</option>
+                <option value="archived">Arquivado</option>
+              </select>
+            </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-xs">
@@ -823,18 +1139,22 @@ function ModuleEditorModal({
 
 function LessonEditorModal({
   moduleId,
+  lesson,
   onClose,
   onUpdate,
 }: {
   moduleId: string;
+  lesson?: Lesson;
   onClose: () => void;
   onUpdate: () => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     const form = new FormData(e.currentTarget);
 
     try {
@@ -843,19 +1163,24 @@ function LessonEditorModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "save-lesson",
+          id: lesson?.id,
           moduleId,
           title: form.get("title"),
+          description: form.get("description"),
           videoUrl: form.get("videoUrl"),
           durationMinutes: parseInt(String(form.get("durationMinutes")), 10),
+          sortOrder: parseInt(String(form.get("sortOrder")), 10),
           isPreview: form.get("isPreview") === "on",
+          status: form.get("status"),
         }),
       });
 
-      if (!res.ok) throw new Error("Erro ao salvar aula");
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.message || "Erro ao salvar aula");
       onUpdate();
       onClose();
     } catch (err) {
-      alert("Erro ao salvar aula");
+      setError(err instanceof Error ? err.message : "Erro ao salvar aula");
     } finally {
       setLoading(false);
     }
@@ -864,15 +1189,32 @@ function LessonEditorModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
-        <h3 className="font-serif text-2xl text-brown">Nova Aula</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-serif text-2xl text-brown">{lesson ? "Editar Aula" : "Nova Aula"}</h3>
+          <IconButton label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </IconButton>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-3">
+          {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div>
             <label className="text-xs font-medium">Título da Aula</label>
             <input
               name="title"
               required
+              defaultValue={lesson?.title ?? ""}
               placeholder="Ex: Aula 1 - Biossegurança e Higienização"
               className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Descrição da aula</label>
+            <textarea
+              name="description"
+              rows={3}
+              defaultValue={lesson?.description ?? ""}
+              placeholder="Objetivos, materiais e conteúdo abordado"
+              className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper"
             />
           </div>
           <div>
@@ -880,26 +1222,56 @@ function LessonEditorModal({
             <input
               name="videoUrl"
               required
+              defaultValue={lesson?.videoUrl ?? ""}
               placeholder="https://vimeo.com/123456789"
               className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-medium">Duração (minutos)</label>
               <input
                 name="durationMinutes"
                 type="number"
-                defaultValue={15}
+                min={1}
+                defaultValue={lesson?.durationMinutes ?? 15}
+                className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Ordem</label>
+              <input
+                name="sortOrder"
+                type="number"
+                min={0}
+                defaultValue={lesson?.sortOrder ?? 1}
                 className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
               />
             </div>
             <div className="flex items-center gap-2 pt-5">
-              <input type="checkbox" name="isPreview" id="isPreview" className="accent-copper" />
+              <input
+                type="checkbox"
+                name="isPreview"
+                id="isPreview"
+                defaultChecked={lesson?.isPreview ?? false}
+                className="accent-copper"
+              />
               <label htmlFor="isPreview" className="text-xs font-medium">
                 Aula Grátis
               </label>
             </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium">Status</label>
+            <select
+              name="status"
+              defaultValue={lesson?.status ?? "published"}
+              className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
+            >
+              <option value="published">Publicado</option>
+              <option value="draft">Rascunho</option>
+              <option value="archived">Arquivado</option>
+            </select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-xs">
@@ -919,6 +1291,81 @@ function LessonEditorModal({
   );
 }
 
+function LessonPreviewModal({ lesson, onClose }: { lesson: Lesson; onClose: () => void }) {
+  const embedUrl = getVideoEmbedUrl(lesson.videoUrl);
+  const isDirectVideo = /\.(mp4|webm|ogg)(\?.*)?$/i.test(lesson.videoUrl);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Prévia de ${lesson.title}`}
+    >
+      <div className="w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <header className="flex items-center justify-between border-b border-copper/10 p-4">
+          <div>
+            <h3 className="font-serif text-xl font-bold text-brown">{lesson.title}</h3>
+            <p className="text-xs text-brown/60">{lesson.durationMinutes} minutos</p>
+          </div>
+          <IconButton label="Fechar prévia" onClick={onClose}>
+            <X size={20} />
+          </IconButton>
+        </header>
+        <div className="aspect-video bg-black">
+          {isDirectVideo ? (
+            <video src={lesson.videoUrl} controls className="h-full w-full" />
+          ) : embedUrl ? (
+            <iframe
+              src={embedUrl}
+              title={lesson.title}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              className="h-full w-full border-0"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center p-8 text-center text-white">
+              <div>
+                <p>Esta URL não oferece prévia incorporada.</p>
+                <a
+                  href={lesson.videoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-block text-copper-light underline"
+                >
+                  Abrir vídeo em nova aba
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+        {lesson.description && <p className="p-5 text-sm text-brown/70">{lesson.description}</p>}
+      </div>
+    </div>
+  );
+}
+
+function getVideoEmbedUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.hostname.includes("youtu.be"))
+      return `https://www.youtube.com/embed/${url.pathname.slice(1)}`;
+    if (url.hostname.includes("youtube.com")) {
+      const id = url.searchParams.get("v") ?? url.pathname.split("/").filter(Boolean).pop();
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (url.hostname.includes("vimeo.com")) {
+      const id = url.pathname
+        .split("/")
+        .filter(Boolean)
+        .find((part) => /^\d+$/.test(part));
+      return id ? `https://player.vimeo.com/video/${id}` : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 function ManualEnrollModal({
   courses,
   onClose,
@@ -929,10 +1376,12 @@ function ManualEnrollModal({
   onUpdate: () => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     const form = new FormData(e.currentTarget);
 
     try {
@@ -949,11 +1398,12 @@ function ManualEnrollModal({
         }),
       });
 
-      if (!res.ok) throw new Error("Erro ao matricular aluna");
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.message || "Erro ao matricular aluna");
       onUpdate();
       onClose();
     } catch (err) {
-      alert("Erro ao matricular aluna");
+      setError(err instanceof Error ? err.message : "Erro ao matricular aluna");
     } finally {
       setLoading(false);
     }
@@ -964,6 +1414,7 @@ function ManualEnrollModal({
       <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
         <h3 className="font-serif text-2xl text-brown">Matricular Aluna Manualmente</h3>
         <form onSubmit={handleSubmit} className="space-y-3">
+          {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div>
             <label className="text-xs font-medium">Curso</label>
             <select
