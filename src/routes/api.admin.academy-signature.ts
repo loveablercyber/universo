@@ -29,17 +29,65 @@ function detectedMime(bytes: Uint8Array) {
   return null;
 }
 
+function readImageDimensions(bytes: Uint8Array, mime: "image/png" | "image/jpeg") {
+  if (mime === "image/png") {
+    if (bytes.length < 24) return null;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return { width: view.getUint32(16), height: view.getUint32(20) };
+  }
+  const startOfFrameMarkers = new Set([
+    0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+  ]);
+  let offset = 2;
+  while (offset + 8 < bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    const marker = bytes[offset];
+    offset += 1;
+    if (marker === 0xd8 || marker === 0xd9) continue;
+    if (offset + 1 >= bytes.length) break;
+    const segmentLength = (bytes[offset] << 8) | bytes[offset + 1];
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) break;
+    if (startOfFrameMarkers.has(marker) && segmentLength >= 7) {
+      return {
+        height: (bytes[offset + 3] << 8) | bytes[offset + 4],
+        width: (bytes[offset + 5] << 8) | bytes[offset + 6],
+      };
+    }
+    offset += segmentLength;
+  }
+  return null;
+}
+
 async function validateImage(bytes: Uint8Array, mime: "image/png" | "image/jpeg") {
+  const dimensions = readImageDimensions(bytes, mime);
+  if (
+    !dimensions ||
+    dimensions.width < 80 ||
+    dimensions.height < 20 ||
+    dimensions.width > 10000 ||
+    dimensions.height > 10000 ||
+    dimensions.width * dimensions.height > 20_000_000
+  )
+    throw Response.json(
+      {
+        ok: false,
+        message: "A assinatura deve ter entre 80×20 px e 20 megapixels.",
+      },
+      { status: 400 },
+    );
   try {
     const document = await PDFDocument.create();
-    const image =
-      mime === "image/png" ? await document.embedPng(bytes) : await document.embedJpg(bytes);
-    if (image.width < 80 || image.height < 20 || image.width > 4000 || image.height > 2000)
-      throw new Error("Dimensões fora do limite.");
+    if (mime === "image/png") await document.embedPng(bytes);
+    else await document.embedJpg(bytes);
   } catch {
-    throw new Response("A imagem da assinatura está corrompida ou possui dimensões inválidas.", {
-      status: 400,
-    });
+    throw Response.json(
+      { ok: false, message: "A imagem da assinatura está corrompida ou é inválida." },
+      { status: 400 },
+    );
   }
 }
 

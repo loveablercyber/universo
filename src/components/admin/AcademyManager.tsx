@@ -69,6 +69,15 @@ type Module = {
 
 type Lesson = Module["lessons"][number];
 
+async function responseMessage(response: Response) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text).message ?? "";
+  } catch {
+    return text;
+  }
+}
+
 type Enrollment = {
   id: string;
   userId?: string | null;
@@ -1170,10 +1179,10 @@ function CourseEditorModal({
           method: "POST",
           body: signatureForm,
         });
-        const signaturePayload = await signatureResponse.json().catch(() => ({}));
+        const signatureMessage = await responseMessage(signatureResponse);
         if (!signatureResponse.ok)
           throw new Error(
-            signaturePayload.message || "O curso foi salvo, mas a assinatura não foi enviada.",
+            signatureMessage || "O curso foi salvo, mas a assinatura não foi enviada.",
           );
       } else if (signatureRemoved && course?.certificateSignatureConfigured) {
         const signatureResponse = await fetch("/api/admin/academy-signature", {
@@ -1181,10 +1190,10 @@ function CourseEditorModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "remove", courseId: savedCourseId }),
         });
-        const signaturePayload = await signatureResponse.json().catch(() => ({}));
+        const signatureMessage = await responseMessage(signatureResponse);
         if (!signatureResponse.ok)
           throw new Error(
-            signaturePayload.message || "O curso foi salvo, mas a assinatura não foi removida.",
+            signatureMessage || "O curso foi salvo, mas a assinatura não foi removida.",
           );
       }
 
