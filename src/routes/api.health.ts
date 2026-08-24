@@ -6,12 +6,15 @@ export const Route = createFileRoute("/api/health")({
     handlers: {
       GET: async () => {
         const database = await checkDatabase();
-        return Response.json({
-          ok: true,
-          service: "universo-carol-sol",
-          database,
-          timestamp: new Date().toISOString(),
-        });
+        return Response.json(
+          {
+            ok: database.connected,
+            service: "universo-carol-sol",
+            database,
+            timestamp: new Date().toISOString(),
+          },
+          { status: database.connected ? 200 : 503 },
+        );
       },
     },
   },

@@ -13,6 +13,7 @@
     "db:check": "node scripts/db-check.mjs",
     "db:backup": "node scripts/db-backup.mjs",
     "db:restore": "node scripts/db-restore.mjs",
+    "quality:academy": "node scripts/check-academy-quality.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

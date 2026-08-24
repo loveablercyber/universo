@@ -26,7 +26,9 @@ import {
   Download,
   Upload,
   Trash2,
+  Activity,
 } from "lucide-react";
+import { AcademyOperationsPanel } from "./AcademyOperationsPanel";
 
 type Course = {
   id: string;
@@ -124,7 +126,7 @@ type AdminCertificate = {
 
 export function AcademyManager() {
   const [activeTab, setActiveTab] = useState<
-    "courses" | "content" | "enrollments" | "certificates"
+    "courses" | "content" | "enrollments" | "certificates" | "operations"
   >("courses");
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -252,7 +254,7 @@ export function AcademyManager() {
     <div className="space-y-6">
       {/* Top Header & Abas */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-copper/10">
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <button
             onClick={() => setActiveTab("courses")}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold transition ${
@@ -289,6 +291,12 @@ export function AcademyManager() {
           >
             <Award size={16} /> Certificados (
             {certificates.filter((item) => item.certificateId).length})
+          </button>
+          <button
+            onClick={() => setActiveTab("operations")}
+            className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold transition ${activeTab === "operations" ? "bg-copper text-white shadow-sm" : "bg-cream/40 text-brown/70 hover:bg-cream"}`}
+          >
+            <Activity size={16} /> Operação
           </button>
         </div>
 
@@ -796,6 +804,8 @@ export function AcademyManager() {
           onUpdate={loadData}
         />
       )}
+
+      {activeTab === "operations" && <AcademyOperationsPanel />}
 
       {/* Modal Edição de Curso */}
       {editingCourse && (
