@@ -59,6 +59,42 @@ const manualEnrollmentSchema = z.object({
   studentEmail: z.string().email(),
   studentPhone: z.string().optional(),
   password: z.string().min(12),
+  adminNotes: z.string().max(2000).optional(),
+});
+const enrollmentStatus = z.enum(["pending", "active", "cancelled", "completed"]);
+const saveEnrollmentSchema = z
+  .object({
+    action: z.literal("save-enrollment"),
+    id: z.string().uuid(),
+    studentName: z.string().min(2).max(160),
+    studentEmail: z.string().email().max(254),
+    studentPhone: z.string().max(40).optional(),
+    amountPaid: z.number().min(0),
+    status: enrollmentStatus,
+    adminNotes: z.string().max(2000).optional(),
+    cancellationReason: z.string().max(500).optional(),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.status === "cancelled" &&
+      (!value.cancellationReason || value.cancellationReason.trim().length < 3)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cancellationReason"],
+        message: "Informe o motivo do cancelamento.",
+      });
+    }
+  });
+const studentAccessSchema = z.object({
+  action: z.literal("set-student-access"),
+  enrollmentId: z.string().uuid(),
+  userStatus: z.enum(["active", "blocked"]),
+});
+const resetStudentPasswordSchema = z.object({
+  action: z.literal("reset-student-password"),
+  enrollmentId: z.string().uuid(),
+  password: z.string().min(12).max(200),
 });
 
 async function audit(
@@ -159,18 +195,68 @@ export const Route = createFileRoute("/api/admin/academy")({
           }
           if (action === "enrollments") {
             const { rows } = await query(
-              `SELECT e.id, e.student_name as "studentName", e.student_email as "studentEmail", e.student_phone as "studentPhone",
-                    e.amount_paid::float as "amountPaid", e.status, e.enrolled_at as "enrolledAt",
-                    e.payment_confirmed_at as "paymentConfirmedAt", c.title as "courseTitle", c.subtitle as "courseSubtitle",
+              `SELECT e.id, e.user_id as "userId", e.course_id as "courseId", e.student_name as "studentName",
+                    e.student_email as "studentEmail", e.student_phone as "studentPhone", e.amount_paid::float as "amountPaid",
+                    e.status, e.source, e.admin_notes as "adminNotes", e.cancellation_reason as "cancellationReason",
+                    e.cancelled_at as "cancelledAt", e.completed_at as "completedAt", e.enrolled_at as "enrolledAt",
+                    e.payment_confirmed_at as "paymentConfirmedAt", u.status as "userStatus", u.last_login_at as "lastLoginAt",
+                    c.title as "courseTitle", c.subtitle as "courseSubtitle",
                     count(distinct p.lesson_id) filter (where p.completed)::int as "completedLessons",
                     count(distinct l.id) filter (where l.status='published' and m.status='published')::int as "totalLessons"
                FROM universe.academy_enrollments e JOIN universe.academy_courses c ON c.id=e.course_id
+               LEFT JOIN universe.users u ON u.id=e.user_id
                LEFT JOIN universe.academy_modules m ON m.course_id=c.id
                LEFT JOIN universe.academy_lessons l ON l.module_id=m.id
                LEFT JOIN universe.academy_student_progress p ON p.enrollment_id=e.id AND p.lesson_id=l.id
-              GROUP BY e.id, c.id ORDER BY e.enrolled_at DESC LIMIT 200`,
+              GROUP BY e.id, c.id, u.id ORDER BY e.enrolled_at DESC LIMIT 200`,
             );
             return Response.json({ ok: true, enrollments: rows });
+          }
+          if (action === "enrollment_details") {
+            const enrollmentId = url.searchParams.get("enrollmentId");
+            if (!enrollmentId)
+              return Response.json({ ok: false, message: "Matrícula ausente." }, { status: 400 });
+            const enrollment = await query(
+              `SELECT e.id, e.user_id as "userId", e.course_id as "courseId", e.student_name as "studentName",
+                      e.student_email as "studentEmail", e.student_phone as "studentPhone", e.amount_paid::float as "amountPaid",
+                      e.status, e.source, e.admin_notes as "adminNotes", e.cancellation_reason as "cancellationReason",
+                      e.cancelled_at as "cancelledAt", e.completed_at as "completedAt", e.enrolled_at as "enrolledAt",
+                      e.payment_confirmed_at as "paymentConfirmedAt", e.sumup_checkout_id as "sumupCheckoutId",
+                      u.status as "userStatus", u.last_login_at as "lastLoginAt", u.created_at as "accountCreatedAt",
+                      c.title as "courseTitle", c.subtitle as "courseSubtitle",
+                      (SELECT count(*)::int FROM universe.academy_student_progress p WHERE p.enrollment_id=e.id AND p.completed) as "completedLessons",
+                      (SELECT count(*)::int FROM universe.academy_lessons l JOIN universe.academy_modules m ON m.id=l.module_id
+                        WHERE m.course_id=e.course_id AND m.status='published' AND l.status='published') as "totalLessons"
+                 FROM universe.academy_enrollments e JOIN universe.academy_courses c ON c.id=e.course_id
+                 LEFT JOIN universe.users u ON u.id=e.user_id WHERE e.id=$1`,
+              [enrollmentId],
+            );
+            if (!enrollment.rowCount)
+              return Response.json(
+                { ok: false, message: "Matrícula não encontrada." },
+                { status: 404 },
+              );
+            const [progress, otherEnrollments] = await Promise.all([
+              query(
+                `SELECT l.id as "lessonId", l.title as "lessonTitle", m.title as "moduleTitle", p.completed_at as "completedAt"
+                   FROM universe.academy_student_progress p JOIN universe.academy_lessons l ON l.id=p.lesson_id
+                   JOIN universe.academy_modules m ON m.id=l.module_id
+                  WHERE p.enrollment_id=$1 AND p.completed=true ORDER BY p.completed_at DESC LIMIT 50`,
+                [enrollmentId],
+              ),
+              query(
+                `SELECT e.id, e.status, e.enrolled_at as "enrolledAt", c.title as "courseTitle", c.subtitle as "courseSubtitle"
+                   FROM universe.academy_enrollments e JOIN universe.academy_courses c ON c.id=e.course_id
+                  WHERE e.user_id=$1 AND e.id<>$2 ORDER BY e.enrolled_at DESC`,
+                [enrollment.rows[0].userId, enrollmentId],
+              ),
+            ]);
+            return Response.json({
+              ok: true,
+              enrollment: enrollment.rows[0],
+              progress: progress.rows,
+              otherEnrollments: otherEnrollments.rows,
+            });
           }
           return Response.json({ ok: false, message: "Ação inválida." }, { status: 400 });
         } catch (error) {
@@ -429,20 +515,147 @@ export const Route = createFileRoute("/api/admin/academy")({
             return Response.json({ ok: true });
           }
 
+          const saveEnrollment = saveEnrollmentSchema.safeParse(body);
+          if (saveEnrollment.success) {
+            const v = saveEnrollment.data;
+            await withTransaction(async (client) => {
+              const current = await client.query<{
+                user_id: string | null;
+                status: string;
+                role: string | null;
+              }>(
+                `SELECT e.user_id,e.status,u.role::text FROM universe.academy_enrollments e
+                  LEFT JOIN universe.users u ON u.id=e.user_id WHERE e.id=$1 FOR UPDATE OF e`,
+                [v.id],
+              );
+              if (!current.rowCount)
+                throw new Response("Matrícula não encontrada.", { status: 404 });
+              if (current.rows[0].role === "admin" || current.rows[0].role === "manager")
+                throw new Response(
+                  "Uma conta administrativa não pode ser alterada pela gestão de alunas.",
+                  { status: 400 },
+                );
+              const updated = await client.query<{ id: string }>(
+                `UPDATE universe.academy_enrollments
+                    SET student_name=$2,student_email=lower($3),student_phone=NULLIF($4,''),amount_paid=$5,status=$6,
+                        admin_notes=NULLIF($7,''),cancellation_reason=CASE WHEN $6='cancelled' THEN NULLIF($8,'') ELSE NULL END,
+                        cancelled_at=CASE WHEN $6='cancelled' THEN coalesce(cancelled_at,now()) ELSE NULL END,
+                        completed_at=CASE WHEN $6='completed' THEN coalesce(completed_at,now()) ELSE NULL END,
+                        payment_confirmed_at=CASE WHEN $6 IN ('active','completed') THEN coalesce(payment_confirmed_at,now()) ELSE payment_confirmed_at END
+                  WHERE id=$1 RETURNING id`,
+                [
+                  v.id,
+                  v.studentName,
+                  v.studentEmail,
+                  v.studentPhone ?? "",
+                  v.amountPaid,
+                  v.status,
+                  v.adminNotes ?? "",
+                  v.cancellationReason ?? "",
+                ],
+              );
+              const userId = current.rows[0].user_id;
+              if (userId) {
+                await client.query(
+                  `UPDATE universe.users SET full_name=$2,email=lower($3),phone=NULLIF($4,''),updated_at=now() WHERE id=$1`,
+                  [userId, v.studentName, v.studentEmail, v.studentPhone ?? ""],
+                );
+              }
+              await audit(
+                client,
+                actor.id,
+                "academy.enrollment.updated",
+                "academy_enrollment",
+                updated.rows[0].id,
+                {
+                  previousStatus: current.rows[0].status,
+                  status: v.status,
+                },
+              );
+            });
+            return Response.json({ ok: true, id: v.id });
+          }
+
+          const studentAccess = studentAccessSchema.safeParse(body);
+          if (studentAccess.success) {
+            const v = studentAccess.data;
+            await withTransaction(async (client) => {
+              const linked = await client.query<{ user_id: string | null }>(
+                `SELECT user_id FROM universe.academy_enrollments WHERE id=$1`,
+                [v.enrollmentId],
+              );
+              const userId = linked.rows[0]?.user_id;
+              if (!userId) throw new Response("Conta da aluna não encontrada.", { status: 404 });
+              const updated = await client.query(
+                `UPDATE universe.users SET status=$2,updated_at=now() WHERE id=$1 AND role NOT IN ('admin','manager')`,
+                [userId, v.userStatus],
+              );
+              if (!updated.rowCount)
+                throw new Response("Esta conta administrativa não pode ser bloqueada aqui.", {
+                  status: 400,
+                });
+              if (v.userStatus === "blocked")
+                await client.query(`DELETE FROM universe.sessions WHERE user_id=$1`, [userId]);
+              await audit(client, actor.id, `academy.student.${v.userStatus}`, "user", userId, {
+                enrollmentId: v.enrollmentId,
+              });
+            });
+            return Response.json({ ok: true });
+          }
+
+          const resetPassword = resetStudentPasswordSchema.safeParse(body);
+          if (resetPassword.success) {
+            const v = resetPassword.data;
+            const passwordHash = await bcrypt.hash(v.password, 12);
+            await withTransaction(async (client) => {
+              const linked = await client.query<{ user_id: string | null }>(
+                `SELECT user_id FROM universe.academy_enrollments WHERE id=$1`,
+                [v.enrollmentId],
+              );
+              const userId = linked.rows[0]?.user_id;
+              if (!userId) throw new Response("Conta da aluna não encontrada.", { status: 404 });
+              const updated = await client.query(
+                `UPDATE universe.users SET password_hash=$2,status='active',updated_at=now() WHERE id=$1 AND role NOT IN ('admin','manager')`,
+                [userId, passwordHash],
+              );
+              if (!updated.rowCount)
+                throw new Response("Esta conta administrativa não pode ser alterada aqui.", {
+                  status: 400,
+                });
+              await client.query(`DELETE FROM universe.sessions WHERE user_id=$1`, [userId]);
+              await audit(client, actor.id, "academy.student.password_reset", "user", userId, {
+                enrollmentId: v.enrollmentId,
+              });
+            });
+            return Response.json({ ok: true });
+          }
+
           const manualEnroll = manualEnrollmentSchema.safeParse(body);
           if (manualEnroll.success) {
-            const { courseId, studentName, studentEmail, studentPhone, password } =
+            const { courseId, studentName, studentEmail, studentPhone, password, adminNotes } =
               manualEnroll.data;
             const passwordHash = await bcrypt.hash(password, 12);
             const id = await withTransaction(async (client) => {
+              const existingUser = await client.query<{ role: string }>(
+                `SELECT role::text FROM universe.users WHERE lower(email)=lower($1) AND status<>'deleted'`,
+                [studentEmail],
+              );
+              if (
+                existingUser.rows[0]?.role === "admin" ||
+                existingUser.rows[0]?.role === "manager"
+              )
+                throw new Response(
+                  "Este e-mail pertence a uma conta administrativa e não pode ser matriculado manualmente.",
+                  { status: 400 },
+                );
               const userResult = await client.query<{ id: string }>(
                 `INSERT INTO universe.users(email,password_hash,full_name,role,status) VALUES(lower($1),$2,$3,'student','active')
-               ON CONFLICT (lower(email)) WHERE status<>'deleted' DO UPDATE SET full_name=excluded.full_name,updated_at=now() RETURNING id`,
+               ON CONFLICT (lower(email)) WHERE status<>'deleted' DO UPDATE SET full_name=excluded.full_name,status='active',updated_at=now() RETURNING id`,
                 [studentEmail, passwordHash, studentName],
               );
               const enrollment = await client.query<{ id: string }>(
-                `INSERT INTO universe.academy_enrollments(user_id,course_id,student_name,student_email,student_phone,amount_paid,status,payment_confirmed_at,source,created_by)
-               VALUES($1,$2,$3,lower($4),$5,0,'active',now(),'manual',$6) RETURNING id`,
+                `INSERT INTO universe.academy_enrollments(user_id,course_id,student_name,student_email,student_phone,amount_paid,status,payment_confirmed_at,source,created_by,admin_notes)
+               VALUES($1,$2,$3,lower($4),$5,0,'active',now(),'manual',$6,NULLIF($7,'')) RETURNING id`,
                 [
                   userResult.rows[0].id,
                   courseId,
@@ -450,6 +663,7 @@ export const Route = createFileRoute("/api/admin/academy")({
                   studentEmail,
                   studentPhone ?? null,
                   actor.id,
+                  adminNotes ?? "",
                 ],
               );
               await audit(

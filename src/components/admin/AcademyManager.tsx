@@ -18,6 +18,10 @@ import {
   ArrowUp,
   ArrowDown,
   Eye,
+  UserCog,
+  KeyRound,
+  ShieldBan,
+  ShieldCheck,
 } from "lucide-react";
 
 type Course = {
@@ -58,11 +62,20 @@ type Lesson = Module["lessons"][number];
 
 type Enrollment = {
   id: string;
+  userId?: string | null;
+  courseId: string;
   studentName: string;
   studentEmail: string;
   studentPhone?: string;
   amountPaid: number;
   status: string;
+  source: string;
+  adminNotes?: string | null;
+  cancellationReason?: string | null;
+  cancelledAt?: string | null;
+  completedAt?: string | null;
+  userStatus?: string | null;
+  lastLoginAt?: string | null;
   enrolledAt: string;
   courseTitle: string;
   courseSubtitle?: string;
@@ -94,6 +107,7 @@ export function AcademyManager() {
   const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [contentBusy, setContentBusy] = useState(false);
+  const [managingEnrollment, setManagingEnrollment] = useState<Enrollment | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -633,18 +647,19 @@ export function AcademyManager() {
                   <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium">Progresso</th>
                   <th className="px-6 py-4 font-medium">Data de Inscrição</th>
+                  <th className="px-6 py-4 font-medium text-right">Gestão</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-copper/10">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-brown/60">
+                    <td colSpan={7} className="p-8 text-center text-brown/60">
                       Carregando matrículas...
                     </td>
                   </tr>
                 ) : filteredEnrollments.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-brown/60">
+                    <td colSpan={7} className="p-8 text-center text-brown/60">
                       Nenhuma aluna encontrada.
                     </td>
                   </tr>
@@ -656,6 +671,11 @@ export function AcademyManager() {
                         <p className="text-xs text-brown/55">
                           {e.studentEmail} • {e.studentPhone || "Sem telefone"}
                         </p>
+                        {e.userStatus === "blocked" && (
+                          <span className="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-[9px] font-bold uppercase text-red-700">
+                            Conta bloqueada
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 font-semibold text-copper">{e.courseTitle}</td>
                       <td className="px-6 py-4 font-semibold text-brown">
@@ -699,6 +719,15 @@ export function AcademyManager() {
                       </td>
                       <td className="px-6 py-4 text-xs text-brown/60">
                         {new Date(e.enrolledAt).toLocaleDateString("pt-BR")}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setManagingEnrollment(e)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-copper/20 px-3 py-2 text-xs font-semibold text-copper transition hover:bg-copper/5"
+                        >
+                          <UserCog size={15} /> Gerenciar
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -747,6 +776,14 @@ export function AcademyManager() {
         <ManualEnrollModal
           courses={courses}
           onClose={() => setShowManualEnrollModal(false)}
+          onUpdate={loadData}
+        />
+      )}
+
+      {managingEnrollment && (
+        <EnrollmentManagerModal
+          enrollment={managingEnrollment}
+          onClose={() => setManagingEnrollment(null)}
           onUpdate={loadData}
         />
       )}
@@ -1366,6 +1403,397 @@ function getVideoEmbedUrl(rawUrl: string) {
   return null;
 }
 
+type EnrollmentDetails = Enrollment & {
+  accountCreatedAt?: string | null;
+  sumupCheckoutId?: string | null;
+};
+
+type EnrollmentDetailsPayload = {
+  enrollment: EnrollmentDetails;
+  progress: Array<{
+    lessonId: string;
+    lessonTitle: string;
+    moduleTitle: string;
+    completedAt: string;
+  }>;
+  otherEnrollments: Array<{
+    id: string;
+    status: string;
+    enrolledAt: string;
+    courseTitle: string;
+    courseSubtitle?: string;
+  }>;
+};
+
+function EnrollmentManagerModal({
+  enrollment,
+  onClose,
+  onUpdate,
+}: {
+  enrollment: Enrollment;
+  onClose: () => void;
+  onUpdate: () => void | Promise<void>;
+}) {
+  const [details, setDetails] = useState<EnrollmentDetailsPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const loadDetails = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/admin/academy?action=enrollment_details&enrollmentId=${enrollment.id}`,
+      );
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.message || "Erro ao carregar a matrícula");
+      setDetails(payload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar a matrícula");
+    } finally {
+      setLoading(false);
+    }
+  }, [enrollment.id]);
+
+  useEffect(() => {
+    void loadDetails();
+  }, [loadDetails]);
+
+  const runAction = async (body: Record<string, unknown>, successMessage: string) => {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/academy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.message || "Não foi possível salvar as alterações");
+      setMessage(successMessage);
+      await Promise.all([loadDetails(), Promise.resolve(onUpdate())]);
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível salvar as alterações");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await runAction(
+      {
+        action: "save-enrollment",
+        id: enrollment.id,
+        studentName: form.get("studentName"),
+        studentEmail: form.get("studentEmail"),
+        studentPhone: form.get("studentPhone"),
+        amountPaid: Number(form.get("amountPaid")),
+        status: form.get("status"),
+        adminNotes: form.get("adminNotes"),
+        cancellationReason: form.get("cancellationReason"),
+      },
+      "Cadastro e matrícula atualizados.",
+    );
+  };
+
+  const handlePasswordReset = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const success = await runAction(
+      {
+        action: "reset-student-password",
+        enrollmentId: enrollment.id,
+        password: form.get("password"),
+      },
+      "Senha provisória definida e sessões anteriores encerradas.",
+    );
+    if (success) formElement.reset();
+  };
+
+  const current = details?.enrollment ?? enrollment;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Gerenciar ${current.studentName}`}
+    >
+      <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <header className="flex items-center justify-between border-b border-copper/10 bg-cream/30 px-6 py-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-copper">
+              Gestão de aluna
+            </p>
+            <h2 className="font-serif text-2xl font-bold text-brown">{current.studentName}</h2>
+            <p className="text-xs text-brown/60">
+              {current.courseTitle} {current.courseSubtitle ? `— ${current.courseSubtitle}` : ""}
+            </p>
+          </div>
+          <IconButton label="Fechar gestão da aluna" onClick={onClose}>
+            <X size={20} />
+          </IconButton>
+        </header>
+
+        <div className="overflow-y-auto p-6">
+          {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {message && (
+            <p className="mb-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>
+          )}
+          {loading && !details ? (
+            <p className="py-12 text-center text-sm text-brown/60">Carregando dados da aluna...</p>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+              <form
+                onSubmit={handleSave}
+                className="space-y-4 rounded-2xl border border-copper/10 p-5"
+              >
+                <h3 className="font-serif text-lg font-bold text-brown">Cadastro e matrícula</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Nome completo">
+                    <input
+                      name="studentName"
+                      defaultValue={current.studentName}
+                      required
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="E-mail de acesso">
+                    <input
+                      name="studentEmail"
+                      type="email"
+                      defaultValue={current.studentEmail}
+                      required
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Telefone / WhatsApp">
+                    <input
+                      name="studentPhone"
+                      defaultValue={current.studentPhone ?? ""}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Valor pago">
+                    <input
+                      name="amountPaid"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      defaultValue={current.amountPaid}
+                      required
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Situação da matrícula">
+                    <select name="status" defaultValue={current.status} className={inputClass}>
+                      <option value="pending">Pendente</option>
+                      <option value="active">Ativa</option>
+                      <option value="completed">Concluída</option>
+                      <option value="cancelled">Cancelada</option>
+                    </select>
+                  </Field>
+                  <Field label="Origem">
+                    <input
+                      value={sourceLabel(current.source)}
+                      readOnly
+                      className={`${inputClass} bg-slate-50 text-brown/60`}
+                    />
+                  </Field>
+                </div>
+                <Field label="Observações administrativas">
+                  <textarea
+                    name="adminNotes"
+                    rows={3}
+                    defaultValue={current.adminNotes ?? ""}
+                    placeholder="Informações internas sobre atendimento, pagamento ou acompanhamento"
+                    className={textareaClass}
+                  />
+                </Field>
+                <Field label="Motivo do cancelamento (obrigatório ao cancelar)">
+                  <textarea
+                    name="cancellationReason"
+                    rows={2}
+                    defaultValue={current.cancellationReason ?? ""}
+                    className={textareaClass}
+                  />
+                </Field>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-copper px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    <Save size={15} /> Salvar alterações
+                  </button>
+                </div>
+              </form>
+
+              <div className="space-y-4">
+                <section className="rounded-2xl border border-copper/10 p-5">
+                  <h3 className="font-serif text-lg font-bold text-brown">Acesso à plataforma</h3>
+                  <dl className="mt-3 space-y-2 text-xs text-brown/70">
+                    <InfoRow
+                      label="Conta"
+                      value={current.userStatus === "blocked" ? "Bloqueada" : "Ativa"}
+                    />
+                    <InfoRow label="Último acesso" value={formatDateTime(current.lastLoginAt)} />
+                    <InfoRow
+                      label="Conta criada"
+                      value={formatDateTime(current.accountCreatedAt)}
+                    />
+                    <InfoRow label="Matrícula" value={formatDateTime(current.enrolledAt)} />
+                    <InfoRow
+                      label="Checkout SumUp"
+                      value={current.sumupCheckoutId || "Matrícula manual/sem checkout"}
+                    />
+                  </dl>
+                  <div className="mt-4 grid gap-2">
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => {
+                        const blocked = current.userStatus === "blocked";
+                        if (
+                          blocked ||
+                          window.confirm(
+                            "Bloquear toda a conta desta aluna e encerrar as sessões atuais?",
+                          )
+                        )
+                          void runAction(
+                            {
+                              action: "set-student-access",
+                              enrollmentId: enrollment.id,
+                              userStatus: blocked ? "active" : "blocked",
+                            },
+                            blocked ? "Conta reativada." : "Conta bloqueada e sessões encerradas.",
+                          );
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-copper/20 px-4 py-2.5 text-xs font-semibold text-brown hover:bg-cream disabled:opacity-50"
+                    >
+                      {current.userStatus === "blocked" ? (
+                        <ShieldCheck size={15} />
+                      ) : (
+                        <ShieldBan size={15} />
+                      )}
+                      {current.userStatus === "blocked" ? "Reativar conta" : "Bloquear conta"}
+                    </button>
+                  </div>
+                  <form
+                    onSubmit={handlePasswordReset}
+                    className="mt-4 space-y-2 border-t border-copper/10 pt-4"
+                  >
+                    <label htmlFor="temporary-password" className="text-xs font-medium text-brown">
+                      Nova senha provisória
+                    </label>
+                    <input
+                      id="temporary-password"
+                      name="password"
+                      type="password"
+                      minLength={12}
+                      required
+                      autoComplete="new-password"
+                      placeholder="Mínimo de 12 caracteres"
+                      className={inputClass}
+                    />
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-copper/20 px-4 py-2.5 text-xs font-semibold text-copper hover:bg-copper/5 disabled:opacity-50"
+                    >
+                      <KeyRound size={15} /> Redefinir senha e encerrar sessões
+                    </button>
+                  </form>
+                </section>
+
+                <section className="rounded-2xl border border-copper/10 p-5">
+                  <h3 className="font-serif text-lg font-bold text-brown">Progresso concluído</h3>
+                  <p className="mt-1 text-xs text-brown/60">
+                    {current.completedLessons}/{current.totalLessons} aulas
+                  </p>
+                  <div className="mt-3 max-h-40 space-y-2 overflow-y-auto">
+                    {details?.progress.length ? (
+                      details.progress.map((item) => (
+                        <div key={item.lessonId} className="rounded-xl bg-cream/30 p-2 text-xs">
+                          <p className="font-medium text-brown">{item.lessonTitle}</p>
+                          <p className="text-[10px] text-brown/55">
+                            {item.moduleTitle} • {formatDateTime(item.completedAt)}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-brown/50">Nenhuma aula concluída.</p>
+                    )}
+                  </div>
+                </section>
+                {details?.otherEnrollments.length ? (
+                  <section className="rounded-2xl border border-copper/10 p-5">
+                    <h3 className="font-serif text-lg font-bold text-brown">Outros cursos</h3>
+                    <div className="mt-3 space-y-2">
+                      {details.otherEnrollments.map((item) => (
+                        <div key={item.id} className="flex justify-between gap-3 text-xs">
+                          <span>
+                            {item.courseTitle} {item.courseSubtitle}
+                          </span>
+                          <span className="font-semibold uppercase text-copper">{item.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const inputClass =
+  "h-10 w-full rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper";
+const textareaClass =
+  "w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-1 text-xs font-medium text-brown">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt>{label}</dt>
+      <dd className="text-right font-medium text-brown">{value}</dd>
+    </div>
+  );
+}
+
+function formatDateTime(value?: string | null) {
+  return value ? new Date(value).toLocaleString("pt-BR") : "Ainda não registrado";
+}
+
+function sourceLabel(source?: string) {
+  return source === "manual"
+    ? "Manual"
+    : source === "import"
+      ? "Importação"
+      : source === "admin"
+        ? "Administrativa"
+        : "Checkout online";
+}
+
 function ManualEnrollModal({
   courses,
   onClose,
@@ -1395,6 +1823,7 @@ function ManualEnrollModal({
           studentEmail: form.get("studentEmail"),
           studentPhone: form.get("studentPhone"),
           password: form.get("password"),
+          adminNotes: form.get("adminNotes"),
         }),
       });
 
@@ -1466,6 +1895,15 @@ function ManualEnrollModal({
               autoComplete="new-password"
               placeholder="Mínimo de 12 caracteres"
               className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Observações administrativas</label>
+            <textarea
+              name="adminNotes"
+              rows={3}
+              placeholder="Origem do contato, condição especial ou informação interna"
+              className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
