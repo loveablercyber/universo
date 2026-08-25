@@ -24,23 +24,28 @@ const ACADEMY_HOSTNAME = "academy.carolsol.com.br";
 function routeSubdomain(request: Request): Request | Response {
   const url = new URL(request.url);
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const hostname = (forwardedHost ?? request.headers.get("host") ?? url.hostname)
-    .split(":")[0]
-    .toLowerCase();
+  const hostnames = [forwardedHost, request.headers.get("host"), url.hostname]
+    .filter(Boolean)
+    .map((host) => String(host).split(":")[0].toLowerCase());
+  const isAcademyHost = hostnames.includes(ACADEMY_HOSTNAME);
+  const isStoreHost = hostnames.includes(STORE_HOSTNAME);
 
-  if (hostname === ACADEMY_HOSTNAME) {
-    url.protocol = "https:";
+  if (isAcademyHost) {
     if (url.pathname === "/") {
       url.pathname = "/invisible-academy";
-      return Response.redirect(url, 308);
     } else if (url.pathname === "/aluno") {
       url.pathname = "/invisible-academy/aluno";
-      return Response.redirect(url, 308);
+    } else if (url.pathname.startsWith("/curso/")) {
+      url.pathname = url.pathname.replace("/curso/", "/invisible-academy/curso/");
+    } else if (url.pathname.startsWith("/certificado/")) {
+      url.pathname = url.pathname.replace("/certificado/", "/invisible-academy/certificado/");
+    } else {
+      return request;
     }
-    return request;
+    return new Request(url, request);
   }
 
-  if (hostname !== STORE_HOSTNAME) return request;
+  if (!isStoreHost) return request;
 
   if (url.pathname === "/") {
     url.pathname = "/sol-hair-closet";
