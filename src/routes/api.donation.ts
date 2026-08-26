@@ -20,6 +20,45 @@ const donationSchema = z.object({
 function errorResponse(error: unknown) {
   if (error instanceof Response) return error;
   console.error("[Donation]", error);
+
+  const databaseCode =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code || "")
+      : "";
+  const message = error instanceof Error ? error.message : "";
+
+  if (databaseCode === "42P01" || databaseCode === "42703") {
+    return Response.json(
+      {
+        ok: false,
+        message:
+          "O banco do Projeto Elo precisa da atualização mais recente. Execute npm run db:setup no Coolify e tente novamente.",
+      },
+      { status: 503 },
+    );
+  }
+
+  if (message.includes("não configurada") && message.includes("SUMUP_")) {
+    return Response.json(
+      {
+        ok: false,
+        message:
+          "O pagamento SumUp ainda não está configurado neste ambiente. Verifique as variáveis SUMUP_API_KEY, SUMUP_MERCHANT_CODE e SUMUP_RETURN_URL.",
+      },
+      { status: 503 },
+    );
+  }
+
+  if (message.startsWith("Falha ao criar checkout SumUp")) {
+    return Response.json(
+      {
+        ok: false,
+        message: `${message} Verifique a chave, o código do merchant e as URLs configuradas na SumUp.`,
+      },
+      { status: 502 },
+    );
+  }
+
   return Response.json(
     { ok: false, message: "Não foi possível processar a doação agora. Tente novamente." },
     { status: 503 },
