@@ -67,3 +67,12 @@ test("public calls-to-action use real forms and transparency routes", async () =
   assert.match(page, /function EloInternalLink/);
   assert.match(page, /<EloInternalLink\s+to=\{c\.href\}/);
 });
+
+test("Elo subdomain routes to the project instead of the portal home", async () => {
+  const server = await source("src/server.ts");
+  const home = await source("src/routes/index.tsx");
+  assert.match(server, /ELO_HOSTNAME = "elo\.carolsol\.com\.br"/);
+  assert.match(server, /url\.pathname = "\/projeto-elo"/);
+  assert.match(home, /window\.location\.hostname === "elo\.carolsol\.com\.br"/);
+  assert.match(home, /window\.location\.replace\(`\/projeto-elo/);
+});

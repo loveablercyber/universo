@@ -4,4 +4,5 @@ export const siteLinks = {
   app: "https://app.carolsol.com.br",
   store: "https://loja.carolsol.com.br",
   academy: "https://academy.carolsol.com.br",
+  elo: "https://elo.carolsol.com.br",
 } as const;

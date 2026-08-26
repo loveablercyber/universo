@@ -38,6 +38,11 @@ function Index() {
       return;
     }
 
+    if (window.location.hostname === "elo.carolsol.com.br") {
+      window.location.replace(`/projeto-elo${window.location.search}${window.location.hash}`);
+      return;
+    }
+
     if (window.location.hostname !== "loja.carolsol.com.br") return;
 
     window.location.replace(`/sol-hair-closet${window.location.search}${window.location.hash}`);
@@ -45,7 +50,9 @@ function Index() {
 
   if (
     typeof window !== "undefined" &&
-    ["loja.carolsol.com.br", "academy.carolsol.com.br"].includes(window.location.hostname)
+    ["loja.carolsol.com.br", "academy.carolsol.com.br", "elo.carolsol.com.br"].includes(
+      window.location.hostname,
+    )
   ) {
     return null;
   }

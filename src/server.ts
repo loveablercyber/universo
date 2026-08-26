@@ -20,6 +20,7 @@ async function getServerEntry(): Promise<ServerEntry> {
 
 const STORE_HOSTNAME = "loja.carolsol.com.br";
 const ACADEMY_HOSTNAME = "academy.carolsol.com.br";
+const ELO_HOSTNAME = "elo.carolsol.com.br";
 
 function routeSubdomain(request: Request): Request | Response {
   const url = new URL(request.url);
@@ -29,6 +30,7 @@ function routeSubdomain(request: Request): Request | Response {
     .map((host) => String(host).split(":")[0].toLowerCase());
   const isAcademyHost = hostnames.includes(ACADEMY_HOSTNAME);
   const isStoreHost = hostnames.includes(STORE_HOSTNAME);
+  const isEloHost = hostnames.includes(ELO_HOSTNAME);
 
   if (isAcademyHost) {
     if (url.pathname === "/") {
@@ -39,6 +41,19 @@ function routeSubdomain(request: Request): Request | Response {
       url.pathname = url.pathname.replace("/curso/", "/invisible-academy/curso/");
     } else if (url.pathname.startsWith("/certificado/")) {
       url.pathname = url.pathname.replace("/certificado/", "/invisible-academy/certificado/");
+    } else {
+      return request;
+    }
+    return new Request(url, request);
+  }
+
+  if (isEloHost) {
+    if (url.pathname === "/") {
+      url.pathname = "/projeto-elo";
+    } else if (url.pathname === "/participar") {
+      url.pathname = "/projeto-elo/participar";
+    } else if (url.pathname === "/transparencia") {
+      url.pathname = "/projeto-elo/transparencia";
     } else {
       return request;
     }
