@@ -1,255 +1,842 @@
-import { useState, useEffect } from "react";
-import { X, Save, FileText, File, Download, UserPlus, Heart, FileArchive } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Download,
+  FileArchive,
+  FileText,
+  Heart,
+  Paperclip,
+  Plus,
+  Save,
+  Trash2,
+  UserPlus,
+  X,
+} from "lucide-react";
 
-type ParticipantDetailProps = {
+type Participant = {
+  id: string;
+  kind: "donor" | "beneficiary" | "volunteer" | "partner";
+  fullName: string;
+  email?: string;
+  phone?: string;
+  document?: string;
+  address?: string;
+  status: "new" | "reviewing" | "approved" | "active" | "completed" | "rejected";
+  notes?: string;
+  consentText?: string;
+  lgpdAccepted: boolean;
+  assignedTo?: string;
+  assignedToName?: string;
+  publicReference?: string;
+  source?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type HistoryItem = {
+  id: string;
+  action: string;
+  notes?: string;
+  createdAt: string;
+  createdBy?: string;
+};
+type Donation = {
+  id: string;
+  amount: number;
+  donationDate: string;
+  paymentMethod: string;
+  status: "pending" | "completed" | "failed" | "refunded";
+  receiptUrl?: string;
+  notes?: string;
+};
+type EloRequest = {
+  id: string;
+  title: string;
+  description: string;
+  status: "open" | "in_progress" | "resolved" | "cancelled";
+  priority: "low" | "medium" | "high" | "urgent";
+  createdAt: string;
+};
+type Attachment = {
+  id: string;
+  fileName: string;
+  publicUrl: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+};
+type Assignee = { id: string; fullName: string; role: string };
+type DetailData = {
+  participant: Participant;
+  history: HistoryItem[];
+  donations: Donation[];
+  requests: EloRequest[];
+  attachments: Attachment[];
+};
+
+type Tab = "info" | "history" | "donations" | "requests" | "attachments";
+
+export function EloParticipantDetail({
+  id,
+  onClose,
+  onUpdate,
+}: {
   id: string;
   onClose: () => void;
   onUpdate: () => void;
-};
-
-export function EloParticipantDetail({ id, onClose, onUpdate }: ParticipantDetailProps) {
-  const [data, setData] = useState<{
-    participant: Record<string, unknown>;
-    history: Record<string, unknown>[];
-    donations: Record<string, unknown>[];
-    requests: Record<string, unknown>[];
-  } | null>(null);
+}) {
+  const [data, setData] = useState<DetailData | null>(null);
+  const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<"info" | "history" | "donations" | "requests">("info");
+  const [notice, setNotice] = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>("info");
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    setError("");
     try {
-      const res = await fetch(`/api/admin/elo?action=detail&id=${id}`);
-      const payload = await res.json();
-      if (!res.ok) throw new Error(payload.message || "Erro ao carregar detalhes");
+      const [detailResponse, assigneesResponse] = await Promise.all([
+        fetch(`/api/admin/elo?action=detail&id=${id}`),
+        fetch("/api/admin/elo?action=assignees"),
+      ]);
+      const payload = await detailResponse.json();
+      if (!detailResponse.ok || !payload.ok)
+        throw new Error(payload.message || "Erro ao carregar detalhes.");
       setData(payload);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro desconhecido");
+      if (assigneesResponse.ok) {
+        const assigneesPayload = await assigneesResponse.json();
+        setAssignees(assigneesPayload.assignees || []);
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Erro ao carregar detalhes.");
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    loadData();
   }, [id]);
 
-  if (loading) return <div className="p-8 text-center">Carregando detalhes...</div>;
-  if (error) return <div className="p-8 text-red-600">{error}</div>;
-  if (!data) return null;
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
-  const { participant, history, donations, requests } = data;
+  async function mutate(body: Record<string, unknown> | FormData, successMessage: string) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const isForm = body instanceof FormData;
+      const response = await fetch("/api/admin/elo", {
+        method: "POST",
+        headers: isForm ? undefined : { "Content-Type": "application/json" },
+        body: isForm ? body : JSON.stringify(body),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok)
+        throw new Error(payload.message || "Operação não concluída.");
+      setNotice(successMessage);
+      await loadData();
+      onUpdate();
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Operação não concluída.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading)
+    return (
+      <Overlay>
+        <p className="p-10 text-center">Carregando detalhes...</p>
+      </Overlay>
+    );
+  if (!data)
+    return (
+      <Overlay>
+        <div className="p-10 text-center text-red-700">
+          {error || "Participante não encontrado."}
+        </div>
+      </Overlay>
+    );
+
+  const participant = data.participant;
+  const tabs: { id: Tab; label: string; icon: typeof FileText }[] = [
+    { id: "info", label: "Dados", icon: FileText },
+    { id: "history", label: "Histórico", icon: FileArchive },
+    { id: "donations", label: "Doações", icon: Heart },
+    { id: "requests", label: "Solicitações", icon: UserPlus },
+    { id: "attachments", label: "Anexos", icon: Paperclip },
+  ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4 sm:p-6">
-      <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-copper/20">
+    <Overlay>
+      <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-copper/20">
         <header className="flex items-center justify-between border-b border-copper/10 bg-cream/30 px-6 py-4">
           <div>
             <h2 className="font-serif text-2xl text-brown">{participant.fullName}</h2>
-            <p className="text-xs text-brown/60 uppercase tracking-wider">
-              {participant.kind} • {participant.status}
+            <p className="text-xs uppercase tracking-wider text-brown/60">
+              {participant.kind} • {participant.status}{" "}
+              {participant.publicReference ? `• ${participant.publicReference.slice(0, 16)}` : ""}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-brown/50 hover:bg-copper/10 hover:text-brown transition"
+            aria-label="Fechar"
+            className="rounded-full p-2 hover:bg-copper/10"
           >
             <X size={20} />
           </button>
         </header>
 
-        <div className="flex border-b border-copper/10 bg-cream/10 px-4">
-          {[
-            { id: "info", label: "Dados Pessoais", icon: FileText },
-            { id: "history", label: "Histórico", icon: FileArchive },
-            { id: "donations", label: "Doações", icon: Heart },
-            { id: "requests", label: "Solicitações", icon: UserPlus },
-          ].map((tab) => (
+        <nav className="flex overflow-x-auto border-b border-copper/10 bg-cream/10 px-3">
+          {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as "info" | "history" | "donations" | "requests")}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-medium transition ${
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-xs font-medium ${
                 activeTab === tab.id
                   ? "border-copper text-copper"
-                  : "border-transparent text-brown/60 hover:text-brown"
+                  : "border-transparent text-brown/60"
               }`}
             >
-              <tab.icon size={16} />
-              {tab.label}
+              <tab.icon size={15} /> {tab.label}
             </button>
           ))}
-        </div>
+        </nav>
 
         <div className="flex-1 overflow-auto p-6">
+          {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {notice && (
+            <p className="mb-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>
+          )}
+
           {activeTab === "info" && (
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-4">
-                <h3 className="font-serif text-xl border-b border-copper/10 pb-2">Informações</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="block text-xs text-brown/60">E-mail</span>
-                    {participant.email || "—"}
-                  </div>
-                  <div>
-                    <span className="block text-xs text-brown/60">Telefone</span>
-                    {participant.phone || "—"}
-                  </div>
-                  <div>
-                    <span className="block text-xs text-brown/60">Documento</span>
-                    {participant.document || "—"}
-                  </div>
-                  <div>
-                    <span className="block text-xs text-brown/60">Endereço</span>
-                    {participant.address || "—"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-serif text-xl border-b border-copper/10 pb-2">Sistema</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="block text-xs text-brown/60">Criado em</span>
-                    {new Date(participant.createdAt).toLocaleDateString("pt-BR")}
-                  </div>
-                  <div>
-                    <span className="block text-xs text-brown/60">Responsável</span>
-                    {participant.assignedToName || "Nenhum"}
-                  </div>
-                  <div className="col-span-2">
-                    <span className="block text-xs text-brown/60">LGPD</span>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] uppercase tracking-wider ${participant.lgpdAccepted ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}
-                    >
-                      {participant.lgpdAccepted ? "Aceito" : "Pendente"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {participant.notes && (
-                <div className="col-span-2 mt-4 rounded-xl bg-cream/30 p-4">
-                  <span className="block text-xs font-semibold text-brown/60 mb-1">
-                    Observações internas
-                  </span>
-                  <p className="text-sm whitespace-pre-wrap">{participant.notes}</p>
-                </div>
-              )}
-            </div>
+            <InfoTab
+              key={participant.updatedAt}
+              participant={participant}
+              assignees={assignees}
+              busy={busy}
+              mutate={mutate}
+              onDeleted={onClose}
+            />
           )}
-
           {activeTab === "history" && (
-            <div className="space-y-4">
-              {history.length === 0 ? (
-                <p className="text-sm text-brown/60">Nenhum histórico registrado.</p>
-              ) : (
-                <div className="relative border-l-2 border-copper/20 ml-3 space-y-6">
-                  {history.map((h) => (
-                    <div key={h.id} className="relative pl-6">
-                      <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full border-2 border-white bg-copper" />
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{h.action}</span>
-                        <span className="text-xs text-brown/50">
-                          {new Date(h.createdAt).toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                      <p className="text-xs text-brown/60 mt-1">Por {h.createdBy}</p>
-                      {h.notes && (
-                        <p className="mt-2 text-sm bg-cream/30 p-3 rounded-xl">{h.notes}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <HistoryTab participantId={id} history={data.history} busy={busy} mutate={mutate} />
           )}
-
           {activeTab === "donations" && (
-            <div className="space-y-4">
-              {donations.length === 0 ? (
-                <p className="text-sm text-brown/60">Nenhuma doação registrada.</p>
-              ) : (
-                <div className="divide-y divide-copper/10 border border-copper/10 rounded-xl overflow-hidden">
-                  {donations.map((d) => (
-                    <div key={d.id} className="p-4 grid gap-2 sm:grid-cols-3 text-sm">
-                      <div>
-                        <span className="block font-medium">R$ {Number(d.amount).toFixed(2)}</span>
-                        <span className="text-xs text-brown/60">
-                          {new Date(d.donationDate).toLocaleDateString("pt-BR")}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="block">{d.paymentMethod}</span>
-                        <span
-                          className={`text-[10px] uppercase tracking-wider ${
-                            d.status === "completed" ? "text-emerald-600" : "text-amber-600"
-                          }`}
-                        >
-                          {d.status}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        {d.receiptUrl && (
-                          <a
-                            href={d.receiptUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-copper hover:underline text-xs flex items-center justify-end gap-1"
-                          >
-                            <Download size={14} /> Recibo
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <DonationsTab
+              participantId={id}
+              donations={data.donations}
+              busy={busy}
+              mutate={mutate}
+            />
           )}
-
           {activeTab === "requests" && (
-            <div className="space-y-4">
-              {requests.length === 0 ? (
-                <p className="text-sm text-brown/60">Nenhuma solicitação pendente.</p>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {requests.map((r) => (
-                    <div
-                      key={r.id}
-                      className="border border-copper/10 rounded-xl p-4 bg-white shadow-sm"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-semibold text-brown">{r.title}</h4>
-                        <span
-                          className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-full ${
-                            r.priority === "urgent"
-                              ? "bg-red-100 text-red-800"
-                              : r.priority === "high"
-                                ? "bg-orange-100 text-orange-800"
-                                : "bg-cream text-brown"
-                          }`}
-                        >
-                          {r.priority}
-                        </span>
-                      </div>
-                      <p className="text-xs text-brown/70 mb-3">{r.description}</p>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-brown/50">
-                          {new Date(r.createdAt).toLocaleDateString("pt-BR")}
-                        </span>
-                        <span className="font-medium text-copper uppercase tracking-wider">
-                          {r.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <RequestsTab participantId={id} requests={data.requests} busy={busy} mutate={mutate} />
           )}
+          {activeTab === "attachments" && (
+            <AttachmentsTab
+              participantId={id}
+              attachments={data.attachments}
+              busy={busy}
+              mutate={mutate}
+            />
+          )}
+        </div>
+      </div>
+    </Overlay>
+  );
+}
+
+type Mutate = (body: Record<string, unknown> | FormData, message: string) => Promise<boolean>;
+
+function InfoTab({
+  participant,
+  assignees,
+  busy,
+  mutate,
+  onDeleted,
+}: {
+  participant: Participant;
+  assignees: Assignee[];
+  busy: boolean;
+  mutate: Mutate;
+  onDeleted: () => void;
+}) {
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await mutate(
+      {
+        action: "save-participant",
+        id: participant.id,
+        kind: form.get("kind"),
+        fullName: form.get("fullName"),
+        email: form.get("email"),
+        phone: form.get("phone"),
+        document: form.get("document"),
+        address: form.get("address"),
+        status: form.get("status"),
+        notes: form.get("notes"),
+      },
+      "Dados atualizados.",
+    );
+  }
+  async function remove() {
+    if (!window.confirm("Arquivar este participante? O histórico será preservado.")) return;
+    if (
+      await mutate({ action: "delete-participant", id: participant.id }, "Participante arquivado.")
+    )
+      onDeleted();
+  }
+  return (
+    <div className="space-y-6">
+      <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
+        <Input name="fullName" label="Nome completo" defaultValue={participant.fullName} required />
+        <Select name="kind" label="Tipo" defaultValue={participant.kind} options={kindOptions} />
+        <Input name="email" label="E-mail" type="email" defaultValue={participant.email} />
+        <Input name="phone" label="Telefone" defaultValue={participant.phone} />
+        <Input name="document" label="Documento" defaultValue={participant.document} />
+        <Input name="address" label="Endereço" defaultValue={participant.address} />
+        <Select
+          name="status"
+          label="Status"
+          defaultValue={participant.status}
+          options={participantStatusOptions}
+        />
+        <label className="text-xs font-medium">
+          Responsável
+          <select
+            value={participant.assignedTo || ""}
+            onChange={(event) =>
+              void mutate(
+                {
+                  action: "assign",
+                  participantId: participant.id,
+                  userId: event.target.value || null,
+                },
+                "Responsável atualizado.",
+              )
+            }
+            disabled={busy}
+            className="mt-1 h-11 w-full rounded-xl border border-copper/20 px-3"
+          >
+            <option value="">Sem responsável</option>
+            {assignees.map((assignee) => (
+              <option key={assignee.id} value={assignee.id}>
+                {assignee.fullName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs font-medium sm:col-span-2">
+          Observações internas
+          <textarea
+            name="notes"
+            rows={4}
+            maxLength={5000}
+            defaultValue={participant.notes}
+            className="mt-1 w-full rounded-xl border border-copper/20 p-3"
+          />
+        </label>
+        <div className="flex flex-wrap justify-between gap-3 sm:col-span-2">
+          <button
+            type="button"
+            onClick={remove}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-3 text-xs text-red-700"
+          >
+            <Trash2 size={14} /> Arquivar
+          </button>
+          <button
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-xl bg-copper px-5 py-3 text-xs font-semibold text-white"
+          >
+            <Save size={14} /> Salvar dados
+          </button>
+        </div>
+      </form>
+      <div className="rounded-2xl border border-copper/10 bg-cream/25 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold">Consentimento LGPD</p>
+            <p className="mt-1 text-xs text-text-soft">
+              {participant.lgpdAccepted ? "Aceito" : "Pendente"} • origem:{" "}
+              {participant.source || "admin"}
+            </p>
+          </div>
+          <button
+            disabled={busy}
+            onClick={() =>
+              void mutate(
+                {
+                  action: "update-consent",
+                  participantId: participant.id,
+                  consentText:
+                    participant.consentText || "Consentimento administrativo registrado.",
+                  lgpdAccepted: !participant.lgpdAccepted,
+                },
+                "Consentimento atualizado.",
+              )
+            }
+            className="rounded-xl border border-copper/30 px-4 py-2 text-xs text-copper"
+          >
+            Marcar como {participant.lgpdAccepted ? "pendente" : "aceito"}
+          </button>
         </div>
       </div>
     </div>
   );
 }
+
+function HistoryTab({
+  participantId,
+  history,
+  busy,
+  mutate,
+}: {
+  participantId: string;
+  history: HistoryItem[];
+  busy: boolean;
+  mutate: Mutate;
+}) {
+  async function add(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    if (
+      await mutate(
+        { action: "add-note", participantId, note: form.get("note") },
+        "Observação adicionada.",
+      )
+    )
+      event.currentTarget.reset();
+  }
+  return (
+    <div className="space-y-6">
+      <form onSubmit={add} className="flex gap-3">
+        <input
+          name="note"
+          required
+          minLength={2}
+          maxLength={5000}
+          placeholder="Nova observação de acompanhamento"
+          className="h-11 flex-1 rounded-xl border border-copper/20 px-4 text-sm"
+        />
+        <button disabled={busy} className="rounded-xl bg-copper px-4 text-xs text-white">
+          <Plus size={15} />
+        </button>
+      </form>
+      {history.length ? (
+        <div className="space-y-4 border-l-2 border-copper/20 pl-5">
+          {history.map((item) => (
+            <article key={item.id}>
+              <div className="flex flex-wrap gap-2">
+                <strong className="text-sm">{item.action}</strong>
+                <span className="text-xs text-text-soft">
+                  {new Date(item.createdAt).toLocaleString("pt-BR")}
+                </span>
+              </div>
+              {item.notes && (
+                <p className="mt-2 rounded-xl bg-cream/30 p-3 text-sm">{item.notes}</p>
+              )}
+              <p className="mt-1 text-[11px] text-text-soft">{item.createdBy || "Sistema"}</p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <Empty text="Nenhum histórico registrado." />
+      )}
+    </div>
+  );
+}
+
+function DonationsTab({
+  participantId,
+  donations,
+  busy,
+  mutate,
+}: {
+  participantId: string;
+  donations: Donation[];
+  busy: boolean;
+  mutate: Mutate;
+}) {
+  async function add(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    if (
+      await mutate(
+        {
+          action: "save-donation",
+          participantId,
+          amount: Number(form.get("amount")),
+          donationDate: form.get("donationDate"),
+          paymentMethod: form.get("paymentMethod"),
+          status: form.get("status"),
+          notes: form.get("notes"),
+        },
+        "Doação registrada.",
+      )
+    )
+      event.currentTarget.reset();
+  }
+  return (
+    <div className="space-y-6">
+      <form
+        onSubmit={add}
+        className="grid gap-3 rounded-2xl border border-copper/10 bg-cream/20 p-4 sm:grid-cols-5"
+      >
+        <Input name="amount" label="Valor" type="number" min="0.01" step="0.01" required />
+        <Input name="donationDate" label="Data" type="date" required />
+        <Select
+          name="paymentMethod"
+          label="Forma"
+          options={[
+            ["pix", "PIX"],
+            ["cash", "Dinheiro"],
+            ["transfer", "Transferência"],
+            ["card", "Cartão"],
+            ["material", "Material"],
+          ]}
+        />
+        <Select name="status" label="Status" options={donationStatusOptions} />
+        <div className="flex items-end">
+          <button disabled={busy} className="h-11 w-full rounded-xl bg-copper text-xs text-white">
+            Adicionar
+          </button>
+        </div>
+        <textarea
+          name="notes"
+          placeholder="Observações"
+          maxLength={1000}
+          className="rounded-xl border border-copper/20 p-3 text-sm sm:col-span-5"
+        />
+      </form>
+      {donations.length ? (
+        <div className="divide-y rounded-xl border">
+          {donations.map((donation) => (
+            <div
+              key={donation.id}
+              className="grid gap-3 p-4 sm:grid-cols-[1fr_1fr_180px] sm:items-center"
+            >
+              <div>
+                <strong>
+                  R$ {Number(donation.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </strong>
+                <p className="text-xs text-text-soft">
+                  {new Date(`${donation.donationDate}T12:00:00`).toLocaleDateString("pt-BR")} •{" "}
+                  {donation.paymentMethod}
+                </p>
+              </div>
+              <p className="text-xs text-text-soft">{donation.notes || "Sem observações"}</p>
+              <select
+                value={donation.status}
+                disabled={busy}
+                onChange={(event) =>
+                  void mutate(
+                    {
+                      action: "update-donation",
+                      id: donation.id,
+                      participantId,
+                      status: event.target.value,
+                    },
+                    "Status atualizado.",
+                  )
+                }
+                className="h-10 rounded-xl border px-3 text-xs"
+              >
+                {donationStatusOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Empty text="Nenhuma doação registrada." />
+      )}
+    </div>
+  );
+}
+
+function RequestsTab({
+  participantId,
+  requests,
+  busy,
+  mutate,
+}: {
+  participantId: string;
+  requests: EloRequest[];
+  busy: boolean;
+  mutate: Mutate;
+}) {
+  async function add(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    if (
+      await mutate(
+        {
+          action: "save-request",
+          participantId,
+          title: form.get("title"),
+          description: form.get("description"),
+          status: "open",
+          priority: form.get("priority"),
+        },
+        "Solicitação criada.",
+      )
+    )
+      event.currentTarget.reset();
+  }
+  return (
+    <div className="space-y-6">
+      <form
+        onSubmit={add}
+        className="grid gap-3 rounded-2xl border border-copper/10 bg-cream/20 p-4 sm:grid-cols-[1fr_180px]"
+      >
+        <Input name="title" label="Título" required />
+        <Select name="priority" label="Prioridade" options={priorityOptions} />
+        <textarea
+          name="description"
+          required
+          minLength={2}
+          maxLength={2000}
+          placeholder="Descrição"
+          className="rounded-xl border border-copper/20 p-3 text-sm sm:col-span-2"
+        />
+        <button
+          disabled={busy}
+          className="rounded-xl bg-copper px-4 py-3 text-xs text-white sm:col-span-2"
+        >
+          Criar solicitação
+        </button>
+      </form>
+      {requests.length ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {requests.map((request) => (
+            <article key={request.id} className="rounded-xl border p-4">
+              <h4 className="font-semibold">{request.title}</h4>
+              <p className="mt-2 text-xs text-text-soft">{request.description}</p>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <select
+                  value={request.status}
+                  disabled={busy}
+                  onChange={(event) =>
+                    void mutate(
+                      {
+                        action: "update-request",
+                        id: request.id,
+                        participantId,
+                        status: event.target.value,
+                        priority: request.priority,
+                      },
+                      "Solicitação atualizada.",
+                    )
+                  }
+                  className="h-9 rounded-lg border px-2 text-xs"
+                >
+                  {requestStatusOptions.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={request.priority}
+                  disabled={busy}
+                  onChange={(event) =>
+                    void mutate(
+                      {
+                        action: "update-request",
+                        id: request.id,
+                        participantId,
+                        status: request.status,
+                        priority: event.target.value,
+                      },
+                      "Prioridade atualizada.",
+                    )
+                  }
+                  className="h-9 rounded-lg border px-2 text-xs"
+                >
+                  {priorityOptions.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <Empty text="Nenhuma solicitação registrada." />
+      )}
+    </div>
+  );
+}
+
+function AttachmentsTab({
+  participantId,
+  attachments,
+  busy,
+  mutate,
+}: {
+  participantId: string;
+  attachments: Attachment[];
+  busy: boolean;
+  mutate: Mutate;
+}) {
+  async function upload(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    form.set("participantId", participantId);
+    if (await mutate(form, "Anexo enviado.")) event.currentTarget.reset();
+  }
+  return (
+    <div className="space-y-6">
+      <form
+        onSubmit={upload}
+        className="flex flex-col gap-3 rounded-2xl border border-copper/10 bg-cream/20 p-4 sm:flex-row sm:items-end"
+      >
+        <label className="flex-1 text-xs font-medium">
+          PDF ou imagem (até 10 MB)
+          <input
+            name="file"
+            type="file"
+            required
+            accept="application/pdf,image/jpeg,image/png,image/webp"
+            className="mt-2 block w-full text-sm"
+          />
+        </label>
+        <button disabled={busy} className="rounded-xl bg-copper px-5 py-3 text-xs text-white">
+          Enviar anexo
+        </button>
+      </form>
+      {attachments.length ? (
+        <div className="divide-y rounded-xl border">
+          {attachments.map((attachment) => (
+            <div key={attachment.id} className="flex items-center justify-between gap-4 p-4">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{attachment.fileName}</p>
+                <p className="text-xs text-text-soft">
+                  {(attachment.sizeBytes / 1024).toFixed(1)} KB •{" "}
+                  {new Date(attachment.createdAt).toLocaleDateString("pt-BR")}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={`/api/admin/elo?action=attachment&id=${encodeURIComponent(attachment.id)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Baixar"
+                  className="rounded-lg border p-2 text-copper"
+                >
+                  <Download size={15} />
+                </a>
+                <button
+                  disabled={busy}
+                  aria-label="Excluir"
+                  onClick={() =>
+                    void mutate(
+                      { action: "delete-attachment", id: attachment.id, participantId },
+                      "Anexo removido.",
+                    )
+                  }
+                  className="rounded-lg border border-red-200 p-2 text-red-700"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Empty text="Nenhum anexo enviado." />
+      )}
+    </div>
+  );
+}
+
+function Overlay({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm sm:p-6"
+    >
+      {children}
+    </div>
+  );
+}
+function Empty({ text }: { text: string }) {
+  return (
+    <p className="rounded-xl border border-dashed p-8 text-center text-sm text-text-soft">{text}</p>
+  );
+}
+function Input({
+  label,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  return (
+    <label className="text-xs font-medium">
+      {label}
+      <input {...props} className="mt-1 h-11 w-full rounded-xl border border-copper/20 px-3" />
+    </label>
+  );
+}
+function Select({
+  label,
+  options,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement> & {
+  label: string;
+  options: readonly (readonly [string, string])[];
+}) {
+  return (
+    <label className="text-xs font-medium">
+      {label}
+      <select {...props} className="mt-1 h-11 w-full rounded-xl border border-copper/20 px-3">
+        {options.map(([value, text]) => (
+          <option key={value} value={value}>
+            {text}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+const kindOptions = [
+  ["donor", "Doador"],
+  ["beneficiary", "Beneficiário"],
+  ["volunteer", "Voluntário"],
+  ["partner", "Parceiro"],
+] as const;
+const participantStatusOptions = [
+  ["new", "Novo"],
+  ["reviewing", "Em análise"],
+  ["approved", "Aprovado"],
+  ["active", "Ativo"],
+  ["completed", "Concluído"],
+  ["rejected", "Recusado"],
+] as const;
+const donationStatusOptions = [
+  ["pending", "Pendente"],
+  ["completed", "Concluída"],
+  ["failed", "Falhou"],
+  ["refunded", "Estornada"],
+] as const;
+const requestStatusOptions = [
+  ["open", "Aberta"],
+  ["in_progress", "Em andamento"],
+  ["resolved", "Resolvida"],
+  ["cancelled", "Cancelada"],
+] as const;
+const priorityOptions = [
+  ["low", "Baixa"],
+  ["medium", "Média"],
+  ["high", "Alta"],
+  ["urgent", "Urgente"],
+] as const;

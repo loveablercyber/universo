@@ -175,6 +175,12 @@ export const Route = createFileRoute("/api/webhook/sumup")({
                   ],
                 );
                 donationCreated = Boolean(donation.rowCount);
+                if (eloCheckout.participant_id) {
+                  await client.query(
+                    `update universe.elo_participants set status='active',updated_at=now() where id=$1`,
+                    [eloCheckout.participant_id],
+                  );
+                }
                 if (donationCreated) {
                   await client.query(
                     `INSERT INTO universe.audit_logs(actor_id, action, entity_type, entity_id, metadata)

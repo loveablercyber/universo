@@ -9,6 +9,7 @@ export interface StorageDriver {
     mimeType: string,
   ): Promise<{ storageKey: string; publicUrl: string }>;
   delete(storageKey: string): Promise<void>;
+  get(storageKey: string): Promise<Buffer>;
 }
 
 class LocalDriver implements StorageDriver {
@@ -50,6 +51,12 @@ class LocalDriver implements StorageDriver {
       // Ignorar se arquivo já não existir
     }
   }
+
+  async get(storageKey: string): Promise<Buffer> {
+    const safeKey = path.basename(storageKey);
+    if (safeKey !== storageKey) throw new Error("Chave de armazenamento inválida.");
+    return fs.readFile(path.join(this.uploadDir, safeKey));
+  }
 }
 
 class S3Driver implements StorageDriver {
@@ -67,6 +74,10 @@ class S3Driver implements StorageDriver {
 
   async delete(_storageKey: string): Promise<void> {
     // Exclusão remota S3
+  }
+
+  async get(_storageKey: string): Promise<Buffer> {
+    throw new Error("S3 Driver ainda não inicializado com SDK S3.");
   }
 }
 

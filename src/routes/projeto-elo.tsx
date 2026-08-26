@@ -9,9 +9,6 @@ import {
   Menu,
   X,
   Instagram,
-  Facebook,
-  Youtube,
-  Music2,
   MessageCircle,
   Mail,
   MapPin,
@@ -338,7 +335,7 @@ function ImpactSection() {
 
         <div className="mt-12 flex justify-center">
           <a
-            href="#transparencia"
+            href="/projeto-elo/transparencia"
             className="inline-flex items-center gap-3 rounded-full bg-gradient-copper px-7 py-3.5 font-sans-brand text-[11px] tracking-[0.25em] text-white"
           >
             ACOMPANHAR RESULTADOS <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -403,7 +400,7 @@ function StoriesSection() {
                 <div className="p-6 pt-8">
                   <p className="font-serif text-lg italic text-brown-mid">{s.text}</p>
                   <a
-                    href="#como-doar"
+                    href="/projeto-elo/participar"
                     className="mt-4 inline-flex items-center gap-2 font-sans-brand text-[11px] tracking-[0.25em] text-copper"
                   >
                     VER HISTÓRIA <ArrowRight className="h-3 w-3" strokeWidth={1.5} />
@@ -505,12 +502,7 @@ function CommunityCTA() {
 
 /* ---------------- Social & Gallery ---------------- */
 function SocialGallerySection() {
-  const socials = [
-    { icon: Instagram, label: "Instagram" },
-    { icon: Facebook, label: "Facebook" },
-    { icon: Youtube, label: "YouTube" },
-    { icon: Music2, label: "TikTok" },
-  ];
+  const socials = [{ icon: Instagram, label: "Instagram" }];
   return (
     <section id="galeria" className="bg-cream py-12">
       <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-8 px-6 md:grid-cols-2 lg:grid-cols-[1fr_2fr] lg:px-10">
@@ -574,9 +566,9 @@ function Footer() {
           <h4 className="font-sans-brand text-[11px] tracking-[0.3em]">NAVEGAÇÃO</h4>
           <ul className="mt-5 space-y-2 font-sans-brand text-sm">
             {footerLinks.navigation.map((l) => (
-              <li key={l}>
-                <a href="#inicio" className="text-white/75 hover:text-white">
-                  {l}
+              <li key={l.label}>
+                <a href={l.href} className="text-white/75 hover:text-white">
+                  {l.label}
                 </a>
               </li>
             ))}
@@ -605,9 +597,9 @@ function Footer() {
           <h4 className="font-sans-brand text-[11px] tracking-[0.3em]">TRANSPARÊNCIA</h4>
           <ul className="mt-5 space-y-2 font-sans-brand text-sm">
             {footerLinks.transparency.map((l) => (
-              <li key={l}>
-                <a href="#transparencia" className="text-white/75 hover:text-white">
-                  {l}
+              <li key={l.label}>
+                <a href={l.href} className="text-white/75 hover:text-white">
+                  {l.label}
                 </a>
               </li>
             ))}

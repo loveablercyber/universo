@@ -14,8 +14,8 @@ export const navigation = [
   { label: "COMO DOAR", href: "#como-doar" },
   { label: "HISTÓRIAS", href: "#historias" },
   { label: "GALERIA", href: "#galeria" },
-  { label: "VOLUNTÁRIOS", href: "#voluntarios" },
-  { label: "TRANSPARÊNCIA", href: "#transparencia" },
+  { label: "VOLUNTÁRIOS", href: "/projeto-elo/participar?tipo=volunteer" },
+  { label: "TRANSPARÊNCIA", href: "/projeto-elo/transparencia" },
 ];
 
 export const helpCards = [
@@ -25,7 +25,7 @@ export const helpCards = [
     script: "cabelo",
     text: "Doe cabelos, perucas, produtos e acessórios e ajude a transformar vidas.",
     cta: "QUERO DOAR",
-    href: "https://wa.me/5514998373935?text=Ol%C3%A1%2C%20quero%20doar%20cabelo%20ou%20materiais%20para%20o%20Projeto%20Elo.",
+    href: "/projeto-elo/participar?tipo=hair_donation",
   },
   {
     icon: HandHeart,
@@ -33,7 +33,7 @@ export const helpCards = [
     script: "cabelo",
     text: "Solicite um cabelo ou peruca e receba apoio neste momento tão importante.",
     cta: "SOLICITAR AGORA",
-    href: "https://wa.me/5514998373935?text=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20atendimento%20do%20Projeto%20Elo.",
+    href: "/projeto-elo/participar?tipo=beneficiary_request",
   },
   {
     icon: Users,
@@ -41,7 +41,7 @@ export const helpCards = [
     script: "voluntário",
     text: "Seu talento e seu tempo podem gerar impacto na vida de muitas pessoas.",
     cta: "QUERO SER VOLUNTÁRIO",
-    href: "https://wa.me/5514998373935?text=Ol%C3%A1%2C%20quero%20ser%20volunt%C3%A1rio%20no%20Projeto%20Elo.",
+    href: "/projeto-elo/participar?tipo=volunteer",
   },
   {
     icon: HeartHandshake,
@@ -93,20 +93,24 @@ export const socialImages = [
 
 export const footerLinks = {
   navigation: [
-    "Início",
-    "Como Doar",
-    "Solicitar Cabelo",
-    "Histórias",
-    "Galeria",
-    "Voluntários",
-    "Transparência",
+    { label: "Início", href: "#inicio" },
+    { label: "Como doar", href: "#como-doar" },
+    { label: "Solicitar atendimento", href: "/projeto-elo/participar?tipo=beneficiary_request" },
+    { label: "Histórias", href: "#historias" },
+    { label: "Galeria", href: "#galeria" },
+    { label: "Voluntários", href: "/projeto-elo/participar?tipo=volunteer" },
+    { label: "Transparência", href: "/projeto-elo/transparencia" },
   ],
   contact: [
     { label: "WhatsApp", value: "(14) 99837-3935" },
     { label: "E-mail", value: "ola@carolsol.com.br" },
     { label: "Localização", value: "Bauru - SP" },
   ],
-  transparency: ["Prestação de Contas", "Relatórios", "Resultados"],
+  transparency: [
+    { label: "Prestação de contas", href: "/projeto-elo/transparencia" },
+    { label: "Resultados", href: "/projeto-elo/transparencia" },
+    { label: "Política de Privacidade", href: "/politica-de-privacidade" },
+  ],
 };
 
 export const universoNav = [

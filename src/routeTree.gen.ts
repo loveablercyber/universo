@@ -26,12 +26,15 @@ import { Route as ApiAcademyRouteImport } from './routes/api.academy'
 import { Route as ApiAuthRouteImport } from './routes/api.auth'
 import { Route as ApiCmsContentRouteImport } from './routes/api.cms-content'
 import { Route as ApiDonationRouteImport } from './routes/api.donation'
+import { Route as ApiEloRouteImport } from './routes/api.elo'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiStoreRouteImport } from './routes/api.store'
 import { Route as ApiStoreCustomerRouteImport } from './routes/api.store-customer'
 import { Route as DoacaoRetornoRouteImport } from './routes/doacao.retorno'
 import { Route as InvisibleAcademyIndexRouteImport } from './routes/invisible-academy.index'
 import { Route as InvisibleAcademyAlunoRouteImport } from './routes/invisible-academy.aluno'
+import { Route as ProjetoEloParticiparRouteImport } from './routes/projeto-elo.participar'
+import { Route as ProjetoEloTransparenciaRouteImport } from './routes/projeto-elo.transparencia'
 import { Route as SolHairClosetIndexRouteImport } from './routes/sol-hair-closet.index'
 import { Route as SolHairClosetBuscaRouteImport } from './routes/sol-hair-closet.busca'
 import { Route as SolHairClosetContaRouteImport } from './routes/sol-hair-closet.conta'
@@ -144,6 +147,11 @@ const ApiDonationRoute = ApiDonationRouteImport.update({
   path: '/api/donation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEloRoute = ApiEloRouteImport.update({
+  id: '/api/elo',
+  path: '/api/elo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -173,6 +181,16 @@ const InvisibleAcademyAlunoRoute = InvisibleAcademyAlunoRouteImport.update({
   id: '/aluno',
   path: '/aluno',
   getParentRoute: () => InvisibleAcademyRoute,
+} as any)
+const ProjetoEloParticiparRoute = ProjetoEloParticiparRouteImport.update({
+  id: '/participar',
+  path: '/participar',
+  getParentRoute: () => ProjetoEloRoute,
+} as any)
+const ProjetoEloTransparenciaRoute = ProjetoEloTransparenciaRouteImport.update({
+  id: '/transparencia',
+  path: '/transparencia',
+  getParentRoute: () => ProjetoEloRoute,
 } as any)
 const SolHairClosetIndexRoute = SolHairClosetIndexRouteImport.update({
   id: '/',
@@ -321,7 +339,7 @@ export interface FileRoutesByFullPath {
   '/doacao': typeof DoacaoRouteWithChildren
   '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
-  '/projeto-elo': typeof ProjetoEloRoute
+  '/projeto-elo': typeof ProjetoEloRouteWithChildren
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
@@ -332,11 +350,14 @@ export interface FileRoutesByFullPath {
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
+  '/api/elo': typeof ApiEloRoute
   '/api/health': typeof ApiHealthRoute
   '/api/store': typeof ApiStoreRoute
   '/api/store-customer': typeof ApiStoreCustomerRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
   '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
+  '/projeto-elo/participar': typeof ProjetoEloParticiparRoute
+  '/projeto-elo/transparencia': typeof ProjetoEloTransparenciaRoute
   '/sol-hair-closet/busca': typeof SolHairClosetBuscaRoute
   '/sol-hair-closet/conta': typeof SolHairClosetContaRoute
   '/sol-hair-closet/favoritos': typeof SolHairClosetFavoritosRoute
@@ -371,7 +392,7 @@ export interface FileRoutesByTo {
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
-  '/projeto-elo': typeof ProjetoEloRoute
+  '/projeto-elo': typeof ProjetoEloRouteWithChildren
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
@@ -381,11 +402,14 @@ export interface FileRoutesByTo {
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
+  '/api/elo': typeof ApiEloRoute
   '/api/health': typeof ApiHealthRoute
   '/api/store': typeof ApiStoreRoute
   '/api/store-customer': typeof ApiStoreCustomerRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
   '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
+  '/projeto-elo/participar': typeof ProjetoEloParticiparRoute
+  '/projeto-elo/transparencia': typeof ProjetoEloTransparenciaRoute
   '/sol-hair-closet/busca': typeof SolHairClosetBuscaRoute
   '/sol-hair-closet/conta': typeof SolHairClosetContaRoute
   '/sol-hair-closet/favoritos': typeof SolHairClosetFavoritosRoute
@@ -422,7 +446,7 @@ export interface FileRoutesById {
   '/doacao': typeof DoacaoRouteWithChildren
   '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
-  '/projeto-elo': typeof ProjetoEloRoute
+  '/projeto-elo': typeof ProjetoEloRouteWithChildren
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/salao': typeof SalaoRoute
   '/servicos': typeof ServicosRoute
@@ -433,11 +457,14 @@ export interface FileRoutesById {
   '/api/auth': typeof ApiAuthRoute
   '/api/cms-content': typeof ApiCmsContentRoute
   '/api/donation': typeof ApiDonationRoute
+  '/api/elo': typeof ApiEloRoute
   '/api/health': typeof ApiHealthRoute
   '/api/store': typeof ApiStoreRoute
   '/api/store-customer': typeof ApiStoreCustomerRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
   '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
+  '/projeto-elo/participar': typeof ProjetoEloParticiparRoute
+  '/projeto-elo/transparencia': typeof ProjetoEloTransparenciaRoute
   '/sol-hair-closet/busca': typeof SolHairClosetBuscaRoute
   '/sol-hair-closet/conta': typeof SolHairClosetContaRoute
   '/sol-hair-closet/favoritos': typeof SolHairClosetFavoritosRoute
@@ -486,11 +513,14 @@ export interface FileRouteTypes {
     | '/api/auth'
     | '/api/cms-content'
     | '/api/donation'
+    | '/api/elo'
     | '/api/health'
     | '/api/store'
     | '/api/store-customer'
     | '/doacao/retorno'
     | '/invisible-academy/aluno'
+    | '/projeto-elo/participar'
+    | '/projeto-elo/transparencia'
     | '/sol-hair-closet/busca'
     | '/sol-hair-closet/conta'
     | '/sol-hair-closet/favoritos'
@@ -535,11 +565,14 @@ export interface FileRouteTypes {
     | '/api/auth'
     | '/api/cms-content'
     | '/api/donation'
+    | '/api/elo'
     | '/api/health'
     | '/api/store'
     | '/api/store-customer'
     | '/doacao/retorno'
     | '/invisible-academy/aluno'
+    | '/projeto-elo/participar'
+    | '/projeto-elo/transparencia'
     | '/sol-hair-closet/busca'
     | '/sol-hair-closet/conta'
     | '/sol-hair-closet/favoritos'
@@ -586,11 +619,14 @@ export interface FileRouteTypes {
     | '/api/auth'
     | '/api/cms-content'
     | '/api/donation'
+    | '/api/elo'
     | '/api/health'
     | '/api/store'
     | '/api/store-customer'
     | '/doacao/retorno'
     | '/invisible-academy/aluno'
+    | '/projeto-elo/participar'
+    | '/projeto-elo/transparencia'
     | '/sol-hair-closet/busca'
     | '/sol-hair-closet/conta'
     | '/sol-hair-closet/favoritos'
@@ -627,7 +663,7 @@ export interface RootRouteChildren {
   DoacaoRoute: typeof DoacaoRouteWithChildren
   InvisibleAcademyRoute: typeof InvisibleAcademyRouteWithChildren
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
-  ProjetoEloRoute: typeof ProjetoEloRoute
+  ProjetoEloRoute: typeof ProjetoEloRouteWithChildren
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   SalaoRoute: typeof SalaoRoute
   ServicosRoute: typeof ServicosRoute
@@ -638,6 +674,7 @@ export interface RootRouteChildren {
   ApiAuthRoute: typeof ApiAuthRoute
   ApiCmsContentRoute: typeof ApiCmsContentRoute
   ApiDonationRoute: typeof ApiDonationRoute
+  ApiEloRoute: typeof ApiEloRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiStoreRoute: typeof ApiStoreRoute
   ApiStoreCustomerRoute: typeof ApiStoreCustomerRoute
@@ -777,6 +814,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDonationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/elo': {
+      id: '/api/elo'
+      path: '/api/elo'
+      fullPath: '/api/elo'
+      preLoaderRoute: typeof ApiEloRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -818,6 +862,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/invisible-academy/aluno'
       preLoaderRoute: typeof InvisibleAcademyAlunoRouteImport
       parentRoute: typeof InvisibleAcademyRoute
+    }
+    '/projeto-elo/participar': {
+      id: '/projeto-elo/participar'
+      path: '/participar'
+      fullPath: '/projeto-elo/participar'
+      preLoaderRoute: typeof ProjetoEloParticiparRouteImport
+      parentRoute: typeof ProjetoEloRoute
+    }
+    '/projeto-elo/transparencia': {
+      id: '/projeto-elo/transparencia'
+      path: '/transparencia'
+      fullPath: '/projeto-elo/transparencia'
+      preLoaderRoute: typeof ProjetoEloTransparenciaRouteImport
+      parentRoute: typeof ProjetoEloRoute
     }
     '/sol-hair-closet/': {
       id: '/sol-hair-closet/'
@@ -1032,6 +1090,20 @@ const InvisibleAcademyRouteChildren: InvisibleAcademyRouteChildren = {
 const InvisibleAcademyRouteWithChildren =
   InvisibleAcademyRoute._addFileChildren(InvisibleAcademyRouteChildren)
 
+interface ProjetoEloRouteChildren {
+  ProjetoEloParticiparRoute: typeof ProjetoEloParticiparRoute
+  ProjetoEloTransparenciaRoute: typeof ProjetoEloTransparenciaRoute
+}
+
+const ProjetoEloRouteChildren: ProjetoEloRouteChildren = {
+  ProjetoEloParticiparRoute: ProjetoEloParticiparRoute,
+  ProjetoEloTransparenciaRoute: ProjetoEloTransparenciaRoute,
+}
+
+const ProjetoEloRouteWithChildren = ProjetoEloRoute._addFileChildren(
+  ProjetoEloRouteChildren,
+)
+
 interface SolHairClosetRouteChildren {
   SolHairClosetBuscaRoute: typeof SolHairClosetBuscaRoute
   SolHairClosetContaRoute: typeof SolHairClosetContaRoute
@@ -1081,7 +1153,7 @@ const rootRouteChildren: RootRouteChildren = {
   DoacaoRoute: DoacaoRouteWithChildren,
   InvisibleAcademyRoute: InvisibleAcademyRouteWithChildren,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
-  ProjetoEloRoute: ProjetoEloRoute,
+  ProjetoEloRoute: ProjetoEloRouteWithChildren,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
   SalaoRoute: SalaoRoute,
   ServicosRoute: ServicosRoute,
@@ -1092,6 +1164,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthRoute: ApiAuthRoute,
   ApiCmsContentRoute: ApiCmsContentRoute,
   ApiDonationRoute: ApiDonationRoute,
+  ApiEloRoute: ApiEloRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiStoreRoute: ApiStoreRoute,
   ApiStoreCustomerRoute: ApiStoreCustomerRoute,

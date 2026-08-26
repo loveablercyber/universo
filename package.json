@@ -14,6 +14,8 @@
     "db:backup": "node scripts/db-backup.mjs",
     "db:restore": "node scripts/db-restore.mjs",
     "quality:academy": "node scripts/check-academy-quality.mjs",
+    "quality:elo": "node scripts/check-elo-quality.mjs",
+    "test:elo": "node --test tests/elo-contracts.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

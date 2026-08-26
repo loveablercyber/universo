@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Download, Activity, Heart, Users } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Plus, Search, Filter, Download, Activity, Heart, Users, X } from "lucide-react";
 import { EloParticipantDetail } from "./EloParticipantDetail";
+import { csvCell } from "@/lib/elo";
 
 type Participant = {
   id: string;
@@ -11,6 +12,7 @@ type Participant = {
   status: string;
   createdAt: string;
   assignedToName?: string;
+  publicReference?: string;
 };
 
 type Stats = {
@@ -19,6 +21,9 @@ type Stats = {
   volunteers: number;
   partners: number;
   totalDonations: number;
+  openRequests: number;
+  urgentRequests: number;
+  pendingCheckouts: number;
 };
 
 export function EloManager() {
@@ -27,13 +32,14 @@ export function EloManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   // Filters
   const [kindFilter, setKindFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const query = new URLSearchParams();
@@ -59,27 +65,45 @@ export function EloManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [kindFilter, searchQuery, statusFilter]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadData();
     }, 300);
     return () => clearTimeout(timer);
-  }, [kindFilter, statusFilter, searchQuery]);
+  }, [loadData]);
 
   const handleExport = () => {
-    // Generate simple CSV
     if (participants.length === 0) return;
-    const headers = ["Tipo,Nome,Email,Telefone,Status,Data de Cadastro,Responsavel"];
-    const rows = participants.map(
-      (p) =>
-        `${p.kind},"${p.fullName}","${p.email || ""}","${p.phone || ""}",${p.status},${new Date(p.createdAt).toLocaleDateString("pt-BR")},"${p.assignedToName || ""}"`,
+    const headers = [
+      "Tipo",
+      "Nome",
+      "Email",
+      "Telefone",
+      "Status",
+      "Data de Cadastro",
+      "Responsável",
+    ];
+    const rows = participants.map((p) =>
+      [
+        p.kind,
+        p.fullName,
+        p.email,
+        p.phone,
+        p.status,
+        new Date(p.createdAt).toLocaleDateString("pt-BR"),
+        p.assignedToName,
+      ]
+        .map(csvCell)
+        .join(","),
     );
-    const csvContent = "data:text/csv;charset=utf-8," + headers.concat(rows).join("\n");
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob(["\uFEFF", headers.map(csvCell).join(","), "\n", rows.join("\n")], {
+      type: "text/csv;charset=utf-8",
+    });
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
     link.setAttribute(
       "download",
       `elo_participantes_${new Date().toISOString().split("T")[0]}.csv`,
@@ -87,37 +111,53 @@ export function EloManager() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-6">
+      {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {stats && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-copper/10 bg-white p-6">
-            <Heart className="h-6 w-6 text-copper" strokeWidth={1.5} />
-            <p className="mt-4 font-serif text-3xl">{stats.donors}</p>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-brown/55">Doadores</p>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="rounded-2xl border border-copper/10 bg-white p-6">
+              <Heart className="h-6 w-6 text-copper" strokeWidth={1.5} />
+              <p className="mt-4 font-serif text-3xl">{stats.donors}</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-brown/55">Doadores</p>
+            </div>
+            <div className="rounded-2xl border border-copper/10 bg-white p-6">
+              <Users className="h-6 w-6 text-copper" strokeWidth={1.5} />
+              <p className="mt-4 font-serif text-3xl">{stats.beneficiaries}</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-brown/55">Beneficiários</p>
+            </div>
+            <div className="rounded-2xl border border-copper/10 bg-white p-6">
+              <Activity className="h-6 w-6 text-copper" strokeWidth={1.5} />
+              <p className="mt-4 font-serif text-3xl">{stats.volunteers}</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-brown/55">Voluntários</p>
+            </div>
+            <div className="rounded-2xl border border-copper/10 bg-white p-6">
+              <Users className="h-6 w-6 text-copper" strokeWidth={1.5} />
+              <p className="mt-4 font-serif text-3xl">{stats.partners}</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-brown/55">Parceiros</p>
+            </div>
+            <div className="rounded-2xl border border-copper/10 bg-white p-6">
+              <p className="mt-4 font-serif text-3xl text-emerald-600 text-right">
+                <span className="text-sm">R$</span>{" "}
+                {stats.totalDonations.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-brown/55 text-right mt-1">
+                Total Arrecadado
+              </p>
+            </div>
           </div>
-          <div className="rounded-2xl border border-copper/10 bg-white p-6">
-            <Users className="h-6 w-6 text-copper" strokeWidth={1.5} />
-            <p className="mt-4 font-serif text-3xl">{stats.beneficiaries}</p>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-brown/55">Beneficiários</p>
+          <div
+            className={`rounded-2xl border p-4 text-sm ${stats.urgentRequests ? "border-red-200 bg-red-50 text-red-800" : "border-copper/10 bg-white text-brown/70"}`}
+          >
+            <strong>{stats.openRequests}</strong> solicitações abertas ou em andamento ·{" "}
+            <strong>{stats.urgentRequests}</strong> urgentes ·{" "}
+            <strong>{stats.pendingCheckouts}</strong> doações online aguardando pagamento
           </div>
-          <div className="rounded-2xl border border-copper/10 bg-white p-6">
-            <Activity className="h-6 w-6 text-copper" strokeWidth={1.5} />
-            <p className="mt-4 font-serif text-3xl">{stats.volunteers}</p>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-brown/55">Voluntários</p>
-          </div>
-          <div className="rounded-2xl border border-copper/10 bg-white p-6">
-            <p className="mt-4 font-serif text-3xl text-emerald-600 text-right">
-              <span className="text-sm">R$</span>{" "}
-              {stats.totalDonations.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </p>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-brown/55 text-right mt-1">
-              Total Arrecadado
-            </p>
-          </div>
-        </div>
+        </>
       )}
 
       <div className="flex flex-col sm:flex-row gap-4 items-end justify-between bg-white p-5 rounded-2xl border border-copper/10">
@@ -128,7 +168,7 @@ export function EloManager() {
             </label>
             <input
               type="text"
-              placeholder="Nome ou e-mail..."
+              placeholder="Nome, contato ou protocolo..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-10 w-full rounded-xl border border-copper/20 bg-cream/30 px-4 text-sm outline-none focus:border-copper"
@@ -165,6 +205,7 @@ export function EloManager() {
               <option value="approved">Aprovado</option>
               <option value="active">Ativo</option>
               <option value="completed">Concluído</option>
+              <option value="rejected">Recusado</option>
             </select>
           </div>
         </div>
@@ -176,7 +217,10 @@ export function EloManager() {
           >
             <Download size={16} /> Exportar CSV
           </button>
-          <button className="flex-1 sm:flex-none h-10 px-4 flex items-center justify-center gap-2 rounded-xl bg-copper text-xs font-semibold text-white hover:bg-copper-dark transition">
+          <button
+            onClick={() => setCreating(true)}
+            className="flex-1 sm:flex-none h-10 px-4 flex items-center justify-center gap-2 rounded-xl bg-copper text-xs font-semibold text-white hover:bg-copper-dark transition"
+          >
             <Plus size={16} /> Novo
           </button>
         </div>
@@ -212,6 +256,11 @@ export function EloManager() {
                   <tr
                     key={p.id}
                     onClick={() => setSelectedId(p.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") setSelectedId(p.id);
+                    }}
+                    tabIndex={0}
+                    role="button"
                     className="group cursor-pointer hover:bg-cream/20 transition"
                   >
                     <td className="px-6 py-4">
@@ -219,6 +268,11 @@ export function EloManager() {
                         {p.fullName}
                       </p>
                       <p className="text-xs text-brown/55">{p.email || p.phone || "—"}</p>
+                      {p.publicReference && (
+                        <p className="mt-1 font-mono text-[10px] text-copper">
+                          {p.publicReference.slice(0, 16)}
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-[10px] uppercase tracking-wider text-copper bg-copper/5 px-2 py-1 rounded-full">
@@ -245,6 +299,138 @@ export function EloManager() {
           onUpdate={loadData}
         />
       )}
+      {creating && (
+        <ParticipantEditor
+          onClose={() => setCreating(false)}
+          onSaved={() => {
+            setCreating(false);
+            void loadData();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function ParticipantEditor({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await fetch("/api/admin/elo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save-participant",
+          kind: form.get("kind"),
+          fullName: form.get("fullName"),
+          email: form.get("email"),
+          phone: form.get("phone"),
+          document: form.get("document"),
+          address: form.get("address"),
+          status: form.get("status"),
+          notes: form.get("notes"),
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok)
+        throw new Error(payload.message || "Não foi possível salvar.");
+      onSaved();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível salvar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/45 p-4 backdrop-blur-sm">
+      <form
+        onSubmit={submit}
+        className="max-h-[92vh] w-full max-w-2xl overflow-auto rounded-3xl bg-white p-7 shadow-2xl"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[10px] tracking-[0.2em] text-copper">PROJETO ELO</p>
+            <h2 className="font-serif text-3xl">Novo participante</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Fechar">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="mt-7 grid gap-4 sm:grid-cols-2">
+          <EditorField name="fullName" label="Nome completo" required />
+          <label className="text-xs font-medium">
+            Tipo
+            <select
+              name="kind"
+              className="mt-1 h-11 w-full rounded-xl border border-copper/20 px-3"
+            >
+              <option value="donor">Doador</option>
+              <option value="beneficiary">Beneficiário</option>
+              <option value="volunteer">Voluntário</option>
+              <option value="partner">Parceiro</option>
+            </select>
+          </label>
+          <EditorField name="email" label="E-mail" type="email" />
+          <EditorField name="phone" label="Telefone" />
+          <EditorField name="document" label="Documento" />
+          <EditorField name="address" label="Endereço" />
+          <label className="text-xs font-medium">
+            Status
+            <select
+              name="status"
+              defaultValue="new"
+              className="mt-1 h-11 w-full rounded-xl border border-copper/20 px-3"
+            >
+              <option value="new">Novo</option>
+              <option value="reviewing">Em análise</option>
+              <option value="approved">Aprovado</option>
+              <option value="active">Ativo</option>
+              <option value="completed">Concluído</option>
+              <option value="rejected">Recusado</option>
+            </select>
+          </label>
+          <label className="text-xs font-medium sm:col-span-2">
+            Observações
+            <textarea
+              name="notes"
+              rows={4}
+              maxLength={5000}
+              className="mt-1 w-full rounded-xl border border-copper/20 p-3"
+            />
+          </label>
+        </div>
+        {error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        <div className="mt-6 flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="rounded-xl border px-5 py-3 text-xs">
+            Cancelar
+          </button>
+          <button
+            disabled={saving}
+            className="rounded-xl bg-copper px-5 py-3 text-xs font-semibold text-white disabled:opacity-60"
+          >
+            {saving ? "Salvando..." : "Criar participante"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function EditorField(
+  props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string },
+) {
+  const { label, ...inputProps } = props;
+  return (
+    <label className="text-xs font-medium">
+      {label}
+      <input {...inputProps} className="mt-1 h-11 w-full rounded-xl border border-copper/20 px-3" />
+    </label>
   );
 }
