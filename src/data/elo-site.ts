@@ -10,10 +10,10 @@ import {
 } from "lucide-react";
 
 export const navigation = [
-  { label: "INÍCIO", href: "#inicio", active: true },
-  { label: "COMO DOAR", href: "#como-doar" },
-  { label: "HISTÓRIAS", href: "#historias" },
-  { label: "GALERIA", href: "#galeria" },
+  { label: "INÍCIO", href: "/projeto-elo", active: true },
+  { label: "COMO DOAR", href: "/projeto-elo/como-doar" },
+  { label: "HISTÓRIAS", href: "/projeto-elo/historias" },
+  { label: "GALERIA", href: "/projeto-elo/galeria" },
   { label: "VOLUNTÁRIOS", href: "/projeto-elo/participar?tipo=volunteer" },
   { label: "TRANSPARÊNCIA", href: "/projeto-elo/transparencia" },
 ];
@@ -93,11 +93,11 @@ export const socialImages = [
 
 export const footerLinks = {
   navigation: [
-    { label: "Início", href: "#inicio" },
-    { label: "Como doar", href: "#como-doar" },
+    { label: "Início", href: "/projeto-elo" },
+    { label: "Como doar", href: "/projeto-elo/como-doar" },
     { label: "Solicitar atendimento", href: "/projeto-elo/participar?tipo=beneficiary_request" },
-    { label: "Histórias", href: "#historias" },
-    { label: "Galeria", href: "#galeria" },
+    { label: "Histórias", href: "/projeto-elo/historias" },
+    { label: "Galeria", href: "/projeto-elo/galeria" },
     { label: "Voluntários", href: "/projeto-elo/participar?tipo=volunteer" },
     { label: "Transparência", href: "/projeto-elo/transparencia" },
   ],

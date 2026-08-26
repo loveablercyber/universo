@@ -76,3 +76,19 @@ test("Elo subdomain routes to the project instead of the portal home", async () 
   assert.match(home, /window\.location\.hostname === "elo\.carolsol\.com\.br"/);
   assert.match(home, /window\.location\.replace\(`\/projeto-elo/);
 });
+
+test("Elo navigation has real pages for donation guidance, stories and gallery", async () => {
+  const data = await source("src/data/elo-site.ts");
+  const server = await source("src/server.ts");
+  const howToDonate = await source("src/routes/projeto-elo.como-doar.tsx");
+  const stories = await source("src/routes/projeto-elo.historias.tsx");
+  const gallery = await source("src/routes/projeto-elo.galeria.tsx");
+  assert.match(data, /\/projeto-elo\/como-doar/);
+  assert.match(data, /\/projeto-elo\/historias/);
+  assert.match(data, /\/projeto-elo\/galeria/);
+  assert.match(server, /url\.pathname = "\/projeto-elo\/como-doar"/);
+  assert.match(server, /url\.pathname = "\/projeto-elo\/participar"[\s\S]*tipo", "volunteer/);
+  assert.match(howToDonate, /EloContentPage kind="howToDonate"/);
+  assert.match(stories, /EloContentPage kind="stories"/);
+  assert.match(gallery, /EloContentPage kind="gallery"/);
+});

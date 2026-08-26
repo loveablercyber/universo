@@ -33,6 +33,9 @@ import { Route as ApiStoreCustomerRouteImport } from './routes/api.store-custome
 import { Route as DoacaoRetornoRouteImport } from './routes/doacao.retorno'
 import { Route as InvisibleAcademyIndexRouteImport } from './routes/invisible-academy.index'
 import { Route as InvisibleAcademyAlunoRouteImport } from './routes/invisible-academy.aluno'
+import { Route as ProjetoEloComoDoarRouteImport } from './routes/projeto-elo.como-doar'
+import { Route as ProjetoEloGaleriaRouteImport } from './routes/projeto-elo.galeria'
+import { Route as ProjetoEloHistoriasRouteImport } from './routes/projeto-elo.historias'
 import { Route as ProjetoEloParticiparRouteImport } from './routes/projeto-elo.participar'
 import { Route as ProjetoEloTransparenciaRouteImport } from './routes/projeto-elo.transparencia'
 import { Route as SolHairClosetIndexRouteImport } from './routes/sol-hair-closet.index'
@@ -181,6 +184,21 @@ const InvisibleAcademyAlunoRoute = InvisibleAcademyAlunoRouteImport.update({
   id: '/aluno',
   path: '/aluno',
   getParentRoute: () => InvisibleAcademyRoute,
+} as any)
+const ProjetoEloComoDoarRoute = ProjetoEloComoDoarRouteImport.update({
+  id: '/como-doar',
+  path: '/como-doar',
+  getParentRoute: () => ProjetoEloRoute,
+} as any)
+const ProjetoEloGaleriaRoute = ProjetoEloGaleriaRouteImport.update({
+  id: '/galeria',
+  path: '/galeria',
+  getParentRoute: () => ProjetoEloRoute,
+} as any)
+const ProjetoEloHistoriasRoute = ProjetoEloHistoriasRouteImport.update({
+  id: '/historias',
+  path: '/historias',
+  getParentRoute: () => ProjetoEloRoute,
 } as any)
 const ProjetoEloParticiparRoute = ProjetoEloParticiparRouteImport.update({
   id: '/participar',
@@ -356,6 +374,9 @@ export interface FileRoutesByFullPath {
   '/api/store-customer': typeof ApiStoreCustomerRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
   '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
+  '/projeto-elo/como-doar': typeof ProjetoEloComoDoarRoute
+  '/projeto-elo/galeria': typeof ProjetoEloGaleriaRoute
+  '/projeto-elo/historias': typeof ProjetoEloHistoriasRoute
   '/projeto-elo/participar': typeof ProjetoEloParticiparRoute
   '/projeto-elo/transparencia': typeof ProjetoEloTransparenciaRoute
   '/sol-hair-closet/busca': typeof SolHairClosetBuscaRoute
@@ -408,6 +429,9 @@ export interface FileRoutesByTo {
   '/api/store-customer': typeof ApiStoreCustomerRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
   '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
+  '/projeto-elo/como-doar': typeof ProjetoEloComoDoarRoute
+  '/projeto-elo/galeria': typeof ProjetoEloGaleriaRoute
+  '/projeto-elo/historias': typeof ProjetoEloHistoriasRoute
   '/projeto-elo/participar': typeof ProjetoEloParticiparRoute
   '/projeto-elo/transparencia': typeof ProjetoEloTransparenciaRoute
   '/sol-hair-closet/busca': typeof SolHairClosetBuscaRoute
@@ -463,6 +487,9 @@ export interface FileRoutesById {
   '/api/store-customer': typeof ApiStoreCustomerRoute
   '/doacao/retorno': typeof DoacaoRetornoRoute
   '/invisible-academy/aluno': typeof InvisibleAcademyAlunoRoute
+  '/projeto-elo/como-doar': typeof ProjetoEloComoDoarRoute
+  '/projeto-elo/galeria': typeof ProjetoEloGaleriaRoute
+  '/projeto-elo/historias': typeof ProjetoEloHistoriasRoute
   '/projeto-elo/participar': typeof ProjetoEloParticiparRoute
   '/projeto-elo/transparencia': typeof ProjetoEloTransparenciaRoute
   '/sol-hair-closet/busca': typeof SolHairClosetBuscaRoute
@@ -519,6 +546,9 @@ export interface FileRouteTypes {
     | '/api/store-customer'
     | '/doacao/retorno'
     | '/invisible-academy/aluno'
+    | '/projeto-elo/como-doar'
+    | '/projeto-elo/galeria'
+    | '/projeto-elo/historias'
     | '/projeto-elo/participar'
     | '/projeto-elo/transparencia'
     | '/sol-hair-closet/busca'
@@ -571,6 +601,9 @@ export interface FileRouteTypes {
     | '/api/store-customer'
     | '/doacao/retorno'
     | '/invisible-academy/aluno'
+    | '/projeto-elo/como-doar'
+    | '/projeto-elo/galeria'
+    | '/projeto-elo/historias'
     | '/projeto-elo/participar'
     | '/projeto-elo/transparencia'
     | '/sol-hair-closet/busca'
@@ -625,6 +658,9 @@ export interface FileRouteTypes {
     | '/api/store-customer'
     | '/doacao/retorno'
     | '/invisible-academy/aluno'
+    | '/projeto-elo/como-doar'
+    | '/projeto-elo/galeria'
+    | '/projeto-elo/historias'
     | '/projeto-elo/participar'
     | '/projeto-elo/transparencia'
     | '/sol-hair-closet/busca'
@@ -863,6 +899,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvisibleAcademyAlunoRouteImport
       parentRoute: typeof InvisibleAcademyRoute
     }
+    '/projeto-elo/como-doar': {
+      id: '/projeto-elo/como-doar'
+      path: '/como-doar'
+      fullPath: '/projeto-elo/como-doar'
+      preLoaderRoute: typeof ProjetoEloComoDoarRouteImport
+      parentRoute: typeof ProjetoEloRoute
+    }
+    '/projeto-elo/galeria': {
+      id: '/projeto-elo/galeria'
+      path: '/galeria'
+      fullPath: '/projeto-elo/galeria'
+      preLoaderRoute: typeof ProjetoEloGaleriaRouteImport
+      parentRoute: typeof ProjetoEloRoute
+    }
+    '/projeto-elo/historias': {
+      id: '/projeto-elo/historias'
+      path: '/historias'
+      fullPath: '/projeto-elo/historias'
+      preLoaderRoute: typeof ProjetoEloHistoriasRouteImport
+      parentRoute: typeof ProjetoEloRoute
+    }
     '/projeto-elo/participar': {
       id: '/projeto-elo/participar'
       path: '/participar'
@@ -1091,11 +1148,17 @@ const InvisibleAcademyRouteWithChildren =
   InvisibleAcademyRoute._addFileChildren(InvisibleAcademyRouteChildren)
 
 interface ProjetoEloRouteChildren {
+  ProjetoEloComoDoarRoute: typeof ProjetoEloComoDoarRoute
+  ProjetoEloGaleriaRoute: typeof ProjetoEloGaleriaRoute
+  ProjetoEloHistoriasRoute: typeof ProjetoEloHistoriasRoute
   ProjetoEloParticiparRoute: typeof ProjetoEloParticiparRoute
   ProjetoEloTransparenciaRoute: typeof ProjetoEloTransparenciaRoute
 }
 
 const ProjetoEloRouteChildren: ProjetoEloRouteChildren = {
+  ProjetoEloComoDoarRoute: ProjetoEloComoDoarRoute,
+  ProjetoEloGaleriaRoute: ProjetoEloGaleriaRoute,
+  ProjetoEloHistoriasRoute: ProjetoEloHistoriasRoute,
   ProjetoEloParticiparRoute: ProjetoEloParticiparRoute,
   ProjetoEloTransparenciaRoute: ProjetoEloTransparenciaRoute,
 }

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { UniverseSwitcher } from "@/components/UniverseSwitcher";
 import {
@@ -42,8 +42,16 @@ export const Route = createFileRoute("/projeto-elo")({
     ],
     links: [{ rel: "canonical", href: "https://www.carolsol.com.br/projeto-elo" }],
   }),
-  component: Home,
+  component: ProjetoEloRoute,
 });
+
+function ProjetoEloRoute() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  // Esta rota também é o layout das páginas internas. Sem o Outlet, o TanStack
+  // sempre mantinha a home visível em /participar e /transparencia.
+  return pathname === "/projeto-elo" ? <Home /> : <Outlet />;
+}
 
 /* ---------------- Logo ---------------- */
 function Logo({ dark = false }: { dark?: boolean }) {
@@ -206,7 +214,7 @@ function HeroSection() {
       <div className="mx-auto max-w-[1440px] px-6 py-12 lg:px-10 lg:py-16">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-8">
           {/* Left text */}
-          <div className="flex min-w-0 flex-col justify-center lg:col-span-4">
+          <div className="relative z-10 flex min-w-0 flex-col justify-center lg:col-span-4">
             <p className="font-sans-brand text-[10px] tracking-[0.18em] text-brown-mid sm:text-[11px] sm:tracking-[0.28em]">
               CABELOS QUE CONECTAM HISTÓRIAS
             </p>
@@ -246,17 +254,20 @@ function HeroSection() {
           </div>
 
           {/* Image */}
-          <div className="lg:col-span-6 relative">
-            <div className="overflow-hidden rounded-2xl">
+          <div className="relative z-0 min-w-0 lg:col-span-6">
+            <div className="aspect-[6/5] overflow-hidden rounded-2xl bg-beige shadow-sm">
               <img
                 src="/images/hero-projeto-elo.jpg"
                 alt="Abraço acolhedor entre duas mulheres"
                 width={1200}
                 height={1000}
-                className="h-full w-full object-cover aspect-[6/5]"
+                className="h-full w-full object-cover object-center"
               />
             </div>
-            <Heart className="absolute -bottom-4 left-8 h-5 w-5 text-copper/60" strokeWidth={1.2} />
+            <Heart
+              className="pointer-events-none absolute bottom-4 left-5 h-5 w-5 text-copper/80"
+              strokeWidth={1.2}
+            />
           </div>
 
           {/* Quote */}

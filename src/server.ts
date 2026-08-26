@@ -50,8 +50,17 @@ function routeSubdomain(request: Request): Request | Response {
   if (isEloHost) {
     if (url.pathname === "/") {
       url.pathname = "/projeto-elo";
+    } else if (url.pathname === "/como-doar") {
+      url.pathname = "/projeto-elo/como-doar";
+    } else if (url.pathname === "/historias") {
+      url.pathname = "/projeto-elo/historias";
+    } else if (url.pathname === "/galeria") {
+      url.pathname = "/projeto-elo/galeria";
     } else if (url.pathname === "/participar") {
       url.pathname = "/projeto-elo/participar";
+    } else if (url.pathname === "/voluntarios") {
+      url.pathname = "/projeto-elo/participar";
+      url.searchParams.set("tipo", "volunteer");
     } else if (url.pathname === "/transparencia") {
       url.pathname = "/projeto-elo/transparencia";
     } else {
