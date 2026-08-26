@@ -74,6 +74,22 @@ function HeartDivider() {
   );
 }
 
+function EloInternalLink({
+  to,
+  className,
+  children,
+}: {
+  to: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link to={to as never} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 /* ---------------- Top bar ---------------- */
 function TopUniverseBar() {
   return (
@@ -100,16 +116,27 @@ function MainHeader() {
         </a>
 
         <nav className="hidden lg:flex items-center gap-8">
-          {navigation.map((n) => (
-            <a
-              key={n.label}
-              href={n.href}
-              className={`font-sans-brand text-[11px] tracking-[0.25em] transition-colors hover:text-copper ${n.active ? "text-copper" : "text-brown-mid"}`}
-            >
-              {n.label}
-              {n.active && <span className="mx-auto mt-1 block h-px w-6 bg-copper" />}
-            </a>
-          ))}
+          {navigation.map((n) =>
+            n.href.startsWith("/") ? (
+              <EloInternalLink
+                key={n.label}
+                to={n.href}
+                className={`font-sans-brand text-[11px] tracking-[0.25em] transition-colors hover:text-copper ${n.active ? "text-copper" : "text-brown-mid"}`}
+              >
+                {n.label}
+                {n.active && <span className="mx-auto mt-1 block h-px w-6 bg-copper" />}
+              </EloInternalLink>
+            ) : (
+              <a
+                key={n.label}
+                href={n.href}
+                className={`font-sans-brand text-[11px] tracking-[0.25em] transition-colors hover:text-copper ${n.active ? "text-copper" : "text-brown-mid"}`}
+              >
+                {n.label}
+                {n.active && <span className="mx-auto mt-1 block h-px w-6 bg-copper" />}
+              </a>
+            ),
+          )}
         </nav>
 
         <div className="flex items-center gap-3">
@@ -138,16 +165,26 @@ function MainHeader() {
             </button>
           </div>
           <nav className="mt-6 flex flex-col items-center gap-6">
-            {navigation.map((n) => (
-              <a
-                key={n.label}
-                href={n.href}
-                onClick={() => setOpen(false)}
-                className="font-sans-brand text-sm tracking-[0.25em] text-brown-mid"
-              >
-                {n.label}
-              </a>
-            ))}
+            {navigation.map((n) =>
+              n.href.startsWith("/") ? (
+                <EloInternalLink
+                  key={n.label}
+                  to={n.href}
+                  className="font-sans-brand text-sm tracking-[0.25em] text-brown-mid"
+                >
+                  {n.label}
+                </EloInternalLink>
+              ) : (
+                <a
+                  key={n.label}
+                  href={n.href}
+                  onClick={() => setOpen(false)}
+                  className="font-sans-brand text-sm tracking-[0.25em] text-brown-mid"
+                >
+                  {n.label}
+                </a>
+              ),
+            )}
             <a
               href="#apoiar"
               onClick={() => setOpen(false)}
@@ -290,12 +327,12 @@ function HelpSection() {
               <p className="mt-4 min-h-[72px] font-sans-brand text-sm leading-relaxed text-text-soft">
                 {c.text}
               </p>
-              <a
-                href={c.href}
+              <EloInternalLink
+                to={c.href}
                 className="mt-6 w-full rounded-full bg-gradient-copper px-6 py-3 font-sans-brand text-[11px] tracking-[0.2em] text-white transition hover:brightness-105"
               >
                 {c.cta}
-              </a>
+              </EloInternalLink>
             </article>
           ))}
         </div>
@@ -334,12 +371,12 @@ function ImpactSection() {
         </div>
 
         <div className="mt-12 flex justify-center">
-          <a
-            href="/projeto-elo/transparencia"
+          <EloInternalLink
+            to="/projeto-elo/transparencia"
             className="inline-flex items-center gap-3 rounded-full bg-gradient-copper px-7 py-3.5 font-sans-brand text-[11px] tracking-[0.25em] text-white"
           >
             ACOMPANHAR RESULTADOS <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </a>
+          </EloInternalLink>
         </div>
       </div>
     </section>
@@ -399,12 +436,12 @@ function StoriesSection() {
                 </div>
                 <div className="p-6 pt-8">
                   <p className="font-serif text-lg italic text-brown-mid">{s.text}</p>
-                  <a
-                    href="/projeto-elo/participar"
+                  <EloInternalLink
+                    to="/projeto-elo/participar"
                     className="mt-4 inline-flex items-center gap-2 font-sans-brand text-[11px] tracking-[0.25em] text-copper"
                   >
                     VER HISTÓRIA <ArrowRight className="h-3 w-3" strokeWidth={1.5} />
-                  </a>
+                  </EloInternalLink>
                 </div>
               </article>
             ))}

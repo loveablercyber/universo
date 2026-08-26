@@ -59,8 +59,11 @@ test("admin Elo exposes every operational action used by the interface", async (
 
 test("public calls-to-action use real forms and transparency routes", async () => {
   const data = await source("src/data/elo-site.ts");
+  const page = await source("src/routes/projeto-elo.tsx");
   assert.match(data, /projeto-elo\/participar\?tipo=hair_donation/);
   assert.match(data, /projeto-elo\/participar\?tipo=beneficiary_request/);
   assert.match(data, /projeto-elo\/participar\?tipo=volunteer/);
   assert.match(data, /projeto-elo\/transparencia/);
+  assert.match(page, /function EloInternalLink/);
+  assert.match(page, /<EloInternalLink\s+to=\{c\.href\}/);
 });
