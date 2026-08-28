@@ -23,14 +23,45 @@ function headers() {
   };
 }
 
-type SumUpMerchantProfile = {
-  merchant_code?: unknown;
-  merchant_profile?: {
-    merchant_code?: unknown;
-  };
-};
-
 let merchantCodePromise: Promise<string> | null = null;
+
+const MERCHANT_CODE_PATTERN = /^[A-Z0-9]{8}$/;
+
+function normalizeMerchantCode(value: unknown): string {
+  return typeof value === "string" ? value.trim().toUpperCase() : "";
+}
+
+function findMerchantCode(value: unknown, depth = 0): string {
+  if (!value || depth > 5) return "";
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findMerchantCode(item, depth + 1);
+      if (found) return found;
+    }
+    return "";
+  }
+  if (typeof value !== "object") return "";
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["merchant_code", "merchantCode"]) {
+    const candidate = normalizeMerchantCode(record[key]);
+    if (MERCHANT_CODE_PATTERN.test(candidate)) return candidate;
+  }
+  for (const nested of Object.values(record)) {
+    const found = findMerchantCode(nested, depth + 1);
+    if (found) return found;
+  }
+  return "";
+}
+
+async function fetchMerchantCode(path: string): Promise<string> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "GET",
+    headers: headers(),
+  });
+  if (!response.ok) return "";
+  return findMerchantCode(await response.json());
+}
 
 /**
  * Resolve the merchant owned by the configured secret API key. This prevents a
@@ -41,45 +72,40 @@ async function resolveMerchantCode(): Promise<string> {
   if (merchantCodePromise) return merchantCodePromise;
 
   merchantCodePromise = (async () => {
-    const configuredCode = requireEnv("SUMUP_MERCHANT_CODE").toUpperCase();
+    const configuredCode = normalizeMerchantCode(process.env.SUMUP_MERCHANT_CODE);
     try {
-      const response = await fetch(`${API_BASE}/v0.1/me`, {
-        method: "GET",
-        headers: headers(),
-      });
-      if (!response.ok) {
-        console.warn("[SumUp] Merchant profile lookup failed:", response.status);
-        return configuredCode;
-      }
-
-      const profile = (await response.json()) as SumUpMerchantProfile;
       const detectedCode =
-        typeof profile.merchant_profile?.merchant_code === "string"
-          ? profile.merchant_profile.merchant_code
-          : typeof profile.merchant_code === "string"
-            ? profile.merchant_code
-            : "";
-      const normalizedCode = detectedCode.trim().toUpperCase();
-      if (!normalizedCode) {
-        console.warn("[SumUp] Merchant profile did not return merchant_code.");
+        (await fetchMerchantCode("/v0.1/me")) ||
+        (await fetchMerchantCode("/v0.1/memberships?kind=merchant&limit=25"));
+      if (detectedCode) {
+        if (configuredCode && detectedCode !== configuredCode) {
+          console.warn(
+            "[SumUp] SUMUP_MERCHANT_CODE does not match SUMUP_API_KEY; using the API profile.",
+          );
+        }
+        return detectedCode;
+      }
+      if (MERCHANT_CODE_PATTERN.test(configuredCode)) {
+        console.warn(
+          "[SumUp] API profile did not expose merchant_code; using the validated environment value.",
+        );
         return configuredCode;
       }
-      if (normalizedCode !== configuredCode) {
-        console.warn(
-          "[SumUp] SUMUP_MERCHANT_CODE does not match SUMUP_API_KEY; using the API profile.",
-        );
-      }
-      return normalizedCode;
     } catch (error) {
-      console.warn(
-        "[SumUp] Merchant profile lookup unavailable; using configured fallback.",
-        error,
-      );
-      return configuredCode;
+      if (MERCHANT_CODE_PATTERN.test(configuredCode)) return configuredCode;
+      console.warn("[SumUp] Merchant profile lookup unavailable.", error);
     }
-  })();
 
-  return merchantCodePromise;
+    throw new Error(
+      "SUMUP_MERCHANT_CODE inválido. Informe o código comercial de 8 caracteres da conta SumUp vinculada à SUMUP_API_KEY; não use CPF, código do proprietário nem chave pública.",
+    );
+  })();
+  try {
+    return await merchantCodePromise;
+  } catch (error) {
+    merchantCodePromise = null;
+    throw error;
+  }
 }
 
 export type SumUpCheckoutResponse = {
@@ -157,6 +183,11 @@ export async function createSumUpCheckout(
       else if (candidate) detail = JSON.stringify(candidate).slice(0, 500);
       if (detail === "Validation error" && typeof payload.param === "string") {
         detail = `campo inválido: ${payload.param}`;
+      }
+      if (payload.param === "merchant_code") {
+        merchantCodePromise = null;
+        detail =
+          "merchant_code rejeitado pela SumUp. A SUMUP_API_KEY deve ser uma chave secreta criada pela mesma conta comercial; não use chave pública, CPF ou código do proprietário";
       }
     } catch {
       // A resposta pode não ser JSON; o corpo completo permanece apenas no log do servidor.

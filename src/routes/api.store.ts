@@ -807,6 +807,8 @@ export const Route = createFileRoute("/api/store")({
           });
         } catch (sumupError) {
           console.error("[SumUp Checkout Creation Failed]", sumupError);
+          const sumupMessage =
+            sumupError instanceof Error ? sumupError.message : "";
 
           // ─── PASSO 3: COMPENSAÇÃO SEGURA (ROLLBACK DE NEGÓCIO) ───
           if (orderId) {
@@ -863,8 +865,10 @@ export const Route = createFileRoute("/api/store")({
           return Response.json(
             {
               ok: false,
-              message:
-                "O gateway de pagamento está temporariamente indisponível. Seu estoque foi liberado. Tente novamente em instantes.",
+              message: sumupMessage.includes("SUMUP_MERCHANT_CODE") ||
+                sumupMessage.includes("merchant_code")
+                ? `${sumupMessage} Seu estoque foi liberado.`
+                : "O gateway de pagamento está temporariamente indisponível. Seu estoque foi liberado. Tente novamente em instantes.",
             },
             { status: 502 },
           );
