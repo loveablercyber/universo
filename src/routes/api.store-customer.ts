@@ -12,6 +12,8 @@ import {
   checkRateLimit,
   recordFailedLogin,
   clearFailedLogins,
+  authenticate,
+  identityExists,
   type SessionUser,
 } from "@/lib/auth.server";
 
@@ -148,6 +150,17 @@ export const Route = createFileRoute("/api/store-customer")({
                   { status: 400 },
                 );
               }
+              if (await identityExists(email)) {
+                await client.query("ROLLBACK");
+                return Response.json(
+                  {
+                    ok: false,
+                    message:
+                      "Este e-mail já possui uma conta CarolSol. Entre com a mesma senha usada no Agenda, Academy ou painel principal.",
+                  },
+                  { status: 409 },
+                );
+              }
 
               const passwordHash = await bcrypt.hash(password, 12);
 
@@ -213,33 +226,8 @@ export const Route = createFileRoute("/api/store-customer")({
 
             const { email, password } = input.data;
 
-            const userRes = await query<{
-              id: string;
-              email: string;
-              password_hash: string;
-              full_name: string;
-              role: SessionUser["role"];
-              status: string;
-              permissions: string[];
-            }>(
-              `SELECT id, email, password_hash, full_name, role, status, permissions
-                 FROM universe.users
-                WHERE lower(email) = lower($1)
-                LIMIT 1`,
-              [email],
-            );
-
-            const user = userRes.rows[0];
-            if (!user || user.status !== "active") {
-              await recordFailedLogin(clientIp);
-              return Response.json(
-                { ok: false, message: "E-mail ou senha incorretos." },
-                { status: 401 },
-              );
-            }
-
-            const validPassword = await bcrypt.compare(password, user.password_hash);
-            if (!validPassword) {
+            const user = await authenticate(email, password);
+            if (!user) {
               await recordFailedLogin(clientIp);
               return Response.json(
                 { ok: false, message: "E-mail ou senha incorretos." },
@@ -249,17 +237,17 @@ export const Route = createFileRoute("/api/store-customer")({
 
             await clearFailedLogins(clientIp);
 
-            const sessionUser: SessionUser = {
-              id: user.id,
-              email: user.email,
-              fullName: user.full_name,
-              role: user.role,
-              permissions: user.permissions || ["store.customer"],
-            };
-            const token = await createSession(request, sessionUser);
+            await query(
+              `insert into universe.store_customers(full_name, email, phone, is_registered)
+               values($1, lower($2), null, true)
+               on conflict(lower(email)) do update
+                 set full_name=excluded.full_name, is_registered=true, updated_at=now()`,
+              [user.fullName, user.email],
+            );
+            const token = await createSession(request, user);
 
             return Response.json(
-              { ok: true, message: "Login realizado com sucesso!", customer: sessionUser },
+              { ok: true, message: "Login realizado com sucesso!", customer: user },
               { headers: { "Set-Cookie": sessionCookie(request, token) } },
             );
           }

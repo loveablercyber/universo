@@ -153,6 +153,10 @@ function AdminPage() {
       try {
         const response = await fetch("/api/auth");
         const payload = await readPayload(response);
+        if (payload.user && !["admin", "manager"].includes(payload.user.role)) {
+          window.location.replace("/conta");
+          return;
+        }
         setUser(payload.user ?? null);
         if (payload.user) await loadSummary();
       } catch {
@@ -180,6 +184,10 @@ function AdminPage() {
       });
       const payload = await readPayload(response);
       if (!response.ok) return setError(payload.message ?? "Não foi possível entrar.");
+      if (!["admin", "manager"].includes(payload.user?.role)) {
+        window.location.replace("/conta");
+        return;
+      }
       setUser(payload.user);
       await loadSummary();
     } catch {

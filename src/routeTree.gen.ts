@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ContaRouteImport } from './routes/conta'
 import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as DoacaoRouteImport } from './routes/doacao'
 import { Route as InvisibleAcademyRouteImport } from './routes/invisible-academy'
@@ -73,6 +74,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContaRoute = ContaRouteImport.update({
+  id: '/conta',
+  path: '/conta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContatoRoute = ContatoRouteImport.update({
@@ -353,6 +359,7 @@ const ApiAcademyCertificateCodeRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/conta': typeof ContaRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
   '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
@@ -410,6 +417,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/conta': typeof ContaRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
@@ -466,6 +474,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/conta': typeof ContaRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
   '/invisible-academy': typeof InvisibleAcademyRouteWithChildren
@@ -525,6 +534,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/conta'
     | '/contato'
     | '/doacao'
     | '/invisible-academy'
@@ -582,6 +592,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/conta'
     | '/contato'
     | '/doacao'
     | '/politica-de-privacidade'
@@ -637,6 +648,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/conta'
     | '/contato'
     | '/doacao'
     | '/invisible-academy'
@@ -695,6 +707,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  ContaRoute: typeof ContaRoute
   ContatoRoute: typeof ContatoRoute
   DoacaoRoute: typeof DoacaoRouteWithChildren
   InvisibleAcademyRoute: typeof InvisibleAcademyRouteWithChildren
@@ -743,6 +756,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conta': {
+      id: '/conta'
+      path: '/conta'
+      fullPath: '/conta'
+      preLoaderRoute: typeof ContaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contato': {
@@ -1212,6 +1232,7 @@ const ApiAcademyRouteWithChildren = ApiAcademyRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  ContaRoute: ContaRoute,
   ContatoRoute: ContatoRoute,
   DoacaoRoute: DoacaoRouteWithChildren,
   InvisibleAcademyRoute: InvisibleAcademyRouteWithChildren,

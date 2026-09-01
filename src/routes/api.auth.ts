@@ -6,11 +6,15 @@ import {
   clearSessionCookie,
   createSession,
   destroySession,
+  replaceUserPassword,
   readSession,
   sessionCookie,
   checkRateLimit,
   recordFailedLogin,
   clearFailedLogins,
+  consumeSsoCode,
+  createSsoCode,
+  requestPublicOrigin,
 } from "@/lib/auth.server";
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
@@ -19,7 +23,7 @@ import { dispatchNotification } from "@/lib/notifications.server";
 
 const loginSchema = z.object({
   action: z.literal("login"),
-  email: z.string().email().max(254),
+  identifier: z.string().trim().min(3).max(254),
   password: z.string().min(8).max(200),
 });
 const requestResetSchema = z.object({
@@ -41,9 +45,56 @@ export const Route = createFileRoute("/api/auth")({
     handlers: {
       GET: async ({ request }) => {
         try {
+          const url = new URL(request.url);
+          const publicOrigin = requestPublicOrigin(request);
+          const ssoCode = url.searchParams.get("sso_code");
+          if (ssoCode) {
+            const consumed = await consumeSsoCode(ssoCode, publicOrigin);
+            if (!consumed) {
+              return new Response(null, {
+                status: 302,
+                headers: { Location: `${publicOrigin}/conta?sso=invalid` },
+              });
+            }
+            const token = await createSession(request, consumed.user);
+            return new Response(null, {
+              status: 302,
+              headers: {
+                Location: new URL(consumed.returnPath, publicOrigin).toString(),
+                "Set-Cookie": sessionCookie(request, token),
+                "Cache-Control": "no-store",
+              },
+            });
+          }
+
+          const ssoTarget = url.searchParams.get("sso_start");
+          if (ssoTarget) {
+            const user = await readSession(request);
+            if (!user) {
+              const next = `${url.pathname}${url.search}`;
+              return new Response(null, {
+                status: 302,
+                headers: { Location: `${publicOrigin}/conta?next=${encodeURIComponent(next)}` },
+              });
+            }
+            const issued = await createSsoCode(
+              user,
+              ssoTarget,
+              url.searchParams.get("returnTo"),
+              publicOrigin,
+            );
+            const destination = new URL("/api/auth", issued.target);
+            destination.searchParams.set("sso_code", issued.code);
+            return new Response(null, {
+              status: 302,
+              headers: { Location: destination.toString(), "Cache-Control": "no-store" },
+            });
+          }
+
           const user = await readSession(request);
-          return Response.json({ ok: true, user });
-        } catch {
+          return Response.json({ ok: true, user }, { headers: { "Cache-Control": "no-store" } });
+        } catch (error) {
+          if (error instanceof Response) return error;
           return jsonError("Banco de dados indisponível.", 503);
         }
       },
@@ -100,11 +151,7 @@ export const Route = createFileRoute("/api/auth")({
             );
             if (!token.rows[0]) return jsonError("Link inválido ou expirado.", 400);
             const passwordHash = await bcrypt.hash(passwordReset.data.password, 12);
-            await query(
-              `update universe.users set password_hash=$2, updated_at=now() where id=$1`,
-              [token.rows[0].user_id, passwordHash],
-            );
-            await query(`delete from universe.sessions where user_id=$1`, [token.rows[0].user_id]);
+            await replaceUserPassword(token.rows[0].user_id, passwordHash);
             await query(
               `insert into universe.audit_logs(actor_id, action, entity_type, entity_id) values($1,'user.password_recovered','user',$1)`,
               [token.rows[0].user_id],
@@ -112,13 +159,16 @@ export const Route = createFileRoute("/api/auth")({
             return Response.json({ ok: true });
           }
 
-          const input = loginSchema.safeParse(body);
+          const input = loginSchema.safeParse({
+            ...body,
+            identifier: body?.identifier ?? body?.email,
+          });
           if (!input.success) return jsonError("Dados de acesso inválidos.", 400);
 
           const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
           await checkRateLimit(ip);
 
-          const user = await authenticate(input.data.email, input.data.password);
+          const user = await authenticate(input.data.identifier, input.data.password);
           if (!user) {
             await recordFailedLogin(ip);
             return jsonError("E-mail ou senha incorretos.", 401);

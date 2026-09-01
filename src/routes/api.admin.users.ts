@@ -1,7 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { assertSameOrigin, requireAdmin, requirePermission, readSession } from "@/lib/auth.server";
+import {
+  assertSameOrigin,
+  changeOwnPassword,
+  replaceUserPassword,
+  requireAdmin,
+  requirePermission,
+  readSession,
+} from "@/lib/auth.server";
 import { query } from "@/lib/db.server";
 
 const userSchema = z.object({
@@ -141,25 +148,17 @@ export const Route = createFileRoute("/api/admin/users")({
 
             const pass = changeOwnPasswordSchema.safeParse(body);
             if (pass.success) {
-              const result = await query(`select password_hash from universe.users where id=$1`, [
-                user.id,
-              ]);
-              const record = result.rows[0];
-              if (
-                !record ||
-                !(await bcrypt.compare(pass.data.currentPassword, record.password_hash))
-              ) {
+              const changed = await changeOwnPassword(
+                user,
+                pass.data.currentPassword,
+                pass.data.newPassword,
+              );
+              if (!changed) {
                 return Response.json(
                   { ok: false, message: "Senha atual incorreta" },
                   { status: 400 },
                 );
               }
-              const newHash = await bcrypt.hash(pass.data.newPassword, 12);
-              await query(
-                `update universe.users set password_hash=$2, updated_at=now() where id=$1`,
-                [user.id, newHash],
-              );
-              await query(`delete from universe.sessions where user_id=$1`, [user.id]);
               await audit(user.id, "user.password_changed", "user", user.id);
               return Response.json({ ok: true, reauthenticationRequired: true });
             }
@@ -213,14 +212,8 @@ export const Route = createFileRoute("/api/admin/users")({
           const reset = resetPasswordSchema.safeParse(body);
           if (reset.success) {
             const newHash = await bcrypt.hash(reset.data.newPassword, 12);
-            await query(
-              `update universe.users set password_hash=$2, updated_at=now() where id=$1`,
-              [reset.data.id, newHash],
-            );
+            await replaceUserPassword(reset.data.id, newHash);
             await audit(actor.id, "user.password_reset", "user", reset.data.id);
-
-            // Revoke all sessions on password reset
-            await query(`delete from universe.sessions where user_id=$1`, [reset.data.id]);
 
             return Response.json({ ok: true });
           }

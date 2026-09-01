@@ -4,7 +4,14 @@ import { query, withTransaction } from "@/lib/db.server";
 import { syncEnrollmentCompletion } from "@/lib/academy-certificates.server";
 import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
 import { sendAcademyEnrollmentNotification } from "@/lib/notifications.server";
-import { createSession, readSession, sessionCookie, type SessionUser } from "@/lib/auth.server";
+import {
+  authenticate,
+  createSession,
+  identityExists,
+  readSession,
+  sessionCookie,
+  type SessionUser,
+} from "@/lib/auth.server";
 import bcrypt from "bcryptjs";
 
 const enrollSchema = z.object({
@@ -449,7 +456,6 @@ export const Route = createFileRoute("/api/academy")({
               : Number(course.price);
             const reference = `acad-${crypto.randomUUID()}`;
 
-            const passwordHash = await bcrypt.hash(password, 12);
             const existingStudent = await query<{
               id: string;
               email: string;
@@ -462,25 +468,25 @@ export const Route = createFileRoute("/api/academy")({
                 WHERE lower(email)=lower($1) AND status <> 'deleted' LIMIT 1`,
               [studentEmail],
             );
-            let studentId = existingStudent.rows[0]?.id;
-            if (studentId) {
-              const validPassword = await bcrypt.compare(
-                password,
-                existingStudent.rows[0].password_hash,
-              );
-              if (!validPassword)
-                return Response.json(
-                  {
-                    ok: false,
-                    message: "Este e-mail já possui uma conta. Informe a senha correta.",
-                  },
-                  { status: 409 },
-                );
+            const authenticatedStudent = await authenticate(studentEmail, password);
+            let studentId = authenticatedStudent?.id;
+            if (authenticatedStudent) {
               await query(`UPDATE universe.users SET full_name=$2, updated_at=now() WHERE id=$1`, [
                 studentId,
                 studentName,
               ]);
             } else {
+              if (existingStudent.rows[0] || (await identityExists(studentEmail))) {
+                return Response.json(
+                  {
+                    ok: false,
+                    message:
+                      "Este e-mail já possui uma conta CarolSol. Informe a mesma senha usada nos outros painéis.",
+                  },
+                  { status: 409 },
+                );
+              }
+              const passwordHash = await bcrypt.hash(password, 12);
               const studentResult = await query<{ id: string }>(
                 `INSERT INTO universe.users(email, password_hash, full_name, role, status)
                  VALUES(lower($1), $2, $3, 'student', 'active') RETURNING id`,
@@ -526,14 +532,8 @@ export const Route = createFileRoute("/api/academy")({
               ],
             );
 
-            const sessionUser: SessionUser = existingStudent.rows[0]
-              ? {
-                  id: studentId,
-                  email: existingStudent.rows[0].email,
-                  fullName: studentName,
-                  role: existingStudent.rows[0].role,
-                  permissions: existingStudent.rows[0].permissions ?? [],
-                }
+            const sessionUser: SessionUser = authenticatedStudent
+              ? { ...authenticatedStudent, fullName: studentName }
               : {
                   id: studentId,
                   email: studentEmail.toLowerCase(),

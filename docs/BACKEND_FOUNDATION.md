@@ -7,7 +7,7 @@ agendamento existente não é importado, migrado ou alterado.
 
 1. Copie `.env.example` para `.env.local`.
 2. Configure um PostgreSQL em `DATABASE_URL`.
-3. Defina `ADMIN_EMAIL`, `ADMIN_PASSWORD` e `ADMIN_NAME`.
+3. Somente no primeiro setup, defina `ADMIN_EMAIL`, `ADMIN_PASSWORD` e `ADMIN_NAME`.
 4. Execute `npm run db:setup`.
 5. Execute `npm run dev`.
 6. Acesse `/admin`.
@@ -19,10 +19,14 @@ Configure:
 - `DATABASE_URL`: connection string interna do PostgreSQL do Universo.
 - `APP_URL=https://www.carolsol.com.br`
 - `SESSION_COOKIE_SECURE=true`
+- `JWT_SECRET` longo e exclusivo para assinar a sessão local.
+- `SSO_ALLOWED_ORIGINS` apenas para origens adicionais de desenvolvimento; os domínios CarolSol
+  de produção já fazem parte da lista segura. Cookies não são compartilhados entre subdomínios.
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD` e `ADMIN_NAME` somente durante o primeiro setup.
 
 No terminal da aplicação, execute `npm run db:setup`. Depois que o administrador
-for criado, `ADMIN_PASSWORD` pode ser removida das variáveis de ambiente.
+for criado, remova `ADMIN_PASSWORD` das variáveis de ambiente. O `db:setup` nunca mais
+substitui a senha de uma conta existente; alterações são feitas no painel administrativo.
 
 ## Rotas iniciais
 

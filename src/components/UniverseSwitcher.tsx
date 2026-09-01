@@ -5,6 +5,7 @@ const destinations = [
   { label: "Projeto Elo", to: "/projeto-elo" },
   { label: "Invisible Academy", to: "/invisible-academy" },
   { label: "Sol Hair Closet", to: "/sol-hair-closet" },
+  { label: "Minha conta", to: "/conta" },
 ] as const;
 
 export function UniverseSwitcher() {

@@ -58,19 +58,25 @@ try {
     if (password.length < 12) {
       throw new Error("ADMIN_PASSWORD precisa ter pelo menos 12 caracteres.");
     }
-    const passwordHash = await bcrypt.hash(password, 12);
-    await pool.query(
-      `insert into universe.users(email, password_hash, full_name, role)
-       values($1, $2, $3, 'admin')
-       on conflict (lower(email)) where status <> 'deleted'
-       do update set password_hash=excluded.password_hash,
-                     full_name=excluded.full_name,
-                     role='admin',
-                     status='active',
-                     updated_at=now()`,
-      [email, passwordHash, fullName],
+    const existingAdmin = await pool.query(
+      `select id from universe.users
+        where lower(email)=lower($1) and status <> 'deleted'
+        limit 1`,
+      [email],
     );
-    console.log(`Administrador preparado: ${email}`);
+    if (existingAdmin.rowCount) {
+      console.log(
+        `Administrador já existe: ${email}. A senha do painel foi preservada e não será sobrescrita pelo ambiente.`,
+      );
+    } else {
+      const passwordHash = await bcrypt.hash(password, 12);
+      await pool.query(
+        `insert into universe.users(email, password_hash, full_name, role)
+         values($1, $2, $3, 'admin')`,
+        [email, passwordHash, fullName],
+      );
+      console.log(`Administrador inicial criado: ${email}`);
+    }
   } else {
     console.log(
       "Migração aplicada. Administrador não criado: defina ADMIN_EMAIL e ADMIN_PASSWORD.",
