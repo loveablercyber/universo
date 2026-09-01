@@ -865,8 +865,9 @@ export const Route = createFileRoute("/api/store")({
           return Response.json(
             {
               ok: false,
-              message: sumupMessage.includes("SUMUP_MERCHANT_CODE") ||
-                sumupMessage.includes("merchant_code")
+              message: sumupMessage.startsWith("Falha ao criar checkout SumUp") ||
+                sumupMessage.startsWith("Falha ao conectar à SumUp") ||
+                sumupMessage.includes("SUMUP_")
                 ? `${sumupMessage} Seu estoque foi liberado.`
                 : "O gateway de pagamento está temporariamente indisponível. Seu estoque foi liberado. Tente novamente em instantes.",
             },

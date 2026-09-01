@@ -38,7 +38,10 @@ function errorResponse(error: unknown) {
     );
   }
 
-  if (message.includes("não configurada") && message.includes("SUMUP_")) {
+  if (
+    message.includes("SUMUP_") &&
+    (message.includes("não configurada") || message.includes("inválida"))
+  ) {
     return Response.json(
       {
         ok: false,
@@ -57,6 +60,10 @@ function errorResponse(error: unknown) {
       },
       { status: 502 },
     );
+  }
+
+  if (message.startsWith("Falha ao conectar à SumUp")) {
+    return Response.json({ ok: false, message }, { status: 502 });
   }
 
   return Response.json(

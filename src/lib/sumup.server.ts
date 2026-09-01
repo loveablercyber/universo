@@ -3,7 +3,7 @@
  *
  * Environment variables required:
  *   SUMUP_API_KEY          – Bearer token for SumUp API
- *   SUMUP_MERCHANT_CODE    – Merchant identifier fallback (normally resolved from the API key)
+ *   SUMUP_MERCHANT_CODE    – Explicit merchant identifier that receives every payment
  *   SUMUP_RETURN_URL       – Public URL the customer returns to after payment
  *   SUMUP_WEBHOOK_URL      – Public backend callback for checkout status changes
  */
@@ -23,177 +23,29 @@ function headers() {
   };
 }
 
-let merchantCodePromise: Promise<string> | null = null;
-let merchantCodeApiKey = "";
-
 const MERCHANT_CODE_PATTERN = /^[A-Z0-9]{8}$/;
 
 function normalizeMerchantCode(value: unknown): string {
   return typeof value === "string" ? value.trim().toUpperCase() : "";
 }
 
-function findMerchantCode(value: unknown, depth = 0): string {
-  if (!value || depth > 5) return "";
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findMerchantCode(item, depth + 1);
-      if (found) return found;
-    }
-    return "";
-  }
-  if (typeof value !== "object") return "";
-
-  const record = value as Record<string, unknown>;
-  for (const key of ["merchant_code", "merchantCode"]) {
-    const candidate = normalizeMerchantCode(record[key]);
-    if (MERCHANT_CODE_PATTERN.test(candidate)) return candidate;
-  }
-  for (const nested of Object.values(record)) {
-    const found = findMerchantCode(nested, depth + 1);
-    if (found) return found;
-  }
-  return "";
-}
-
-/**
- * Memberships do not expose `merchant_code`. The SumUp API returns the same
- * merchant identifier as `resource_id` and `resource.id` when `type` is
- * `merchant`. Keeping this parser separate avoids treating unrelated IDs as a
- * merchant code.
- */
-function findMembershipMerchantCodes(value: unknown): string[] {
-  if (!value || typeof value !== "object") return [];
-  const payload = value as Record<string, unknown>;
-  const items = Array.isArray(payload.items) ? payload.items : [];
-  const codes: string[] = [];
-  for (const item of items) {
-    if (!item || typeof item !== "object") continue;
-    const membership = item as Record<string, unknown>;
-    const resource =
-      membership.resource && typeof membership.resource === "object"
-        ? (membership.resource as Record<string, unknown>)
-        : {};
-    const resourceType = String(membership.type || resource.type || "").toLowerCase();
-    const status = String(membership.status || "accepted").toLowerCase();
-    if (resourceType !== "merchant" || !["accepted", ""].includes(status)) continue;
-    const candidate = normalizeMerchantCode(membership.resource_id || resource.id);
-    if (MERCHANT_CODE_PATTERN.test(candidate) && !codes.includes(candidate)) {
-      codes.push(candidate);
-    }
-  }
-  return codes;
-}
-
-async function fetchMerchantCode(path: string): Promise<string> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: "GET",
-    headers: headers(),
-  });
-  if (response.status === 401) {
-    throw new Error("SUMUP_API_KEY recusada pela SumUp. Gere e configure uma nova chave secreta.");
-  }
-  if (!response.ok) return "";
-  return findMerchantCode(await response.json());
-}
-
-async function fetchMembershipMerchantCodes(): Promise<string[]> {
-  const response = await fetch(
-    `${API_BASE}/v0.1/memberships?kind=merchant&status=accepted&limit=25`,
-    { method: "GET", headers: headers() },
-  );
-  if (response.status === 401) {
-    throw new Error("SUMUP_API_KEY recusada pela SumUp. Gere e configure uma nova chave secreta.");
-  }
-  if (!response.ok) return [];
-  return findMembershipMerchantCodes(await response.json());
-}
-
-async function validateConfiguredMerchantCode(code: string): Promise<boolean> {
-  if (!MERCHANT_CODE_PATTERN.test(code)) return false;
-  const response = await fetch(`${API_BASE}/v1/merchants/${encodeURIComponent(code)}`, {
-    method: "GET",
-    headers: headers(),
-  });
-  if (response.status === 401) {
-    throw new Error("SUMUP_API_KEY recusada pela SumUp. Gere e configure uma nova chave secreta.");
-  }
-  if (!response.ok) return false;
-  const detected = findMerchantCode(await response.json());
-  return detected === code;
-}
-
-/**
- * Resolve the merchant owned by the configured secret API key. This prevents a
- * merchant code copied from another account/environment from breaking every
- * checkout. SumUp documents GET /v0.1/me as the authoritative profile lookup.
- */
-async function resolveMerchantCode(): Promise<string> {
-  const apiKey = requireEnv("SUMUP_API_KEY");
-  if (merchantCodeApiKey !== apiKey) {
-    merchantCodePromise = null;
-    merchantCodeApiKey = apiKey;
-  }
-  if (merchantCodePromise) return merchantCodePromise;
-
-  merchantCodePromise = (async () => {
-    const configuredCode = normalizeMerchantCode(process.env.SUMUP_MERCHANT_CODE);
-    try {
-      const profileCode = await fetchMerchantCode("/v0.1/me");
-      if (profileCode) {
-        if (configuredCode && profileCode !== configuredCode) {
-          console.warn(
-            "[SumUp] SUMUP_MERCHANT_CODE does not match SUMUP_API_KEY; using the API profile.",
-          );
-        }
-        return profileCode;
-      }
-
-      const membershipCodes = await fetchMembershipMerchantCodes();
-      if (configuredCode && membershipCodes.includes(configuredCode)) {
-        return configuredCode;
-      }
-      if (membershipCodes.length === 1) {
-        if (configuredCode && membershipCodes[0] !== configuredCode) {
-          console.warn(
-            "[SumUp] SUMUP_MERCHANT_CODE does not match the API-key membership; using the authorized merchant.",
-          );
-        }
-        return membershipCodes[0];
-      }
-      if (membershipCodes.length > 1) {
-        throw new Error(
-          "A chave possui mais de uma conta comercial. Configure SUMUP_MERCHANT_CODE com uma das contas vinculadas.",
-        );
-      }
-      if (
-        MERCHANT_CODE_PATTERN.test(configuredCode) &&
-        (await validateConfiguredMerchantCode(configuredCode))
-      ) {
-        console.warn(
-          "[SumUp] API profile did not expose the merchant; using the environment value validated against the API key.",
-        );
-        return configuredCode;
-      }
-    } catch (error) {
-      console.warn("[SumUp] Merchant profile lookup unavailable.", error);
-      if (error instanceof Error && error.message.includes("mais de uma conta comercial")) {
-        throw error;
-      }
-      if (error instanceof Error && error.message.includes("SUMUP_API_KEY recusada")) {
-        throw error;
-      }
-    }
-
+function requireMerchantCode(): string {
+  const code = normalizeMerchantCode(requireEnv("SUMUP_MERCHANT_CODE"));
+  if (!MERCHANT_CODE_PATTERN.test(code)) {
     throw new Error(
-      "A SumUp autenticou a chave, mas não informou uma conta comercial autorizada. Gere uma nova chave secreta dentro da conta comercial correta e não use CPF, código do proprietário ou chave pública.",
+      "Variável de ambiente SUMUP_MERCHANT_CODE inválida. Use o código comercial de 8 caracteres exibido na conta SumUp.",
     );
-  })();
-  try {
-    return await merchantCodePromise;
-  } catch (error) {
-    merchantCodePromise = null;
-    throw error;
   }
+  return code;
+}
+
+function safeProviderDetail(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/(authorization|bearer|api[_ -]?key|token|secret)\s*[:=]\s*\S+/gi, "$1=[oculto]")
+    .trim()
+    .slice(0, 300);
 }
 
 export type SumUpCheckoutResponse = {
@@ -216,7 +68,7 @@ export async function createSumUpCheckout(
   description: string,
   redirectUrl?: string,
 ): Promise<SumUpCheckoutResponse> {
-  const merchantCode = await resolveMerchantCode();
+  const merchantCode = requireMerchantCode();
   const returnUrl = redirectUrl ?? requireEnv("SUMUP_RETURN_URL");
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Valor inválido para o checkout SumUp.");
@@ -247,11 +99,19 @@ export async function createSumUpCheckout(
     },
   };
 
-  const response = await fetch(`${API_BASE}/v0.1/checkouts`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/v0.1/checkouts`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    console.error("[SumUp] Checkout connection failed:", error);
+    throw new Error(
+      "Falha ao conectar à SumUp. Verifique a conectividade do servidor e tente novamente.",
+    );
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -264,18 +124,37 @@ export async function createSumUpCheckout(
         error_code?: unknown;
         errors?: unknown;
         param?: unknown;
+        instance?: unknown;
+        trace_id?: unknown;
       };
       const candidate =
         payload.errors ?? payload.message ?? payload.error_message ?? payload.error_code;
-      if (typeof candidate === "string") detail = candidate.slice(0, 500);
+      if (typeof candidate === "string") detail = safeProviderDetail(candidate);
       else if (candidate) detail = JSON.stringify(candidate).slice(0, 500);
       if (detail === "Validation error" && typeof payload.param === "string") {
         detail = `campo inválido: ${payload.param}`;
       }
-      if (payload.param === "merchant_code") {
-        merchantCodePromise = null;
+      if (response.status === 401) {
+        detail = "SUMUP_API_KEY recusada pela SumUp. Configure uma chave secreta criada na conta comercial correta; não use a chave pública";
+      }
+      if (
+        response.status === 403 ||
+        payload.error_message === "checkout_payments_not_allowed"
+      ) {
         detail =
-          "a SumUp não reconheceu uma conta comercial autorizada para esta chave. Gere a chave secreta dentro da conta comercial que receberá o pagamento";
+          "pagamentos online não estão habilitados para esta conta. Solicite à SumUp a liberação de Checkouts e Hosted Checkout";
+      }
+      if (payload.param === "merchant_code") {
+        detail =
+          "a SumUp rejeitou o SUMUP_MERCHANT_CODE informado. A chave secreta e o código comercial precisam pertencer à mesma conta";
+      }
+      const providerCode = safeProviderDetail(payload.error_code);
+      const providerReference = safeProviderDetail(payload.instance ?? payload.trace_id);
+      if (providerCode && !detail.includes(providerCode)) {
+        detail = `${detail || "requisição recusada"} (código ${providerCode})`;
+      }
+      if (providerReference) {
+        detail = `${detail || "requisição recusada"}; referência SumUp ${providerReference}`;
       }
     } catch {
       // A resposta pode não ser JSON; o corpo completo permanece apenas no log do servidor.

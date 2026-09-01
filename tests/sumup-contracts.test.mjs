@@ -2,28 +2,38 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-test("SumUp merchant resolution follows the official membership response", async () => {
+test("SumUp requires the explicit merchant configured for this production", async () => {
   const source = await readFile("src/lib/sumup.server.ts", "utf8");
 
-  assert.match(source, /membership\.resource_id \|\| resource\.id/);
-  assert.match(source, /resourceType !== "merchant"/);
-  assert.match(source, /membershipCodes\.includes\(configuredCode\)/);
-  assert.match(source, /membershipCodes\.length === 1/);
-  assert.match(source, /\/v1\/merchants\/\$\{encodeURIComponent\(code\)\}/);
-  assert.doesNotMatch(
-    source,
-    /fetchMerchantCode\("\/v0\.1\/memberships\?kind=merchant&limit=25"\)/,
-  );
+  assert.match(source, /requireMerchantCode\(\)/);
+  assert.match(source, /requireEnv\("SUMUP_MERCHANT_CODE"\)/);
+  assert.match(source, /MERCHANT_CODE_PATTERN\.test\(code\)/);
+  assert.match(source, /merchant_code: merchantCode/);
+  assert.doesNotMatch(source, /\/v0\.1\/memberships/);
+  assert.doesNotMatch(source, /using the API profile/);
 });
 
-test("SumUp failures distinguish an invalid secret from merchant association", async () => {
+test("SumUp failures distinguish configuration, authorization and connectivity", async () => {
   const source = await readFile("src/lib/sumup.server.ts", "utf8");
 
   assert.match(source, /response\.status === 401/);
   assert.match(source, /SUMUP_API_KEY recusada pela SumUp/);
-  assert.match(source, /não reconheceu uma conta comercial autorizada para esta chave/);
-  assert.doesNotMatch(
-    source,
-    /if \(MERCHANT_CODE_PATTERN\.test\(configuredCode\)\) return configuredCode/,
+  assert.match(source, /pagamentos online não estão habilitados/);
+  assert.match(source, /Falha ao conectar à SumUp/);
+  assert.match(source, /referência SumUp/);
+  assert.match(source, /chave secreta e o código comercial precisam pertencer à mesma conta/);
+});
+
+test("the production template documents the shared SumUp callback for all products", async () => {
+  const env = await readFile(".env.example", "utf8");
+
+  assert.match(env, /^SUMUP_MERCHANT_CODE=MXXXXXXX$/m);
+  assert.match(env, /^SUMUP_API_KEY=sup_sk_/m);
+  assert.match(
+    env,
+    /^SUMUP_WEBHOOK_URL=https:\/\/loja\.carolsol\.com\.br\/api\/webhook\/sumup$/m,
   );
+  assert.match(env, /^SUMUP_RETURN_URL=https:\/\/carolsol\.com\.br\/doacao\/retorno$/m);
+  assert.match(env, /^SUMUP_STORE_RETURN_URL=https:\/\/loja\.carolsol\.com\.br\/pedido$/m);
+  assert.match(env, /^SUMUP_ACADEMY_RETURN_URL=https:\/\/academy\.carolsol\.com\.br\/aluno$/m);
 });
