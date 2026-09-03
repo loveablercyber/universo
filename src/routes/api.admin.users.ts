@@ -9,7 +9,7 @@ import {
   requirePermission,
   readSession,
 } from "@/lib/auth.server";
-import { query } from "@/lib/db.server";
+import { query, withTransaction } from "@/lib/db.server";
 
 const userSchema = z.object({
   action: z.literal("create-user"),
@@ -52,6 +52,11 @@ const toggleStatusSchema = z.object({
 
 const revokeSessionsSchema = z.object({
   action: z.literal("revoke-sessions"),
+  id: z.string().uuid(),
+});
+
+const deleteUserSchema = z.object({
+  action: z.literal("delete-user"),
   id: z.string().uuid(),
 });
 
@@ -238,6 +243,93 @@ export const Route = createFileRoute("/api/admin/users")({
             await query(`delete from universe.sessions where user_id=$1`, [revoke.data.id]);
             await audit(actor.id, "user.sessions_revoked", "user", revoke.data.id);
             return Response.json({ ok: true });
+          }
+
+          const deletion = deleteUserSchema.safeParse(body);
+          if (deletion.success) {
+            if (deletion.data.id === actor.id) {
+              return Response.json(
+                { ok: false, message: "Você não pode remover a própria conta." },
+                { status: 400 },
+              );
+            }
+
+            const result = await withTransaction(async (client) => {
+              const targetResult = await client.query<{
+                id: string;
+                email: string;
+                full_name: string;
+                role: string;
+                identity_user_id: string | null;
+              }>(
+                `select id, email, full_name, role::text, identity_user_id
+                   from universe.users
+                  where id=$1
+                  for update`,
+                [deletion.data.id],
+              );
+              const target = targetResult.rows[0];
+              if (!target) return { status: "not-found" as const };
+
+              if (target.role === "admin") {
+                const adminCount = await client.query<{ count: string }>(
+                  `select count(*)::text as count
+                     from universe.users
+                    where role='admin' and status='active'`,
+                );
+                if (Number(adminCount.rows[0]?.count || 0) <= 1) {
+                  return { status: "last-admin" as const };
+                }
+              }
+
+              await client.query(`delete from universe.users where id=$1`, [target.id]);
+
+              if (target.identity_user_id) {
+                await client.query(
+                  `delete from public.carolsol_sso_codes where identity_user_id=$1`,
+                  [target.identity_user_id],
+                );
+                const canonicalTable = await client.query<{ table_name: string | null }>(
+                  `select to_regclass('auth.users')::text as table_name`,
+                );
+                if (canonicalTable.rows[0]?.table_name) {
+                  await client.query(`delete from auth.users where id=$1`, [
+                    target.identity_user_id,
+                  ]);
+                }
+              }
+
+              await client.query(
+                `insert into universe.audit_logs(actor_id, action, entity_type, entity_id, metadata)
+                 values($1, 'user.deleted', 'user', $2, $3::jsonb)`,
+                [
+                  actor.id,
+                  target.id,
+                  JSON.stringify({
+                    email: target.email,
+                    fullName: target.full_name,
+                    role: target.role,
+                  }),
+                ],
+              );
+
+              return { status: "deleted" as const };
+            });
+
+            if (result.status === "not-found") {
+              return Response.json(
+                { ok: false, message: "Usuário não encontrado." },
+                { status: 404 },
+              );
+            }
+            if (result.status === "last-admin") {
+              return Response.json(
+                { ok: false, message: "Não é possível remover o último administrador ativo." },
+                { status: 409 },
+              );
+            }
+
+            return Response.json({ ok: true, message: "Usuário removido definitivamente." });
           }
 
           return Response.json({ ok: false, message: "Dados inválidos." }, { status: 400 });

@@ -19,6 +19,7 @@ import {
   Sparkles,
   Trash2,
   CheckCircle2,
+  ImagePlus,
 } from "lucide-react";
 
 type StoreVariant = {
@@ -124,7 +125,9 @@ type StoreCustomer = {
 };
 
 export function StoreManager() {
-  const [activeTab, setActiveTab] = useState<"products" | "categories" | "orders" | "customers">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "categories" | "orders" | "customers">(
+    "products",
+  );
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [orders, setOrders] = useState<StoreOrder[]>([]);
@@ -132,6 +135,7 @@ export function StoreManager() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
   const [editingProduct, setEditingProduct] = useState<StoreProduct | null>(null);
   const [editingCategory, setEditingCategory] = useState<StoreCategory | null>(null);
@@ -177,6 +181,33 @@ export function StoreManager() {
     loadData();
   }, []);
 
+  const removeProduct = async (product: StoreProduct) => {
+    if (
+      !window.confirm(
+        `Remover definitivamente o produto “${product.name}”? O histórico dos pedidos será preservado.`,
+      )
+    ) {
+      return;
+    }
+
+    setDeletingProductId(product.id);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-product", id: product.id }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.message || "Erro ao remover produto");
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao remover produto");
+    } finally {
+      setDeletingProductId(null);
+    }
+  };
+
   const filteredProducts = products.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -194,6 +225,15 @@ export function StoreManager() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div
+          role="alert"
+          className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        >
+          {error}
+        </div>
+      )}
+
       {/* Cards de Métricas */}
       {stats && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -303,7 +343,7 @@ export function StoreManager() {
                 name: "",
                 price: 0,
                 stockQuantity: 25,
-                image: "/images/produto-fibra-russa.jpg",
+                image: "",
                 status: "active",
                 sold: 0,
                 variants: [],
@@ -420,21 +460,35 @@ export function StoreManager() {
                             p.status === "active"
                               ? "bg-green-50 text-green-700"
                               : p.status === "out_of_stock"
-                              ? "bg-red-50 text-red-700"
-                              : "bg-gray-100 text-gray-700"
+                                ? "bg-red-50 text-red-700"
+                                : "bg-gray-100 text-gray-700"
                           }`}
                         >
                           {p.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => setEditingProduct(p)}
-                          className="rounded-xl p-2 text-copper hover:bg-copper/10 transition"
-                          title="Editar produto"
-                        >
-                          <Edit3 size={16} />
-                        </button>
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingProduct(p)}
+                            className="rounded-xl p-2 text-copper hover:bg-copper/10 transition"
+                            title="Editar produto"
+                            aria-label={`Editar ${p.name}`}
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void removeProduct(p)}
+                            disabled={deletingProductId === p.id}
+                            className="rounded-xl p-2 text-red-600 hover:bg-red-50 transition disabled:cursor-wait disabled:opacity-50"
+                            title="Remover produto"
+                            aria-label={`Remover ${p.name}`}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -465,13 +519,21 @@ export function StoreManager() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {c.image ? (
-                          <img src={c.image} alt="" className="h-10 w-10 rounded-full object-cover border" />
+                          <img
+                            src={c.image}
+                            alt=""
+                            className="h-10 w-10 rounded-full object-cover border"
+                          />
                         ) : (
-                          <div className="h-10 w-10 rounded-full bg-copper/10 grid place-items-center text-copper font-bold">✦</div>
+                          <div className="h-10 w-10 rounded-full bg-copper/10 grid place-items-center text-copper font-bold">
+                            ✦
+                          </div>
                         )}
                         <div>
                           <p className="font-semibold text-brown">{c.name}</p>
-                          {c.description && <p className="text-xs text-brown/50">{c.description}</p>}
+                          {c.description && (
+                            <p className="text-xs text-brown/50">{c.description}</p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -560,10 +622,10 @@ export function StoreManager() {
                             o.status === "paid"
                               ? "bg-green-50 text-green-700"
                               : o.status === "shipped"
-                              ? "bg-blue-50 text-blue-700"
-                              : o.status === "cancelled"
-                              ? "bg-red-50 text-red-700"
-                              : "bg-amber-50 text-amber-700"
+                                ? "bg-blue-50 text-blue-700"
+                                : o.status === "cancelled"
+                                  ? "bg-red-50 text-red-700"
+                                  : "bg-amber-50 text-amber-700"
                           }`}
                         >
                           {o.status}
@@ -662,10 +724,7 @@ export function StoreManager() {
       )}
 
       {viewingCustomer && (
-        <CustomerDetailModal
-          customer={viewingCustomer}
-          onClose={() => setViewingCustomer(null)}
-        />
+        <CustomerDetailModal customer={viewingCustomer} onClose={() => setViewingCustomer(null)} />
       )}
     </div>
   );
@@ -819,6 +878,8 @@ function ProductEditorModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [variants, setVariants] = useState<StoreVariant[]>(product?.variants || []);
+  const [imageUrl, setImageUrl] = useState(product?.image || "");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const addVariant = () => {
     setVariants([
@@ -835,14 +896,44 @@ function ProductEditorModal({
     setVariants(variants.filter((_, i) => i !== index));
   };
 
-  const updateVariant = (index: number, field: keyof StoreVariant, value: any) => {
+  const updateVariant = <K extends keyof StoreVariant>(
+    index: number,
+    field: K,
+    value: StoreVariant[K],
+  ) => {
     const updated = [...variants];
     updated[index] = { ...updated[index], [field]: value };
     setVariants(updated);
   };
 
+  const uploadImage = async (file: File) => {
+    setUploadingImage(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("title", product?.name || "Imagem de produto");
+      form.append("altText", product?.name || "Produto da Sol Hair Closet");
+
+      const res = await fetch("/api/admin/media", { method: "POST", body: form });
+      const payload = await res.json();
+      if (!res.ok || !payload.publicUrl) {
+        throw new Error(payload.message || "Não foi possível enviar a imagem");
+      }
+      setImageUrl(payload.publicUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível enviar a imagem");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!imageUrl) {
+      setError("Envie a imagem principal do produto antes de salvar.");
+      return;
+    }
     setLoading(true);
     setError("");
     const form = new FormData(e.currentTarget);
@@ -861,7 +952,7 @@ function ProductEditorModal({
           : null,
         stockQuantity: parseInt(String(form.get("stockQuantity")), 10),
         categoryId: form.get("categoryId") || null,
-        image: form.get("image"),
+        image: imageUrl,
         badgeLabel: form.get("badgeLabel") || null,
         badgeTone: form.get("badgeTone") || "gold",
         status: form.get("status"),
@@ -903,7 +994,9 @@ function ProductEditorModal({
 
           {/* Dados Principais */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-copper">1. Informações Básicas</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-copper">
+              1. Informações Básicas
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-brown">Nome do Produto *</label>
@@ -1006,14 +1099,44 @@ function ProductEditorModal({
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-brown">URL da Imagem Principal *</label>
-              <input
-                name="image"
-                defaultValue={product?.image || "/images/produto-fibra-russa.jpg"}
-                required
-                className="w-full h-10 rounded-xl border border-copper/20 px-3 outline-none focus:border-copper text-sm"
-              />
+            <div className="space-y-2">
+              <label htmlFor="product-main-image" className="text-xs font-medium text-brown">
+                Imagem Principal *
+              </label>
+              <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-copper/30 bg-cream/20 p-4 sm:flex-row sm:items-center">
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt="Prévia da imagem principal do produto"
+                    className="h-24 w-24 rounded-xl border border-copper/10 object-cover"
+                  />
+                ) : (
+                  <div className="grid h-24 w-24 place-items-center rounded-xl bg-white text-copper/60">
+                    <ImagePlus size={28} />
+                  </div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <input
+                    id="product-main-image"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                    disabled={uploadingImage}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadImage(file);
+                      event.currentTarget.value = "";
+                    }}
+                    className="block w-full text-xs text-brown/70 file:mr-3 file:rounded-xl file:border-0 file:bg-copper file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-copper-dark disabled:opacity-50"
+                  />
+                  <p className="text-[11px] text-brown/55">
+                    {uploadingImage
+                      ? "Enviando imagem..."
+                      : imageUrl
+                        ? "Imagem pronta. Selecione outro arquivo para substituir."
+                        : "Use JPG, PNG, WEBP, SVG ou GIF."}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -1059,7 +1182,8 @@ function ProductEditorModal({
 
             {variants.length === 0 ? (
               <p className="text-xs text-brown/50 italic bg-cream/30 p-3 rounded-xl">
-                Nenhuma variação específica. O produto será vendido com o preço e estoque padrão acima.
+                Nenhuma variação específica. O produto será vendido com o preço e estoque padrão
+                acima.
               </p>
             ) : (
               <div className="space-y-3">
@@ -1081,7 +1205,9 @@ function ProductEditorModal({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="text-[10px] font-medium text-brown/70">Título da Opção *</label>
+                        <label className="text-[10px] font-medium text-brown/70">
+                          Título da Opção *
+                        </label>
                         <input
                           value={v.title}
                           onChange={(e) => updateVariant(idx, "title", e.target.value)}
@@ -1099,11 +1225,15 @@ function ProductEditorModal({
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-medium text-brown/70">Estoque desta Variação *</label>
+                        <label className="text-[10px] font-medium text-brown/70">
+                          Estoque desta Variação *
+                        </label>
                         <input
                           type="number"
                           value={v.stockQuantity}
-                          onChange={(e) => updateVariant(idx, "stockQuantity", parseInt(e.target.value, 10) || 0)}
+                          onChange={(e) =>
+                            updateVariant(idx, "stockQuantity", parseInt(e.target.value, 10) || 0)
+                          }
                           className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none font-bold"
                         />
                       </div>
@@ -1126,7 +1256,7 @@ function ProductEditorModal({
           <button
             type="submit"
             form="product-form"
-            disabled={loading}
+            disabled={loading || uploadingImage}
             className="flex items-center gap-2 rounded-xl bg-copper px-6 py-2.5 text-xs font-semibold text-white hover:bg-copper-dark transition shadow-md"
           >
             <Save size={16} /> Salvar Produto
@@ -1200,7 +1330,7 @@ function OrderDetailModal({
                 <label className="text-[11px] font-medium text-brown/70">Status do Pedido</label>
                 <select
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
+                  onChange={(e) => setStatus(e.target.value as StoreOrder["status"])}
                   className="w-full h-10 rounded-xl border border-copper/20 px-3 text-xs outline-none focus:border-copper"
                 >
                   <option value="pending">Aguardando Pagamento</option>
@@ -1214,7 +1344,9 @@ function OrderDetailModal({
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-brown/70">Código de Rastreio Correios</label>
+                <label className="text-[11px] font-medium text-brown/70">
+                  Código de Rastreio Correios
+                </label>
                 <input
                   value={trackingCode}
                   onChange={(e) => setTrackingCode(e.target.value)}

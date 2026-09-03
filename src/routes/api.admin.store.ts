@@ -39,6 +39,11 @@ const productSchema = z.object({
   variants: z.array(variantSchema).optional(),
 });
 
+const deleteProductSchema = z.object({
+  action: z.literal("delete-product"),
+  id: z.string().uuid(),
+});
+
 const categorySchema = z.object({
   action: z.literal("save-category"),
   id: z.string().min(1),
@@ -404,13 +409,50 @@ export const Route = createFileRoute("/api/admin/store")({
               }
             }
 
-            await audit(user.id, "store.product.saved", "store_product", productId!, { name, slug, price });
+            await audit(user.id, "store.product.saved", "store_product", productId!, {
+              name,
+              slug,
+              price,
+            });
 
             await client.query("COMMIT");
             return Response.json({ ok: true, message: "Produto salvo com sucesso!", productId });
           }
 
-          // 3. Atualizar Status de Pedido e Rastreio
+          // 3. Remover Produto. Itens de pedidos anteriores mantêm o nome e o
+          // valor registrados; a FK apenas desvincula o produto excluído.
+          if (body.action === "delete-product") {
+            const parsed = deleteProductSchema.safeParse(body);
+            if (!parsed.success) {
+              return Response.json({ ok: false, message: "Produto inválido." }, { status: 400 });
+            }
+
+            await client.query("BEGIN");
+            const deleted = await client.query<{ id: string; name: string; slug: string }>(
+              `DELETE FROM universe.store_products
+                WHERE id = $1
+                RETURNING id, name, slug`,
+              [parsed.data.id],
+            );
+
+            if (!deleted.rows[0]) {
+              await client.query("ROLLBACK");
+              return Response.json(
+                { ok: false, message: "Produto não encontrado." },
+                { status: 404 },
+              );
+            }
+
+            await audit(user.id, "store.product.deleted", "store_product", parsed.data.id, {
+              name: deleted.rows[0].name,
+              slug: deleted.rows[0].slug,
+            });
+            await client.query("COMMIT");
+
+            return Response.json({ ok: true, message: "Produto removido com sucesso!" });
+          }
+
+          // 4. Atualizar Status de Pedido e Rastreio
           if (body.action === "update-order-status") {
             const parsed = updateOrderStatusSchema.safeParse(body);
             if (!parsed.success) {

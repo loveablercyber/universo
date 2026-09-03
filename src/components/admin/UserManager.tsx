@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, ShieldAlert, Key, UserX, Shield, Edit3, X, Save } from "lucide-react";
+import { Search, ShieldAlert, Key, UserX, Shield, Edit3, X, Save, Trash2 } from "lucide-react";
 
 type User = {
   id: string;
@@ -206,6 +206,7 @@ function UserEditorModal({
   const handleAction = async (action: string, payload?: Record<string, unknown>) => {
     if (!user) return;
 
+    setLoading(true);
     try {
       const res = await fetch("/api/admin/users", {
         method: "POST",
@@ -222,6 +223,8 @@ function UserEditorModal({
       if (action !== "update-permissions") onClose();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Erro desconhecido");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -297,6 +300,7 @@ function UserEditorModal({
               <h3 className="font-serif text-lg">Ações Avançadas</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     const newPassword = window.prompt(
                       "Digite uma nova senha provisória com pelo menos 12 caracteres:",
@@ -317,6 +321,7 @@ function UserEditorModal({
                   <Key size={16} className="text-copper" /> Resetar Senha
                 </button>
                 <button
+                  type="button"
                   onClick={() =>
                     handleAction(user.status === "blocked" ? "reactivate-user" : "block-user")
                   }
@@ -333,10 +338,28 @@ function UserEditorModal({
                   )}
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleAction("revoke-sessions")}
                   className="flex items-center gap-2 text-xs font-medium bg-cream/30 hover:bg-cream/50 p-3 rounded-xl transition sm:col-span-2"
                 >
                   <ShieldAlert size={16} className="text-amber-600" /> Revogar Sessões Ativas
+                </button>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `Remover definitivamente ${user.fullName}? Esta ação apaga a conta e o acesso unificado aos painéis e não pode ser desfeita.`,
+                      )
+                    ) {
+                      return;
+                    }
+                    void handleAction("delete-user");
+                  }}
+                  className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-wait disabled:opacity-50 sm:col-span-2"
+                >
+                  <Trash2 size={16} /> Remover Usuário Definitivamente
                 </button>
               </div>
             </div>
