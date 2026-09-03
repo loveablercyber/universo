@@ -38,3 +38,10 @@ test("db setup nunca redefine a senha de administrador existente", () => {
   assert.match(setup, /senha do painel foi preservada/);
   assert.doesNotMatch(setup, /do update set password_hash=excluded\.password_hash/);
 });
+
+test("erros de autenticação das APIs mantêm contrato JSON", () => {
+  assert.match(auth, /Response\.json\(/);
+  assert.match(auth, /reauthenticationRequired: status === 401/);
+  assert.match(auth, /Sua sessão expirou\. Entre novamente para continuar\./);
+  assert.doesNotMatch(auth, /throw new Response\("Autenticação necessária\./);
+});
