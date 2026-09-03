@@ -78,12 +78,18 @@ function authError(message: string, status: number) {
 }
 
 export function sessionCookie(request: Request, token: string) {
-  const name = sharedSecret() ? SHARED_COOKIE_NAME : LEGACY_COOKIE_NAME;
+  // Um token JWT possui três segmentos. Quando o banco canônico da Agenda não
+  // está disponível, createSession gera um token opaco persistido em
+  // universe.sessions; ele deve continuar usando o cookie legado mesmo que um
+  // JWT_SECRET já tenha sido configurado para a futura integração.
+  const name = token.split(".").length === 3 ? SHARED_COOKIE_NAME : LEGACY_COOKIE_NAME;
   return buildCookie(request, name, token, SESSION_SECONDS);
 }
 
 export function clearSessionCookie(request: Request) {
-  const name = sharedSecret() ? SHARED_COOKIE_NAME : LEGACY_COOKIE_NAME;
+  const name = cookieValue(request, SHARED_COOKIE_NAME)
+    ? SHARED_COOKIE_NAME
+    : LEGACY_COOKIE_NAME;
   return buildCookie(request, name, "", 0);
 }
 
@@ -512,23 +518,24 @@ export async function createSession(request: Request, user: SessionUser) {
 
 export async function readSession(request: Request): Promise<SessionUser | null> {
   const secret = sharedSecret();
-  if (secret) {
-    const token = cookieValue(request, SHARED_COOKIE_NAME);
-    if (!token) return null;
+  const sharedToken = cookieValue(request, SHARED_COOKIE_NAME);
+  if (secret && sharedToken) {
     try {
-      const { payload } = await jwtVerify(token, jwtKey(), { algorithms: ["HS256"] });
-      if (!payload.sub || !(await canonicalAuthAvailable())) return null;
-      const identity = await findCanonicalIdentityById(payload.sub);
-      if (!identity || ["blocked", "anonymized", "deleted"].includes(identity.account_status))
-        return null;
-      if (
-        typeof payload.cv !== "string" ||
-        payload.cv !== credentialVersion(identity.encrypted_password)
-      )
-        return null;
-      return ensureUniverseUser(identity);
+      const { payload } = await jwtVerify(sharedToken, jwtKey(), { algorithms: ["HS256"] });
+      if (payload.sub && (await canonicalAuthAvailable())) {
+        const identity = await findCanonicalIdentityById(payload.sub);
+        if (
+          identity &&
+          !["blocked", "anonymized", "deleted"].includes(identity.account_status) &&
+          typeof payload.cv === "string" &&
+          payload.cv === credentialVersion(identity.encrypted_password)
+        ) {
+          return ensureUniverseUser(identity);
+        }
+      }
     } catch {
-      return null;
+      // Pode existir um cookie JWT antigo após rotação do segredo. A sessão
+      // local válida ainda deve ser considerada abaixo.
     }
   }
 
@@ -563,7 +570,6 @@ export async function readSession(request: Request): Promise<SessionUser | null>
 }
 
 export async function destroySession(request: Request) {
-  if (sharedSecret()) return;
   const token = cookieValue(request, LEGACY_COOKIE_NAME);
   if (token) await query("delete from universe.sessions where token_hash=$1", [hashToken(token)]);
 }
