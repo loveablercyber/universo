@@ -70,13 +70,26 @@ function buildCookie(request: Request, name: string, value: string, maxAge: numb
     .join("; ");
 }
 
+function authError(message: string, status: number) {
+  return Response.json(
+    { ok: false, message, reauthenticationRequired: status === 401 },
+    { status, headers: { "Cache-Control": "no-store" } },
+  );
+}
+
 export function sessionCookie(request: Request, token: string) {
-  const name = sharedSecret() ? SHARED_COOKIE_NAME : LEGACY_COOKIE_NAME;
+  // Um token JWT possui três segmentos. Quando o banco canônico da Agenda não
+  // está disponível, createSession gera um token opaco persistido em
+  // universe.sessions; ele deve continuar usando o cookie legado mesmo que um
+  // JWT_SECRET já tenha sido configurado para a futura integração.
+  const name = token.split(".").length === 3 ? SHARED_COOKIE_NAME : LEGACY_COOKIE_NAME;
   return buildCookie(request, name, token, SESSION_SECONDS);
 }
 
 export function clearSessionCookie(request: Request) {
-  const name = sharedSecret() ? SHARED_COOKIE_NAME : LEGACY_COOKIE_NAME;
+  const name = cookieValue(request, SHARED_COOKIE_NAME)
+    ? SHARED_COOKIE_NAME
+    : LEGACY_COOKIE_NAME;
   return buildCookie(request, name, "", 0);
 }
 
@@ -97,7 +110,7 @@ export function assertSameOrigin(request: Request) {
   const allowedOrigins = new Set([requestOrigin, ...configuredOrigins]);
 
   if (!allowedOrigins.has(origin)) {
-    throw new Response("Origem não autorizada.", { status: 403 });
+    throw authError("Origem não autorizada.", 403);
   }
 }
 
@@ -180,9 +193,7 @@ async function ensureUniverseUser(identity: CanonicalIdentity): Promise<SessionU
   const record = existing.rows[0];
   if (record) {
     if (record.status !== "active") {
-      throw new Response("Esta conta não possui acesso ativo aos módulos Universo.", {
-        status: 403,
-      });
+      throw authError("Esta conta não possui acesso ativo aos módulos Universo.", 403);
     }
     const nextRole =
       identity.role === "admin"
@@ -389,7 +400,7 @@ export async function createSsoCode(
 ) {
   const target = new URL(targetOrigin).origin;
   if (!allowedSsoOrigins().has(target)) {
-    throw new Response("Destino de acesso não autorizado.", { status: 400 });
+    throw authError("Destino de acesso não autorizado.", 400);
   }
   const identityId =
     user.identityId ??
@@ -399,7 +410,7 @@ export async function createSsoCode(
         [user.id],
       )
     ).rows[0]?.identity_user_id;
-  if (!identityId) throw new Response("Conta ainda não vinculada ao acesso unificado.", { status: 409 });
+  if (!identityId) throw authError("Conta ainda não vinculada ao acesso unificado.", 409);
 
   const code = randomBytes(32).toString("base64url");
   await withTransaction(async (client) => {
@@ -410,7 +421,7 @@ export async function createSsoCode(
       [identityId],
     );
     if ((recent.rows[0]?.count ?? 0) >= 10) {
-      throw new Response("Muitas trocas de painel. Aguarde um minuto.", { status: 429 });
+      throw authError("Muitas trocas de painel. Aguarde um minuto.", 429);
     }
     await client.query(
       `insert into public.carolsol_sso_codes(
@@ -507,23 +518,24 @@ export async function createSession(request: Request, user: SessionUser) {
 
 export async function readSession(request: Request): Promise<SessionUser | null> {
   const secret = sharedSecret();
-  if (secret) {
-    const token = cookieValue(request, SHARED_COOKIE_NAME);
-    if (!token) return null;
+  const sharedToken = cookieValue(request, SHARED_COOKIE_NAME);
+  if (secret && sharedToken) {
     try {
-      const { payload } = await jwtVerify(token, jwtKey(), { algorithms: ["HS256"] });
-      if (!payload.sub || !(await canonicalAuthAvailable())) return null;
-      const identity = await findCanonicalIdentityById(payload.sub);
-      if (!identity || ["blocked", "anonymized", "deleted"].includes(identity.account_status))
-        return null;
-      if (
-        typeof payload.cv !== "string" ||
-        payload.cv !== credentialVersion(identity.encrypted_password)
-      )
-        return null;
-      return ensureUniverseUser(identity);
+      const { payload } = await jwtVerify(sharedToken, jwtKey(), { algorithms: ["HS256"] });
+      if (payload.sub && (await canonicalAuthAvailable())) {
+        const identity = await findCanonicalIdentityById(payload.sub);
+        if (
+          identity &&
+          !["blocked", "anonymized", "deleted"].includes(identity.account_status) &&
+          typeof payload.cv === "string" &&
+          payload.cv === credentialVersion(identity.encrypted_password)
+        ) {
+          return ensureUniverseUser(identity);
+        }
+      }
     } catch {
-      return null;
+      // Pode existir um cookie JWT antigo após rotação do segredo. A sessão
+      // local válida ainda deve ser considerada abaixo.
     }
   }
 
@@ -558,7 +570,6 @@ export async function readSession(request: Request): Promise<SessionUser | null>
 }
 
 export async function destroySession(request: Request) {
-  if (sharedSecret()) return;
   const token = cookieValue(request, LEGACY_COOKIE_NAME);
   if (token) await query("delete from universe.sessions where token_hash=$1", [hashToken(token)]);
 }
@@ -626,19 +637,19 @@ export async function replaceUserPassword(userId: string, newPasswordHash: strin
 
 export async function requireAdmin(request: Request) {
   const user = await readSession(request);
-  if (!user) throw new Response("Autenticação necessária.", { status: 401 });
+  if (!user) throw authError("Sua sessão expirou. Entre novamente para continuar.", 401);
   if (!['admin', 'manager'].includes(user.role)) {
-    throw new Response("Acesso administrativo necessário.", { status: 403 });
+    throw authError("Acesso administrativo necessário.", 403);
   }
   return user;
 }
 
 export async function requirePermission(request: Request, permission: string) {
   const user = await readSession(request);
-  if (!user) throw new Response("Autenticação necessária.", { status: 401 });
+  if (!user) throw authError("Sua sessão expirou. Entre novamente para continuar.", 401);
   if (user.role === "admin") return user;
   if (!user.permissions.includes(permission)) {
-    throw new Response("Permissão insuficiente para esta ação.", { status: 403 });
+    throw authError("Permissão insuficiente para esta ação.", 403);
   }
   return user;
 }
@@ -651,7 +662,7 @@ export async function checkRateLimit(ip: string | null) {
   );
   const record = result.rows[0];
   if (record?.blocked_until && new Date(record.blocked_until) > new Date()) {
-    throw new Response("Muitas tentativas falhas. Tente novamente em 15 minutos.", { status: 429 });
+    throw authError("Muitas tentativas falhas. Tente novamente em 15 minutos.", 429);
   }
 }
 

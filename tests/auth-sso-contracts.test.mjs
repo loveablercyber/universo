@@ -38,3 +38,17 @@ test("db setup nunca redefine a senha de administrador existente", () => {
   assert.match(setup, /senha do painel foi preservada/);
   assert.doesNotMatch(setup, /do update set password_hash=excluded\.password_hash/);
 });
+
+test("erros de autenticação das APIs mantêm contrato JSON", () => {
+  assert.match(auth, /Response\.json\(/);
+  assert.match(auth, /reauthenticationRequired: status === 401/);
+  assert.match(auth, /Sua sessão expirou\. Entre novamente para continuar\./);
+  assert.doesNotMatch(auth, /throw new Response\("Autenticação necessária\./);
+});
+
+test("JWT configurado não invalida a sessão local quando os bancos são separados", () => {
+  assert.match(auth, /token\.split\("\."\)\.length === 3/);
+  assert.match(auth, /const sharedToken = cookieValue\(request, SHARED_COOKIE_NAME\)/);
+  assert.match(auth, /const token = cookieValue\(request, LEGACY_COOKIE_NAME\)/);
+  assert.doesNotMatch(auth, /if \(secret\) \{\s*const token = cookieValue\(request, SHARED_COOKIE_NAME\);\s*if \(!token\) return null/);
+});
