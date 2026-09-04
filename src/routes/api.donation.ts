@@ -211,18 +211,18 @@ export const Route = createFileRoute("/api/donation")({
               `WITH participant AS (
                INSERT INTO universe.elo_participants
                  (kind, full_name, email, status, notes, consent_at, consent_text, lgpd_accepted, public_reference, source)
-               VALUES ('donor', coalesce(NULLIF($4, ''), 'Doador anônimo'), NULLIF($5, ''),
-                       'new', NULLIF($6, ''), now(), 'Consentimento fornecido no formulário de doação online.', true,
-                       $2, 'online_donation')
+               VALUES ('donor', coalesce(NULLIF($3, ''), 'Doador anônimo'), NULLIF($4, ''),
+                       'new', NULLIF($5, ''), now(), 'Consentimento fornecido no formulário de doação online.', true,
+                       $1, 'online_donation')
                RETURNING id
              )
              INSERT INTO universe.elo_checkouts
                (checkout_id, checkout_reference, amount, donor_name, donor_email,
                 donor_message, hosted_checkout_url, participant_id)
-             SELECT null, $2, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), null, id
+             SELECT null, $1, $2, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''), null, id
                FROM participant
              returning id,participant_id`,
-              [null, reference, amount, donorName ?? "", donorEmail ?? "", donorMessage ?? ""],
+              [reference, amount, donorName ?? "", donorEmail ?? "", donorMessage ?? ""],
             );
             return result.rows[0];
           });

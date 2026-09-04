@@ -37,20 +37,21 @@ function EloParticipationPage() {
     setLoading(true);
     setError("");
     const form = new FormData(event.currentTarget);
+    const text = (name: string) => String(form.get(name) ?? "");
     try {
       const response = await fetch("/api/elo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           participationType: type,
-          fullName: form.get("fullName"),
-          email: form.get("email"),
-          phone: form.get("phone"),
-          city: form.get("city"),
-          state: form.get("state"),
-          availability: form.get("availability"),
-          message: form.get("message"),
-          website: form.get("website"),
+          fullName: text("fullName"),
+          email: text("email"),
+          phone: text("phone"),
+          city: text("city"),
+          state: text("state"),
+          availability: text("availability"),
+          message: text("message"),
+          website: text("website"),
           lgpdAccepted: form.get("lgpdAccepted") === "on",
         }),
       });

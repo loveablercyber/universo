@@ -16,18 +16,24 @@ export const eloParticipationLabels: Record<EloParticipationType, string> = {
   partner: "Apoiar como parceiro",
 };
 
+const optionalText = (maxLength: number) =>
+  z.preprocess((value) => value ?? "", z.string().trim().max(maxLength));
+
 export const eloPublicSubmissionSchema = z
   .object({
     participationType: z.enum(eloParticipationTypes),
     fullName: z.string().trim().min(2, "Informe seu nome completo.").max(160),
-    email: z.string().trim().email("Informe um e-mail válido.").max(254).or(z.literal("")),
-    phone: z.string().trim().max(40),
-    city: z.string().trim().max(100),
-    state: z.string().trim().max(2),
+    email: z.preprocess(
+      (value) => value ?? "",
+      z.string().trim().email("Informe um e-mail válido.").max(254).or(z.literal("")),
+    ),
+    phone: optionalText(40),
+    city: optionalText(100),
+    state: optionalText(2),
     message: z.string().trim().min(5, "Conte brevemente como podemos ajudar.").max(2000),
-    availability: z.string().trim().max(500).optional().default(""),
+    availability: optionalText(500),
     lgpdAccepted: z.literal(true),
-    website: z.string().max(0).optional().default(""),
+    website: optionalText(0),
   })
   .superRefine((value, context) => {
     if (!value.email && value.phone.replace(/\D/g, "").length < 10) {

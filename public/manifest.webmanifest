@@ -1,0 +1,30 @@
+{
+  "name": "Universo Carol Sol",
+  "short_name": "Carol Sol",
+  "description": "Compras, cursos, agendamentos e serviços Carol Sol em um só lugar.",
+  "start_url": "/app?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6efe8",
+  "theme_color": "#221713",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Agendar", "url": "https://agenda.carolsol.com.br" },
+    { "name": "Loja", "url": "https://loja.carolsol.com.br" },
+    { "name": "Minha conta", "url": "/conta" }
+  ]
+}

@@ -21,6 +21,8 @@ test("Elo donation confirmation is idempotent at database level", async () => {
 
 test("public Elo applications enter the CRM with consent, request and history", async () => {
   const api = await source("src/routes/api.elo.ts");
+  const form = await source("src/routes/projeto-elo.participar.tsx");
+  const validation = await source("src/lib/elo.ts");
   const publicSecurity = await source("src/lib/elo.server.ts");
   const migration = await source("database/021_elo_operations.sql");
   assert.match(api, /eloPublicSubmissionSchema\.safeParse/);
@@ -30,6 +32,15 @@ test("public Elo applications enter the CRM with consent, request and history", 
   assert.match(api, /insert into universe\.elo_requests/i);
   assert.match(api, /insert into universe\.elo_history/i);
   assert.match(migration, /source text not null default 'admin'/i);
+  assert.match(form, /String\(form\.get\(name\) \?\? ""\)/);
+  assert.match(validation, /value \?\? ""/);
+});
+
+test("Elo donation checkout SQL uses contiguous typed parameters", async () => {
+  const donationApi = await source("src/routes/api.donation.ts");
+  assert.match(donationApi, /\[reference, amount, donorName \?\? "", donorEmail \?\? "", donorMessage \?\? ""\]/);
+  assert.doesNotMatch(donationApi, /\[null, reference, amount/);
+  assert.match(donationApi, /SELECT null, \$1, \$2, NULLIF\(\$3, ''\), NULLIF\(\$4, ''\), NULLIF\(\$5, ''\)/);
 });
 
 test("admin Elo exposes every operational action used by the interface", async () => {

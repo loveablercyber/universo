@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as ContaRouteImport } from './routes/conta'
 import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as DoacaoRouteImport } from './routes/doacao'
@@ -74,6 +75,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContaRoute = ContaRouteImport.update({
@@ -359,6 +365,7 @@ const ApiAcademyCertificateCodeRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/app': typeof AppRoute
   '/conta': typeof ContaRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
@@ -417,6 +424,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/app': typeof AppRoute
   '/conta': typeof ContaRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
@@ -474,6 +482,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/app': typeof AppRoute
   '/conta': typeof ContaRoute
   '/contato': typeof ContatoRoute
   '/doacao': typeof DoacaoRouteWithChildren
@@ -534,6 +543,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/app'
     | '/conta'
     | '/contato'
     | '/doacao'
@@ -592,6 +602,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/app'
     | '/conta'
     | '/contato'
     | '/doacao'
@@ -648,6 +659,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/app'
     | '/conta'
     | '/contato'
     | '/doacao'
@@ -707,6 +719,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AppRoute: typeof AppRoute
   ContaRoute: typeof ContaRoute
   ContatoRoute: typeof ContatoRoute
   DoacaoRoute: typeof DoacaoRouteWithChildren
@@ -756,6 +769,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/conta': {
@@ -1232,6 +1252,7 @@ const ApiAcademyRouteWithChildren = ApiAcademyRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AppRoute: AppRoute,
   ContaRoute: ContaRoute,
   ContatoRoute: ContatoRoute,
   DoacaoRoute: DoacaoRouteWithChildren,
