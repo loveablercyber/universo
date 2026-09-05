@@ -71,7 +71,7 @@ function EloParticipationPage() {
     <main className="theme-elo min-h-screen bg-cream px-5 py-10 text-brown-dark sm:px-8">
       <UniverseSwitcher />
       <nav aria-label="Menu do Projeto Elo" className="mx-auto mt-4 flex max-w-3xl flex-wrap justify-center gap-4 border-b border-border-soft pb-4 text-[10px] font-semibold tracking-[0.16em] text-copper">
-        <Link to="/projeto-elo">INÍCIO</Link><Link to="/projeto-elo/como-doar">COMO DOAR</Link><Link to="/projeto-elo/historias">HISTÓRIAS</Link><Link to="/projeto-elo/galeria">GALERIA</Link><Link to="/projeto-elo/participar?tipo=volunteer">VOLUNTÁRIOS</Link><Link to="/projeto-elo/transparencia">TRANSPARÊNCIA</Link>
+        <Link to="/projeto-elo">INÍCIO</Link><Link to="/projeto-elo/como-doar">COMO DOAR</Link><Link to="/projeto-elo/historias">HISTÓRIAS</Link><Link to="/projeto-elo/galeria">GALERIA</Link><a href="/projeto-elo/participar?tipo=volunteer">VOLUNTÁRIOS</a><Link to="/projeto-elo/transparencia">TRANSPARÊNCIA</Link>
       </nav>
       <div className="mx-auto max-w-3xl">
         <Link
