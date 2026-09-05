@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, HandHeart, Heart, Users } from "lucide-react";
+import { UniverseSwitcher } from "@/components/UniverseSwitcher";
 
 type ImpactStats = {
   completedDonations: number;
@@ -58,7 +59,8 @@ function EloTransparencyPage() {
   ];
 
   return (
-    <main className="theme-elo min-h-screen bg-cream px-6 py-10 text-brown-dark">
+      <main className="theme-elo min-h-screen bg-cream px-6 py-10 text-brown-dark">
+        <UniverseSwitcher />
       <div className="mx-auto max-w-5xl">
         <Link
           to="/projeto-elo"

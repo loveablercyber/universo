@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Heart, ShieldCheck } from "lucide-react";
 import { processSteps, socialImages, stories } from "@/data/elo-site";
+import { UniverseSwitcher } from "@/components/UniverseSwitcher";
 
 type PageKind = "howToDonate" | "stories" | "gallery";
 
@@ -29,6 +30,7 @@ export function EloContentPage({ kind }: { kind: PageKind }) {
   const copy = pageCopy[kind];
   return (
     <main className="theme-elo min-h-screen bg-cream text-brown-dark">
+      <UniverseSwitcher />
       <header className="border-b border-border-soft bg-warm-white/95">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
           <Link

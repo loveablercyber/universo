@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, CheckCircle2, Heart, Send, ShieldCheck } from "lucide-react";
+import { UniverseSwitcher } from "@/components/UniverseSwitcher";
 import {
   eloParticipationLabels,
   eloParticipationTypes,
@@ -68,6 +69,7 @@ function EloParticipationPage() {
 
   return (
     <main className="theme-elo min-h-screen bg-cream px-5 py-10 text-brown-dark sm:px-8">
+      <UniverseSwitcher />
       <div className="mx-auto max-w-3xl">
         <Link
           to="/projeto-elo"
