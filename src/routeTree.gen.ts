@@ -47,6 +47,7 @@ import { Route as SolHairClosetFavoritosRouteImport } from './routes/sol-hair-cl
 import { Route as SolHairClosetPedidoRouteImport } from './routes/sol-hair-closet.pedido'
 import { Route as SolHairClosetPedidosRouteImport } from './routes/sol-hair-closet.pedidos'
 import { Route as SolHairClosetProdutosRouteImport } from './routes/sol-hair-closet.produtos'
+import { Route as UploadsFileRouteImport } from './routes/uploads.$file'
 import { Route as ApiAdminAcademyRouteImport } from './routes/api.admin.academy'
 import { Route as ApiAdminAcademyCertificatesRouteImport } from './routes/api.admin.academy-certificates'
 import { Route as ApiAdminAcademyOperationsRouteImport } from './routes/api.admin.academy-operations'
@@ -257,6 +258,11 @@ const SolHairClosetProdutosRoute = SolHairClosetProdutosRouteImport.update({
   path: '/produtos',
   getParentRoute: () => SolHairClosetRoute,
 } as any)
+const UploadsFileRoute = UploadsFileRouteImport.update({
+  id: '/uploads/$file',
+  path: '/uploads/$file',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminAcademyRoute = ApiAdminAcademyRouteImport.update({
   id: '/api/admin/academy',
   path: '/api/admin/academy',
@@ -399,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
   '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
+  '/uploads/$file': typeof UploadsFileRoute
   '/invisible-academy/': typeof InvisibleAcademyIndexRoute
   '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
@@ -456,6 +463,7 @@ export interface FileRoutesByTo {
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
   '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
+  '/uploads/$file': typeof UploadsFileRoute
   '/invisible-academy': typeof InvisibleAcademyIndexRoute
   '/sol-hair-closet': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
@@ -516,6 +524,7 @@ export interface FileRoutesById {
   '/sol-hair-closet/pedido': typeof SolHairClosetPedidoRoute
   '/sol-hair-closet/pedidos': typeof SolHairClosetPedidosRoute
   '/sol-hair-closet/produtos': typeof SolHairClosetProdutosRoute
+  '/uploads/$file': typeof UploadsFileRoute
   '/invisible-academy/': typeof InvisibleAcademyIndexRoute
   '/sol-hair-closet/': typeof SolHairClosetIndexRoute
   '/api/admin/academy': typeof ApiAdminAcademyRoute
@@ -577,6 +586,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/pedido'
     | '/sol-hair-closet/pedidos'
     | '/sol-hair-closet/produtos'
+    | '/uploads/$file'
     | '/invisible-academy/'
     | '/sol-hair-closet/'
     | '/api/admin/academy'
@@ -634,6 +644,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/pedido'
     | '/sol-hair-closet/pedidos'
     | '/sol-hair-closet/produtos'
+    | '/uploads/$file'
     | '/invisible-academy'
     | '/sol-hair-closet'
     | '/api/admin/academy'
@@ -693,6 +704,7 @@ export interface FileRouteTypes {
     | '/sol-hair-closet/pedido'
     | '/sol-hair-closet/pedidos'
     | '/sol-hair-closet/produtos'
+    | '/uploads/$file'
     | '/invisible-academy/'
     | '/sol-hair-closet/'
     | '/api/admin/academy'
@@ -740,6 +752,7 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   ApiStoreRoute: typeof ApiStoreRoute
   ApiStoreCustomerRoute: typeof ApiStoreCustomerRoute
+  UploadsFileRoute: typeof UploadsFileRoute
   ApiAdminAcademyRoute: typeof ApiAdminAcademyRoute
   ApiAdminAcademyCertificatesRoute: typeof ApiAdminAcademyCertificatesRoute
   ApiAdminAcademyOperationsRoute: typeof ApiAdminAcademyOperationsRoute
@@ -1023,6 +1036,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SolHairClosetProdutosRouteImport
       parentRoute: typeof SolHairClosetRoute
     }
+    '/uploads/$file': {
+      id: '/uploads/$file'
+      path: '/uploads/$file'
+      fullPath: '/uploads/$file'
+      preLoaderRoute: typeof UploadsFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/academy': {
       id: '/api/admin/academy'
       path: '/api/admin/academy'
@@ -1273,6 +1293,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   ApiStoreRoute: ApiStoreRoute,
   ApiStoreCustomerRoute: ApiStoreCustomerRoute,
+  UploadsFileRoute: UploadsFileRoute,
   ApiAdminAcademyRoute: ApiAdminAcademyRoute,
   ApiAdminAcademyCertificatesRoute: ApiAdminAcademyCertificatesRoute,
   ApiAdminAcademyOperationsRoute: ApiAdminAcademyOperationsRoute,

@@ -17,6 +17,7 @@ const variantSchema = z.object({
   promotionalPriceOverride: z.number().min(0).nullable().optional(),
   stockQuantity: z.number().int().min(0),
   imageUrl: z.string().optional(),
+  images: z.array(z.string()).max(4).optional(),
   status: z.enum(["active", "out_of_stock", "inactive"]).default("active"),
 });
 
@@ -31,6 +32,7 @@ const productSchema = z.object({
   promotionalPrice: z.number().min(0).nullable().optional(),
   stockQuantity: z.number().int().min(0),
   categoryId: z.string().nullable().optional(),
+  subcategoryId: z.string().nullable().optional(),
   image: z.string().min(1),
   images: z.array(z.string()).optional(),
   badgeLabel: z.string().max(50).nullable().optional(),
@@ -51,6 +53,7 @@ const categorySchema = z.object({
   description: z.string().optional(),
   image: z.string().optional(),
   sortOrder: z.number().int().default(0),
+  parentId: z.string().nullable().optional(),
 });
 
 const updateOrderStatusSchema = z.object({
@@ -100,7 +103,7 @@ export const Route = createFileRoute("/api/admin/store")({
 
           if (action === "categories") {
             const { rows } = await query(
-              `SELECT id, coalesce(slug, id) as slug, name, description,
+              `SELECT id, coalesce(slug, id) as slug, name, description, parent_id as "parentId",
                       image_url as image, sort_order as "sortOrder",
                       (SELECT count(*)::int FROM universe.store_products WHERE category_id = c.id) as "productCount"
                  FROM universe.store_categories c
@@ -113,7 +116,7 @@ export const Route = createFileRoute("/api/admin/store")({
             const { rows } = await query(
               `SELECT p.id, p.slug, p.name, p.info, p.description,
                       p.price::float as price, p.promotional_price::float as "promotionalPrice",
-                      p.stock_quantity as "stockQuantity", p.category_id as "categoryId",
+                      p.stock_quantity as "stockQuantity", p.category_id as "categoryId", p.subcategory_id as "subcategoryId",
                       p.image_url as image, p.images, p.badge_label as "badgeLabel", p.badge_tone as "badgeTone",
                       p.rating::float as rating, p.reviews_count as reviews, p.sold_count as sold,
                       p.status, p.created_at as "createdAt", c.name as "categoryName",
@@ -127,7 +130,7 @@ export const Route = createFileRoute("/api/admin/store")({
                             'priceOverride', v.price_override::float,
                             'promotionalPriceOverride', v.promotional_price_override::float,
                             'stockQuantity', v.stock_quantity,
-                            'imageUrl', v.image_url, 'status', v.status
+                            'imageUrl', v.image_url, 'images', v.images, 'status', v.status
                           )
                         ) FILTER (WHERE v.id IS NOT NULL),
                         '[]'::json
@@ -136,7 +139,7 @@ export const Route = createFileRoute("/api/admin/store")({
                  LEFT JOIN universe.store_categories c ON c.id = p.category_id
                  LEFT JOIN universe.store_product_variants v ON v.product_id = p.id
                 GROUP BY p.id, p.slug, p.name, p.info, p.description, p.price,
-                         p.promotional_price, p.stock_quantity, p.category_id,
+                         p.promotional_price, p.stock_quantity, p.category_id, p.subcategory_id,
                          p.image_url, p.images, p.badge_label, p.badge_tone,
                          p.rating, p.reviews_count, p.sold_count, p.status, p.created_at, c.name
                 ORDER BY p.created_at DESC`,
@@ -254,18 +257,19 @@ export const Route = createFileRoute("/api/admin/store")({
                 { status: 400 },
               );
             }
-            const { id, name, description, image, sortOrder } = parsed.data;
+            const { id, name, description, image, sortOrder, parentId } = parsed.data;
 
             await client.query(
-              `INSERT INTO universe.store_categories(id, slug, name, description, image_url, sort_order)
-               VALUES ($1, $1, $2, $3, $4, $5)
+              `INSERT INTO universe.store_categories(id, slug, name, description, image_url, sort_order, parent_id)
+               VALUES ($1, $1, $2, $3, $4, $5, $6)
                ON CONFLICT (id) DO UPDATE
                  SET name = excluded.name,
                      description = excluded.description,
                      image_url = coalesce(excluded.image_url, universe.store_categories.image_url),
                      sort_order = excluded.sort_order,
+                     parent_id = excluded.parent_id,
                      updated_at = now()`,
-              [id, name, description || null, image || null, sortOrder],
+              [id, name, description || null, image || null, sortOrder, parentId || null],
             );
 
             await audit(user.id, "store.category.saved", "store_category", id, { name });
@@ -292,6 +296,7 @@ export const Route = createFileRoute("/api/admin/store")({
               promotionalPrice,
               stockQuantity,
               categoryId,
+              subcategoryId,
               image,
               images,
               badgeLabel,
@@ -309,10 +314,10 @@ export const Route = createFileRoute("/api/admin/store")({
               await client.query(
                 `UPDATE universe.store_products
                     SET slug = $1, name = $2, info = $3, description = $4, price = $5,
-                        promotional_price = $6, stock_quantity = $7, category_id = $8,
-                        image_url = $9, images = $10::jsonb, badge_label = $11, badge_tone = $12,
-                        status = $13, updated_at = now()
-                  WHERE id = $14`,
+                        promotional_price = $6, stock_quantity = $7, category_id = $8, subcategory_id = $9,
+                        image_url = $10, images = $11::jsonb, badge_label = $12, badge_tone = $13,
+                        status = $14, updated_at = now()
+                  WHERE id = $15`,
                 [
                   slug,
                   name,
@@ -322,6 +327,7 @@ export const Route = createFileRoute("/api/admin/store")({
                   promotionalPrice ?? null,
                   stockQuantity,
                   categoryId ?? null,
+                  subcategoryId ?? null,
                   image,
                   JSON.stringify(images || []),
                   badgeLabel ?? null,
@@ -335,8 +341,8 @@ export const Route = createFileRoute("/api/admin/store")({
               const insertRes = await client.query<{ id: string }>(
                 `INSERT INTO universe.store_products
                    (slug, name, info, description, price, promotional_price, stock_quantity,
-                    category_id, image_url, images, badge_label, badge_tone, status)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)
+                    category_id, subcategory_id, image_url, images, badge_label, badge_tone, status)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14)
                  RETURNING id`,
                 [
                   slug,
@@ -347,6 +353,7 @@ export const Route = createFileRoute("/api/admin/store")({
                   promotionalPrice ?? null,
                   stockQuantity,
                   categoryId ?? null,
+                  subcategoryId ?? null,
                   image,
                   JSON.stringify(images || []),
                   badgeLabel ?? null,
@@ -365,8 +372,8 @@ export const Route = createFileRoute("/api/admin/store")({
                     `UPDATE universe.store_product_variants
                         SET title = $1, color = $2, color_hex = $3, length_cm = $4, weight_g = $5,
                             texture = $6, price_override = $7, promotional_price_override = $8,
-                            stock_quantity = $9, image_url = $10, status = $11, updated_at = now()
-                      WHERE id = $12 AND product_id = $13`,
+                            stock_quantity = $9, image_url = $10, images = $11::jsonb, status = $12, updated_at = now()
+                      WHERE id = $13 AND product_id = $14`,
                     [
                       v.title,
                       v.color || null,
@@ -378,6 +385,7 @@ export const Route = createFileRoute("/api/admin/store")({
                       v.promotionalPriceOverride || null,
                       v.stockQuantity,
                       v.imageUrl || null,
+                      JSON.stringify(v.images || []),
                       v.status,
                       v.id,
                       productId,
@@ -387,8 +395,8 @@ export const Route = createFileRoute("/api/admin/store")({
                   await client.query(
                     `INSERT INTO universe.store_product_variants
                        (product_id, sku, title, color, color_hex, length_cm, weight_g, texture,
-                        price_override, promotional_price_override, stock_quantity, image_url, status)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                        price_override, promotional_price_override, stock_quantity, image_url, images, status)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14)`,
                     [
                       productId,
                       v.sku || `${slug}-${Date.now()}`,
@@ -402,6 +410,7 @@ export const Route = createFileRoute("/api/admin/store")({
                       v.promotionalPriceOverride || null,
                       v.stockQuantity,
                       v.imageUrl || null,
+                      JSON.stringify(v.images || []),
                       v.status,
                     ],
                   );

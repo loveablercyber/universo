@@ -32,6 +32,16 @@ function routeSubdomain(request: Request): Request | Response {
   const isStoreHost = hostnames.includes(STORE_HOSTNAME);
   const isEloHost = hostnames.includes(ELO_HOSTNAME);
 
+  // Rotas canônicas curtas no domínio principal; os caminhos antigos continuam compatíveis.
+  if (!isAcademyHost && !isStoreHost && !isEloHost) {
+    if (url.pathname === "/academy") url.pathname = "/invisible-academy";
+    else if (url.pathname === "/elo") url.pathname = "/projeto-elo";
+    else if (url.pathname === "/store") url.pathname = "/sol-hair-closet";
+    else if (url.pathname === "/app") return Response.redirect("https://agenda.carolsol.com.br", 302);
+    else return request;
+    return new Request(url, request);
+  }
+
   if (isAcademyHost) {
     if (url.pathname === "/") {
       url.pathname = "/invisible-academy";
