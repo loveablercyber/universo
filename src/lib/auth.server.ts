@@ -410,7 +410,15 @@ export async function createSsoCode(
         [user.id],
       )
     ).rows[0]?.identity_user_id;
-  if (!identityId) throw authError("Conta ainda não vinculada ao acesso unificado.", 409);
+  let resolvedIdentityId = identityId;
+  if (!resolvedIdentityId && user.email) {
+    const canonical = await findCanonicalIdentity(user.email);
+    if (canonical) {
+      resolvedIdentityId = canonical.id;
+      await query(`update universe.users set identity_user_id=$2, updated_at=now() where id=$1`, [user.id, resolvedIdentityId]);
+    }
+  }
+  if (!resolvedIdentityId) throw authError("Conta ainda não vinculada ao acesso unificado.", 409);
 
   const code = randomBytes(32).toString("base64url");
   await withTransaction(async (client) => {
@@ -418,7 +426,7 @@ export async function createSsoCode(
     const recent = await client.query<{ count: number }>(
       `select count(*)::int as count from public.carolsol_sso_codes
         where identity_user_id=$1 and created_at>now()-interval '1 minute'`,
-      [identityId],
+      [resolvedIdentityId],
     );
     if ((recent.rows[0]?.count ?? 0) >= 10) {
       throw authError("Muitas trocas de painel. Aguarde um minuto.", 429);
@@ -427,7 +435,7 @@ export async function createSsoCode(
       `insert into public.carolsol_sso_codes(
          code_hash, identity_user_id, target_origin, return_path, source_origin, expires_at
        ) values($1,$2,$3,$4,$5,now()+interval '60 seconds')`,
-      [hashToken(code), identityId, target, safeReturnPath(returnPath), sourceOrigin ?? null],
+      [hashToken(code), resolvedIdentityId, target, safeReturnPath(returnPath), sourceOrigin ?? null],
     );
   });
   return {

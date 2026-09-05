@@ -19,7 +19,7 @@ export const Route = createFileRoute("/sol-hair-closet/")({
   component: StoreHomePage,
 });
 
-function StoreHomePage() {
+export function StoreHomePage() {
   const store = useStore();
 
   const [categories, setCategories] = useState<Category[]>([]);

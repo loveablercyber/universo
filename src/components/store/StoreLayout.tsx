@@ -20,6 +20,7 @@ import { CartDrawer } from "./CartDrawer";
 import { SearchDrawer } from "./SearchDrawer";
 import { CategoryDrawer } from "./CategoryDrawer";
 import { CheckoutModal } from "./CheckoutModal";
+import { UniverseSwitcher } from "@/components/UniverseSwitcher";
 
 function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -59,6 +60,7 @@ export function StoreLayout({
 
   return (
     <div className="theme-sol min-h-dvh bg-cream text-text-primary flex flex-col selection:bg-copper selection:text-warm-white">
+      <UniverseSwitcher />
       {/* Top Banner de Benefícios */}
       <div className="bg-ink text-copper-light">
         <div className="container-shell grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-copper/20 text-[10px] sm:text-[11px] tracking-[0.15em] font-medium">
@@ -148,6 +150,11 @@ export function StoreLayout({
             </button>
           </div>
         </div>
+        <nav aria-label="Menu da loja" className="border-t border-line/70 bg-warm-white px-4 py-2">
+          <div className="mx-auto flex max-w-6xl justify-center gap-5 overflow-x-auto text-[10px] font-semibold tracking-[0.16em] text-ink-mid">
+            <Link to="/sol-hair-closet">INÍCIO</Link><Link to="/sol-hair-closet/produtos">CATÁLOGO</Link><Link to="/sol-hair-closet/favoritos">FAVORITOS</Link><Link to="/sol-hair-closet/pedidos">PEDIDOS</Link><Link to="/sol-hair-closet/conta">MINHA CONTA</Link>
+          </div>
+        </nav>
       </header>
 
       {/* Conteúdo da Página */}
