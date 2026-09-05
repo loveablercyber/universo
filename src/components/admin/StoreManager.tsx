@@ -35,6 +35,7 @@ type StoreVariant = {
   promotionalPriceOverride?: number | null;
   stockQuantity: number;
   imageUrl?: string;
+  images?: string[];
   status: "active" | "out_of_stock" | "inactive";
 };
 
@@ -48,6 +49,7 @@ type StoreProduct = {
   promotionalPrice?: number | null;
   stockQuantity: number;
   categoryId?: string | null;
+  subcategoryId?: string | null;
   categoryName?: string;
   image: string;
   images?: string[];
@@ -879,6 +881,7 @@ function ProductEditorModal({
   const [error, setError] = useState("");
   const [variants, setVariants] = useState<StoreVariant[]>(product?.variants || []);
   const [imageUrl, setImageUrl] = useState(product?.image || "");
+  const [gallery, setGallery] = useState<string[]>(product?.images || []);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const addVariant = () => {
@@ -906,7 +909,7 @@ function ProductEditorModal({
     setVariants(updated);
   };
 
-  const uploadImage = async (file: File) => {
+  const uploadImage = async (file: File, gallerySlot?: number) => {
     setUploadingImage(true);
     setError("");
     try {
@@ -920,12 +923,25 @@ function ProductEditorModal({
       if (!res.ok || !payload.publicUrl) {
         throw new Error(payload.message || "Não foi possível enviar a imagem");
       }
-      setImageUrl(payload.publicUrl);
+      if (gallerySlot === undefined) setImageUrl(payload.publicUrl);
+      else setGallery((current) => { const next = [...current]; next[gallerySlot] = payload.publicUrl; return next.slice(0, 4); });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível enviar a imagem");
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const uploadVariantImage = async (file: File, variantIndex: number, slot: number) => {
+    setUploadingImage(true); setError("");
+    try {
+      const form = new FormData(); form.append("file", file); form.append("title", `${product?.name || "Produto"} - variação`);
+      const res = await fetch("/api/admin/media", { method: "POST", body: form }); const payload = await res.json();
+      if (!res.ok || !payload.publicUrl) throw new Error(payload.message || "Não foi possível enviar a imagem");
+      const current = variants[variantIndex].images || []; const next = [...current]; next[slot] = payload.publicUrl;
+      updateVariant(variantIndex, "images", next.slice(0, 4));
+    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível enviar a imagem"); }
+    finally { setUploadingImage(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -952,7 +968,9 @@ function ProductEditorModal({
           : null,
         stockQuantity: parseInt(String(form.get("stockQuantity")), 10),
         categoryId: form.get("categoryId") || null,
+        subcategoryId: form.get("subcategoryId") || null,
         image: imageUrl,
+        images: gallery.filter(Boolean).slice(0, 4),
         badgeLabel: form.get("badgeLabel") || null,
         badgeTone: form.get("badgeTone") || "gold",
         status: form.get("status"),
@@ -1149,6 +1167,19 @@ function ProductEditorModal({
               />
             </div>
 
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-brown">Galeria do produto (até 4 fotos)</label>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[0, 1, 2, 3].map((slot) => (
+                  <label key={slot} className="cursor-pointer rounded-xl border border-dashed border-copper/30 bg-cream/20 p-2 text-center">
+                    {gallery[slot] ? <img src={gallery[slot]} alt={`Foto ${slot + 1}`} className="h-24 w-full rounded-lg object-cover" /> : <div className="grid h-24 place-items-center text-copper/60"><ImagePlus size={24} /></div>}
+                    <span className="mt-1 block text-[10px] text-brown/60">Foto {slot + 1}</span>
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploadingImage} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file, slot); event.currentTarget.value = ""; }} />
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div className="space-y-1">
               <label className="text-xs font-medium text-brown">Descrição Completa</label>
               <textarea
@@ -1236,6 +1267,18 @@ function ProductEditorModal({
                           }
                           className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none font-bold"
                         />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-medium text-brown/70">Fotos desta variação (até 4)</label>
+                      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {[0, 1, 2, 3].map((slot) => (
+                          <label key={slot} className="cursor-pointer rounded-lg border border-dashed border-copper/30 p-1 text-center">
+                            {(v.images || [])[slot] ? <img src={(v.images || [])[slot]} alt={`Foto da variação ${slot + 1}`} className="h-16 w-full rounded object-cover" /> : <div className="grid h-16 place-items-center text-copper/60"><ImagePlus size={18} /></div>}
+                            <span className="text-[9px] text-brown/60">Foto {slot + 1}</span>
+                            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploadingImage} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadVariantImage(file, idx, slot); event.currentTarget.value = ""; }} />
+                          </label>
+                        ))}
                       </div>
                     </div>
                   </div>
