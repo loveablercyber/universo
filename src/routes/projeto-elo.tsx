@@ -680,7 +680,7 @@ function BottomUniverseBar() {
 }
 
 /* ---------------- Page ---------------- */
-function Home() {
+export function Home() {
   return (
     <main className="theme-elo min-h-screen bg-cream text-brown-dark">
       <UniverseSwitcher />

@@ -724,7 +724,7 @@ function BottomUniverseBar() {
   );
 }
 
-function Index() {
+export function Index() {
   return (
     <div className="theme-invisible min-h-screen bg-[#FBF6F1]">
       <UniverseSwitcher />

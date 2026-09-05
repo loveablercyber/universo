@@ -412,9 +412,12 @@ export async function createSsoCode(
     ).rows[0]?.identity_user_id;
   let resolvedIdentityId = identityId;
   if (!resolvedIdentityId && user.email) {
-    const canonical = await findCanonicalIdentity(user.email);
-    if (canonical) {
-      resolvedIdentityId = canonical.id;
+    const canonical = await query<{ id: string }>(
+      `select id from auth.users where lower(email)=lower($1) limit 1`,
+      [user.email],
+    );
+    if (canonical.rows[0]) {
+      resolvedIdentityId = canonical.rows[0].id;
       await query(`update universe.users set identity_user_id=$2, updated_at=now() where id=$1`, [user.id, resolvedIdentityId]);
     }
   }
