@@ -104,6 +104,15 @@ function ProductDetailPage() {
 
   const currentStock = selectedVariant ? selectedVariant.stockQuantity : product.stockQuantity;
   const isOutOfStock = currentStock <= 0;
+  const colorOptions = Array.from(new Set((product.variants || []).map((v) => v.color).filter(Boolean))) as string[];
+  const sizeOptions = Array.from(new Set((product.variants || []).map((v) => v.lengthCm).filter(Boolean))) as number[];
+  const selectVariant = (key: string, value: string) => {
+    const next = (product.variants || []).find((v) => {
+      if (key === "color") return v.color === value && (!selectedVariant?.lengthCm || v.lengthCm === selectedVariant.lengthCm);
+      return String(v.lengthCm || "") === value && (!selectedVariant?.color || v.color === selectedVariant.color);
+    }) || (product.variants || []).find((v) => key === "color" ? v.color === value : String(v.lengthCm || "") === value);
+    if (next) { setSelectedVariant(next); setSelectedImage(next.images?.[0] || next.imageUrl || product.image); }
+  };
 
   const allImages = [
     product.image,
@@ -264,6 +273,11 @@ function ProductDetailPage() {
                 <label className="text-xs font-bold tracking-wider uppercase text-ink-deep">
                   Opções Disponíveis:
                 </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {colorOptions.length > 0 && <label className="text-xs font-semibold text-ink-deep">Cor<select value={selectedVariant?.color || ""} onChange={(e) => selectVariant("color", e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-line bg-warm-white px-3 text-sm"><option value="">Selecione a cor</option>{colorOptions.map((color) => <option key={color} value={color}>{color}</option>)}</select></label>}
+                  {sizeOptions.length > 0 && <label className="text-xs font-semibold text-ink-deep">Tamanho / comprimento<select value={String(selectedVariant?.lengthCm || "")} onChange={(e) => selectVariant("length", e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-line bg-warm-white px-3 text-sm"><option value="">Selecione</option>{sizeOptions.map((size) => <option key={size} value={size}>{size} cm</option>)}</select></label>}
+                </div>
+                {selectedVariant && (selectedVariant.images?.[0] || selectedVariant.imageUrl) && <div className="flex items-center gap-3 rounded-xl border border-copper/20 bg-copper/5 p-2"><img src={selectedVariant.images?.[0] || selectedVariant.imageUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /><span className="text-xs text-text-secondary">Opção selecionada: <strong className="text-ink-deep">{selectedVariant.title}</strong></span></div>}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {product.variants.map((v) => {
                     const isSelected = selectedVariant?.id === v.id;
@@ -376,7 +390,7 @@ function ProductDetailPage() {
 
             {/* Descrição Completa */}
             {product.shortDescription && (
-              <p className="text-sm text-text-secondary leading-relaxed">{product.shortDescription}</p>
+              <section className="border-t border-line pt-4"><h3 className="text-xs font-bold tracking-wider uppercase text-ink-deep">Especificação curta</h3><p className="mt-2 text-sm text-text-secondary leading-relaxed">{product.shortDescription}</p></section>
             )}
             {product.description && (
               <div className="pt-4 border-t border-line space-y-2">
