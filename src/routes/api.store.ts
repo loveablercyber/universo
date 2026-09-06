@@ -211,7 +211,7 @@ export const Route = createFileRoute("/api/store")({
                       length_cm as "lengthCm", weight_g as "weightG", texture,
                       price_override::float as "priceOverride",
                       promotional_price_override::float as "promotionalPriceOverride",
-                      stock_quantity as "stockQuantity", image_url as "imageUrl",
+                      stock_quantity as "stockQuantity", image_url as "imageUrl", images,
                       status, sort_order as "sortOrder"
                  FROM universe.store_product_variants
                 WHERE product_id = $1 AND status != 'inactive'

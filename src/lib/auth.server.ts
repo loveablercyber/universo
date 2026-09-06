@@ -456,8 +456,20 @@ export async function consumeSsoCode(code: string, targetOrigin: string) {
         where status='active' and (lower(email)=lower($1) or regexp_replace(coalesce(phone,''),'\\D','','g')=any($2::text[]))
         limit 1`, [payload.email, brazilianPhoneCandidates(String(payload.phone || ""))],
     );
-    if (!local.rows[0]) return null;
-    return { user: local.rows[0], returnPath: safeReturnPath(String(payload.returnPath || "/conta")) };
+    let user = local.rows[0];
+    if (!user) {
+      const inserted = await query<SessionUser>(
+        `insert into universe.users(email,password_hash,full_name,phone,role,status,permissions)
+         values(lower($1),$2,$3,$4,$5,'active','[]'::jsonb)
+         on conflict (lower(email)) do update set status='active', full_name=coalesce(nullif(excluded.full_name,''),universe.users.full_name)
+         returning id,email,full_name as "fullName",phone,role,permissions,status`,
+        [payload.email, await bcrypt.hash(randomBytes(24).toString("hex"), 12), String(payload.name || payload.email), payload.phone || null,
+          payload.role === "admin" ? "admin" : payload.role === "professional" ? "operator" : "customer"],
+      );
+      user = inserted.rows[0];
+    }
+    if (!user) return null;
+    return { user, returnPath: safeReturnPath(String(payload.returnPath || "/conta")) };
   } catch { return null; }
 }
 

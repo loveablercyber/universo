@@ -106,10 +106,10 @@ function ProductDetailPage() {
   const isOutOfStock = currentStock <= 0;
 
   const allImages = [
+    ...(selectedVariant ? [selectedVariant.imageUrl, ...(Array.isArray(selectedVariant.images) ? selectedVariant.images : [])] : []),
     product.image,
     ...(Array.isArray(product.images) ? product.images : []),
-    ...(selectedVariant?.imageUrl ? [selectedVariant.imageUrl] : []),
-  ].filter(Boolean);
+  ].filter((value, index, list): value is string => Boolean(value) && list.indexOf(value) === index);
 
   const handleAddToCart = () => {
     store.addToCart(product, selectedVariant, quantity);
@@ -275,7 +275,7 @@ function ProductDetailPage() {
                         type="button"
                         onClick={() => {
                           setSelectedVariant(v);
-                          if (v.imageUrl) setSelectedImage(v.imageUrl);
+                          if (v.images?.[0] || v.imageUrl) setSelectedImage(v.images?.[0] || v.imageUrl || product.image);
                         }}
                         disabled={isVarOutOfStock}
                         className={`flex items-center justify-between rounded-xl border p-3 text-left transition ${
@@ -369,6 +369,10 @@ function ProductDetailPage() {
                 <span>Garantia de 7 dias após o recebimento</span>
               </div>
             </div>
+
+            {product.info && (
+              <p className="text-sm text-text-secondary leading-relaxed">{product.info}</p>
+            )}
 
             {/* Descrição Completa */}
             {product.description && (

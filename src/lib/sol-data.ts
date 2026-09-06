@@ -12,6 +12,7 @@ export interface ProductVariant {
   promotionalPriceOverride?: number | null;
   stockQuantity: number;
   imageUrl?: string;
+  images?: string[];
   status: "active" | "out_of_stock" | "inactive";
   sortOrder?: number;
 }
