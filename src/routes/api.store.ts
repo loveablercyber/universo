@@ -129,6 +129,8 @@ export const Route = createFileRoute("/api/store")({
               SELECT p.id, p.slug, p.name, p.info, p.description,
                      p.short_description as "shortDescription", p.characteristics, p.methods,
                      p.care_instructions as "careInstructions",
+                     p.short_description as "shortDescription", p.characteristics, p.methods,
+                     p.care_instructions as "careInstructions",
                      p.price::float as price, p.promotional_price::float as "promotionalPrice",
                      p.stock_quantity as "stockQuantity", p.category_id as "categoryId",
                      p.image_url as image, p.images,

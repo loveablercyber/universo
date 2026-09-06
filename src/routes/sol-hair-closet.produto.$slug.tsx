@@ -106,7 +106,6 @@ function ProductDetailPage() {
   const isOutOfStock = currentStock <= 0;
 
   const allImages = [
-    ...(selectedVariant ? [selectedVariant.imageUrl, ...(Array.isArray(selectedVariant.images) ? selectedVariant.images : [])] : []),
     product.image,
     ...(Array.isArray(product.images) ? product.images : []),
   ].filter((value, index, list): value is string => Boolean(value) && list.indexOf(value) === index);
@@ -284,6 +283,7 @@ function ProductDetailPage() {
                             : "border-line bg-warm-white hover:border-copper/40"
                         } ${isVarOutOfStock ? "opacity-40 cursor-not-allowed line-through" : ""}`}
                       >
+                        {(v.images?.[0] || v.imageUrl) && <img src={v.images?.[0] || v.imageUrl} alt="" className="h-12 w-12 rounded-lg object-cover border border-line shrink-0" />}
                         <div>
                           <p className="text-xs text-ink-deep">{v.title}</p>
                           {(v.color || v.lengthCm) && (

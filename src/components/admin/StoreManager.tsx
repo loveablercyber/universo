@@ -1025,6 +1025,12 @@ function ProductEditorModal({
                 <input
                   name="name"
                   defaultValue={product?.name}
+                  onChange={(event) => {
+                    const slug = event.currentTarget.form?.elements.namedItem("slug") as HTMLInputElement | null;
+                    if (slug && !slug.dataset.edited) {
+                      slug.value = event.currentTarget.value.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100);
+                    }
+                  }}
                   required
                   placeholder="Ex: Fibra Russa Lisa Natural"
                   className="w-full h-10 rounded-xl border border-copper/20 px-3 outline-none focus:border-copper text-sm"
@@ -1035,6 +1041,7 @@ function ProductEditorModal({
                 <input
                   name="slug"
                   defaultValue={product?.slug}
+                  onChange={(event) => { event.currentTarget.dataset.edited = "true"; }}
                   required
                   placeholder="ex: fibra-russa-lisa"
                   className="w-full h-10 rounded-xl border border-copper/20 px-3 outline-none focus:border-copper text-sm font-mono"
@@ -1199,9 +1206,9 @@ function ProductEditorModal({
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <textarea name="characteristics" defaultValue={product?.characteristics || ""} rows={5} placeholder="Características (uma por linha)" className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" />
-              <textarea name="methods" defaultValue={product?.methods || ""} rows={5} placeholder="Métodos de aplicação (uma por linha)" className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" />
-              <textarea name="careInstructions" defaultValue={product?.careInstructions || ""} rows={5} placeholder="Cuidados (uma por linha)" className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" />
+              <label className="text-xs font-medium text-brown">Características<textarea name="characteristics" defaultValue={product?.characteristics || ""} rows={5} placeholder="Uma por linha" className="mt-2 w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" /></label>
+              <label className="text-xs font-medium text-brown">Métodos<textarea name="methods" defaultValue={product?.methods || ""} rows={5} placeholder="Um por linha" className="mt-2 w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" /></label>
+              <label className="text-xs font-medium text-brown">Cuidados<textarea name="careInstructions" defaultValue={product?.careInstructions || ""} rows={5} placeholder="Um por linha" className="mt-2 w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" /></label>
             </div>
           </div>
 
