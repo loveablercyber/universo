@@ -68,6 +68,11 @@ export const Route = createFileRoute("/api/store")({
         try {
           const url = new URL(request.url);
           const action = url.searchParams.get("action") ?? "products";
+
+          if (action === "store_settings") {
+            const { rows } = await query(`SELECT key, value FROM universe.settings WHERE key = 'brand_logo_url' AND is_public = true`);
+            return Response.json({ ok: true, settings: rows });
+          }
           const sessionUser = await readSession(request);
 
           /* 1. Categorias */
@@ -122,6 +127,8 @@ export const Route = createFileRoute("/api/store")({
 
             const productsSql = `
               SELECT p.id, p.slug, p.name, p.info, p.description,
+                     p.short_description as "shortDescription", p.characteristics, p.methods,
+                     p.care_instructions as "careInstructions",
                      p.price::float as price, p.promotional_price::float as "promotionalPrice",
                      p.stock_quantity as "stockQuantity", p.category_id as "categoryId",
                      p.image_url as image, p.images,

@@ -28,6 +28,10 @@ const productSchema = z.object({
   name: z.string().min(2).max(160),
   info: z.string().max(200).nullable().optional(),
   description: z.string().max(5000).nullable().optional(),
+  shortDescription: z.string().max(500).nullable().optional(),
+  characteristics: z.string().max(5000).nullable().optional(),
+  methods: z.string().max(5000).nullable().optional(),
+  careInstructions: z.string().max(5000).nullable().optional(),
   price: z.number().min(0),
   promotionalPrice: z.number().min(0).nullable().optional(),
   stockQuantity: z.number().int().min(0),
@@ -114,7 +118,7 @@ export const Route = createFileRoute("/api/admin/store")({
 
           if (action === "products") {
             const { rows } = await query(
-              `SELECT p.id, p.slug, p.name, p.info, p.description,
+              `SELECT p.id, p.slug, p.name, p.info, p.description, p.short_description as "shortDescription", p.characteristics, p.methods, p.care_instructions as "careInstructions",
                       p.price::float as price, p.promotional_price::float as "promotionalPrice",
                       p.stock_quantity as "stockQuantity", p.category_id as "categoryId", p.subcategory_id as "subcategoryId",
                       p.image_url as image, p.images, p.badge_label as "badgeLabel", p.badge_tone as "badgeTone",
@@ -138,7 +142,7 @@ export const Route = createFileRoute("/api/admin/store")({
                  FROM universe.store_products p
                  LEFT JOIN universe.store_categories c ON c.id = p.category_id
                  LEFT JOIN universe.store_product_variants v ON v.product_id = p.id
-                GROUP BY p.id, p.slug, p.name, p.info, p.description, p.price,
+                GROUP BY p.id, p.slug, p.name, p.info, p.description, p.short_description, p.characteristics, p.methods, p.care_instructions, p.price,
                          p.promotional_price, p.stock_quantity, p.category_id, p.subcategory_id,
                          p.image_url, p.images, p.badge_label, p.badge_tone,
                          p.rating, p.reviews_count, p.sold_count, p.status, p.created_at, c.name
@@ -292,6 +296,10 @@ export const Route = createFileRoute("/api/admin/store")({
               name,
               info,
               description,
+              shortDescription,
+              characteristics,
+              methods,
+              careInstructions,
               price,
               promotionalPrice,
               stockQuantity,
@@ -313,16 +321,20 @@ export const Route = createFileRoute("/api/admin/store")({
               // Update produto existente
               await client.query(
                 `UPDATE universe.store_products
-                    SET slug = $1, name = $2, info = $3, description = $4, price = $5,
-                        promotional_price = $6, stock_quantity = $7, category_id = $8, subcategory_id = $9,
-                        image_url = $10, images = $11::jsonb, badge_label = $12, badge_tone = $13,
-                        status = $14, updated_at = now()
-                  WHERE id = $15`,
+                    SET slug = $1, name = $2, info = $3, description = $4, short_description = $5, characteristics = $6, methods = $7, care_instructions = $8, price = $9,
+                        promotional_price = $10, stock_quantity = $11, category_id = $12, subcategory_id = $13,
+                        image_url = $14, images = $15::jsonb, badge_label = $16, badge_tone = $17,
+                        status = $18, updated_at = now()
+                  WHERE id = $19`,
                 [
                   slug,
                   name,
                   info ?? null,
                   description ?? null,
+                  shortDescription ?? null,
+                  characteristics ?? null,
+                  methods ?? null,
+                  careInstructions ?? null,
                   price,
                   promotionalPrice ?? null,
                   stockQuantity,
@@ -340,15 +352,19 @@ export const Route = createFileRoute("/api/admin/store")({
               // Insert novo produto
               const insertRes = await client.query<{ id: string }>(
                 `INSERT INTO universe.store_products
-                   (slug, name, info, description, price, promotional_price, stock_quantity,
+                   (slug, name, info, description, short_description, characteristics, methods, care_instructions, price, promotional_price, stock_quantity,
                     category_id, subcategory_id, image_url, images, badge_label, badge_tone, status)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17, $18)
                  RETURNING id`,
                 [
                   slug,
                   name,
                   info ?? null,
                   description ?? null,
+                  shortDescription ?? null,
+                  characteristics ?? null,
+                  methods ?? null,
+                  careInstructions ?? null,
                   price,
                   promotionalPrice ?? null,
                   stockQuantity,

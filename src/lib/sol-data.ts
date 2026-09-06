@@ -28,6 +28,10 @@ export interface Product {
   name: string;
   info?: string;
   description?: string;
+  shortDescription?: string;
+  characteristics?: string;
+  methods?: string;
+  careInstructions?: string;
   price: number;
   promotionalPrice?: number | null;
   stockQuantity: number;

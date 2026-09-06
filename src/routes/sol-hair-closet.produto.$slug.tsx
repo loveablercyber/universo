@@ -375,6 +375,9 @@ function ProductDetailPage() {
             )}
 
             {/* Descrição Completa */}
+            {product.shortDescription && (
+              <p className="text-sm text-text-secondary leading-relaxed">{product.shortDescription}</p>
+            )}
             {product.description && (
               <div className="pt-4 border-t border-line space-y-2">
                 <h3 className="text-xs font-bold tracking-wider uppercase text-ink-deep">
@@ -385,6 +388,18 @@ function ProductDetailPage() {
                 </p>
               </div>
             )}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-line pt-5">
+              {[
+                ["Características", product.characteristics],
+                ["Métodos", product.methods],
+                ["Cuidados", product.careInstructions],
+              ].map(([title, content]) => content ? (
+                <section key={title}>
+                  <h3 className="text-xs font-bold tracking-wider uppercase text-ink-deep">{title}</h3>
+                  <p className="mt-2 text-xs sm:text-sm text-text-secondary leading-relaxed whitespace-pre-line">{content}</p>
+                </section>
+              ) : null)}
+            </div>
           </div>
         </div>
 

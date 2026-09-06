@@ -962,6 +962,10 @@ function ProductEditorModal({
         name: form.get("name"),
         info: form.get("info"),
         description: form.get("description"),
+        shortDescription: form.get("shortDescription"),
+        characteristics: form.get("characteristics"),
+        methods: form.get("methods"),
+        careInstructions: form.get("careInstructions"),
         price: parseFloat(String(form.get("price"))),
         promotionalPrice: form.get("promotionalPrice")
           ? parseFloat(String(form.get("promotionalPrice")))
@@ -1167,6 +1171,11 @@ function ProductEditorModal({
               />
             </div>
 
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-brown">Descrição curta (abaixo da compra)</label>
+              <textarea name="shortDescription" defaultValue={product?.shortDescription || ""} rows={2} placeholder="Resumo objetivo do produto" className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" />
+            </div>
+
             <div className="space-y-2">
               <label className="text-xs font-medium text-brown">Galeria do produto (até 4 fotos)</label>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -1188,6 +1197,11 @@ function ProductEditorModal({
                 rows={3}
                 className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper"
               />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <textarea name="characteristics" defaultValue={product?.characteristics || ""} rows={5} placeholder="Características (uma por linha)" className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" />
+              <textarea name="methods" defaultValue={product?.methods || ""} rows={5} placeholder="Métodos de aplicação (uma por linha)" className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" />
+              <textarea name="careInstructions" defaultValue={product?.careInstructions || ""} rows={5} placeholder="Cuidados (uma por linha)" className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" />
             </div>
           </div>
 

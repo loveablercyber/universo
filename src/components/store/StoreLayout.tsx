@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Menu,
@@ -23,6 +23,9 @@ import { CheckoutModal } from "./CheckoutModal";
 import { UniverseSwitcher } from "@/components/UniverseSwitcher";
 
 function Logo({ compact = false }: { compact?: boolean }) {
+  const [logoUrl, setLogoUrl] = useState("");
+  useEffect(() => { void fetch("/api/store?action=store_settings").then((r) => r.json()).then((d) => { const value = d?.settings?.[0]?.value; if (typeof value === "string") setLogoUrl(value); }).catch(() => {}); }, []);
+  if (logoUrl) return <Link to="/sol-hair-closet" className="flex items-center justify-center"><img src={logoUrl} alt="Sol Hair Closet" className={compact ? "h-10 max-w-36 object-contain" : "h-14 max-w-52 object-contain"} /></Link>;
   return (
     <Link to="/sol-hair-closet" className="flex flex-col items-center leading-none select-none group">
       <div
