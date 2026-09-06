@@ -17,6 +17,7 @@ export type SessionUser = {
   permissions: string[];
   identityId?: string;
   platformRole?: PlatformRole;
+  phone?: string | null;
 };
 
 type CanonicalIdentity = {
@@ -40,6 +41,10 @@ function cookieValue(request: Request, cookieName: string) {
 
 function sharedSecret() {
   return process.env.JWT_SECRET?.trim() || process.env.UNIFIED_AUTH_JWT_SECRET?.trim() || "";
+}
+
+function ssoSecret() {
+  return process.env.SSO_SHARED_SECRET?.trim() || "";
 }
 
 function jwtKey() {
@@ -402,45 +407,24 @@ export async function createSsoCode(
   if (!allowedSsoOrigins().has(target)) {
     throw authError("Destino de acesso não autorizado.", 400);
   }
-  const identityId =
-    user.identityId ??
-    (
-      await query<{ identity_user_id: string | null }>(
-        `select identity_user_id from universe.users where id=$1`,
-        [user.id],
-      )
-    ).rows[0]?.identity_user_id;
-  let resolvedIdentityId = identityId;
-  if (!resolvedIdentityId && user.email) {
-    const canonical = await query<{ id: string }>(
-      `select id from auth.users where lower(email)=lower($1) limit 1`,
-      [user.email],
-    );
-    if (canonical.rows[0]) {
-      resolvedIdentityId = canonical.rows[0].id;
-      await query(`update universe.users set identity_user_id=$2, updated_at=now() where id=$1`, [user.id, resolvedIdentityId]);
-    }
-  }
-  if (!resolvedIdentityId) throw authError("Conta ainda não vinculada ao acesso unificado.", 409);
-
-  const code = randomBytes(32).toString("base64url");
-  await withTransaction(async (client) => {
-    await client.query(`delete from public.carolsol_sso_codes where expires_at<now()-interval '1 day'`);
-    const recent = await client.query<{ count: number }>(
-      `select count(*)::int as count from public.carolsol_sso_codes
-        where identity_user_id=$1 and created_at>now()-interval '1 minute'`,
-      [resolvedIdentityId],
-    );
-    if ((recent.rows[0]?.count ?? 0) >= 10) {
-      throw authError("Muitas trocas de painel. Aguarde um minuto.", 429);
-    }
-    await client.query(
-      `insert into public.carolsol_sso_codes(
-         code_hash, identity_user_id, target_origin, return_path, source_origin, expires_at
-       ) values($1,$2,$3,$4,$5,now()+interval '60 seconds')`,
-      [hashToken(code), resolvedIdentityId, target, safeReturnPath(returnPath), sourceOrigin ?? null],
-    );
-  });
+  const secret = ssoSecret();
+  if (!secret) throw authError("SSO_SHARED_SECRET não configurado no ambiente.", 503);
+  const code = await new SignJWT({
+    purpose: "carolsol-sso",
+    email: user.email,
+    name: user.fullName,
+    phone: user.phone ?? null,
+    role: user.platformRole ?? platformRole(user.role),
+    returnPath: safeReturnPath(returnPath),
+    jti: randomBytes(16).toString("hex"),
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuer(new URL(sourceOrigin || "https://carolsol.com.br").origin)
+    .setAudience(target)
+    .setSubject(user.id)
+    .setIssuedAt()
+    .setExpirationTime("60s")
+    .sign(new TextEncoder().encode(secret));
   return {
     code,
     target,
@@ -451,32 +435,30 @@ export async function createSsoCode(
 export async function consumeSsoCode(code: string, targetOrigin: string) {
   const target = new URL(targetOrigin).origin;
   if (!allowedSsoOrigins().has(target)) return null;
-  const consumed = await withTransaction(async (client) => {
-    const result = await client.query<{
-      id: string;
-      identity_user_id: string;
-      return_path: string;
-    }>(
-      `select id, identity_user_id, return_path
-         from public.carolsol_sso_codes
-        where code_hash=$1 and target_origin=$2
-          and used_at is null and expires_at>now()
-        for update`,
-      [hashToken(code), target],
+  const secret = ssoSecret();
+  if (!secret) return null;
+  try {
+    const { payload } = await jwtVerify(code, new TextEncoder().encode(secret), {
+      algorithms: ["HS256"], audience: target,
+    });
+    if (payload.purpose !== "carolsol-sso" || typeof payload.email !== "string" || typeof payload.jti !== "string") return null;
+    const source = typeof payload.iss === "string" ? payload.iss : "";
+    if (!allowedSsoOrigins().has(source)) return null;
+    const nonce = await query<{ jti: string }>(
+      `insert into universe.sso_nonces(jti,source_origin,target_origin,expires_at)
+       values($1,$2,$3,to_timestamp($4)) on conflict (jti) do nothing returning jti`,
+      [payload.jti, source, target, Number(payload.exp || 0)],
     );
-    const row = result.rows[0];
-    if (!row) return null;
-    await client.query(`update public.carolsol_sso_codes set used_at=now() where id=$1`, [row.id]);
-    return row;
-  });
-  if (!consumed) return null;
-  const identity = await findCanonicalIdentityById(consumed.identity_user_id);
-  if (!identity || ["blocked", "anonymized", "deleted"].includes(identity.account_status))
-    return null;
-  return {
-    user: await ensureUniverseUser(identity),
-    returnPath: safeReturnPath(consumed.return_path),
-  };
+    if (!nonce.rows[0]) return null;
+    const local = await query<SessionUser & { status: string }>(
+      `select id,email,full_name as "fullName",role,permissions,phone,status
+         from universe.users
+        where status='active' and (lower(email)=lower($1) or regexp_replace(coalesce(phone,''),'\\D','','g')=any($2::text[]))
+        limit 1`, [payload.email, brazilianPhoneCandidates(String(payload.phone || ""))],
+    );
+    if (!local.rows[0]) return null;
+    return { user: local.rows[0], returnPath: safeReturnPath(String(payload.returnPath || "/conta")) };
+  } catch { return null; }
 }
 
 export async function createSession(request: Request, user: SessionUser) {
