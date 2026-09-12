@@ -32,7 +32,7 @@ export function ProductCard({
 
   return (
     <article className="group flex flex-col rounded-2xl bg-warm-white border border-line overflow-hidden shadow-[0_2px_18px_-8px_rgba(87,48,29,0.12)] hover:shadow-[0_8px_30px_-10px_rgba(87,48,29,0.22)] transition-all duration-300">
-      <div className="relative aspect-square bg-blush overflow-hidden">
+      <div className="relative aspect-[9/16] bg-blush overflow-hidden">
         <Link
           to="/sol-hair-closet/produto/$slug"
           params={{ slug: product.slug || product.id }}

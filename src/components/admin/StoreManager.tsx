@@ -1162,7 +1162,7 @@ function ProductEditorModal({
                       ? "Enviando imagem..."
                       : imageUrl
                         ? "Imagem pronta. Selecione outro arquivo para substituir."
-                        : "Use JPG, PNG, WEBP, SVG ou GIF em proporção 1:1 (quadrada)."}
+                        : "Use JPG, PNG, WEBP, SVG ou GIF em proporção 9:16 (retrato)."}
                   </p>
                 </div>
               </div>
@@ -1188,7 +1188,7 @@ function ProductEditorModal({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[0, 1, 2, 3].map((slot) => (
                   <label key={slot} className="cursor-pointer rounded-xl border border-dashed border-copper/30 bg-cream/20 p-2 text-center">
-                    {gallery[slot] ? <img src={gallery[slot]} alt={`Foto ${slot + 1}`} className="aspect-square w-full rounded-lg object-cover" /> : <div className="grid aspect-square w-full place-items-center text-copper/60"><ImagePlus size={24} /></div>}
+                    {gallery[slot] ? <img src={gallery[slot]} alt={`Foto ${slot + 1}`} className="aspect-[9/16] w-full rounded-lg object-cover" /> : <div className="grid aspect-[9/16] w-full place-items-center text-copper/60"><ImagePlus size={24} /></div>}
                     <span className="mt-1 block text-[10px] text-brown/60">Foto {slot + 1}</span>
                     <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploadingImage} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file, slot); event.currentTarget.value = ""; }} />
                   </label>
@@ -1295,7 +1295,7 @@ function ProductEditorModal({
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                         {[0, 1, 2, 3].map((slot) => (
                           <label key={slot} className="cursor-pointer rounded-lg border border-dashed border-copper/30 p-1 text-center">
-                            {(v.images || [])[slot] ? <img src={(v.images || [])[slot]} alt={`Foto da variação ${slot + 1}`} className="aspect-square w-full rounded object-cover" /> : <div className="grid aspect-square w-full place-items-center text-copper/60"><ImagePlus size={18} /></div>}
+                            {(v.images || [])[slot] ? <img src={(v.images || [])[slot]} alt={`Foto da variação ${slot + 1}`} className="aspect-[9/16] w-full rounded object-cover" /> : <div className="grid aspect-[9/16] w-full place-items-center text-copper/60"><ImagePlus size={18} /></div>}
                             <span className="text-[9px] text-brown/60">Foto {slot + 1}</span>
                             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploadingImage} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadVariantImage(file, idx, slot); event.currentTarget.value = ""; }} />
                           </label>

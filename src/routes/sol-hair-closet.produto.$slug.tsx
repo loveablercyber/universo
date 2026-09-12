@@ -160,7 +160,7 @@ function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14">
           {/* Coluna 1: Galeria de Imagens */}
           <div className="space-y-4">
-            <div className="relative aspect-square rounded-3xl overflow-hidden bg-blush border border-line shadow-sm">
+            <div className="relative aspect-[9/16] rounded-3xl overflow-hidden bg-blush border border-line shadow-sm">
               <img
                 src={selectedImage || product.image || "/images/produto-fibra-russa.jpg"}
                 alt={product.name}
@@ -185,7 +185,7 @@ function ProductDetailPage() {
                   <button
                     key={i}
                     onClick={() => setSelectedImage(img)}
-                    className={`h-20 w-20 rounded-2xl overflow-hidden border-2 transition shrink-0 ${
+                    className={`aspect-[9/16] h-24 rounded-2xl overflow-hidden border-2 transition shrink-0 ${
                       selectedImage === img
                         ? "border-copper shadow-md ring-2 ring-copper/20"
                         : "border-line opacity-70 hover:opacity-100"
@@ -277,7 +277,7 @@ function ProductDetailPage() {
                   {colorOptions.length > 0 && <label className="text-xs font-semibold text-ink-deep">Cor<select value={selectedVariant?.color || ""} onChange={(e) => selectVariant("color", e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-line bg-warm-white px-3 text-sm"><option value="">Selecione a cor</option>{colorOptions.map((color) => <option key={color} value={color}>{color}</option>)}</select></label>}
                   {sizeOptions.length > 0 && <label className="text-xs font-semibold text-ink-deep">Tamanho / comprimento<select value={String(selectedVariant?.lengthCm || "")} onChange={(e) => selectVariant("length", e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-line bg-warm-white px-3 text-sm"><option value="">Selecione</option>{sizeOptions.map((size) => <option key={size} value={size}>{size} cm</option>)}</select></label>}
                 </div>
-                {selectedVariant && (selectedVariant.images?.[0] || selectedVariant.imageUrl) && <div className="flex items-center gap-3 rounded-xl border border-copper/20 bg-copper/5 p-2"><img src={selectedVariant.images?.[0] || selectedVariant.imageUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /><span className="text-xs text-text-secondary">Opção selecionada: <strong className="text-ink-deep">{selectedVariant.title}</strong></span></div>}
+                {selectedVariant && (selectedVariant.images?.[0] || selectedVariant.imageUrl) && <div className="flex items-center gap-3 rounded-xl border border-copper/20 bg-copper/5 p-2"><img src={selectedVariant.images?.[0] || selectedVariant.imageUrl} alt="" className="aspect-[9/16] h-16 rounded-lg object-cover" /><span className="text-xs text-text-secondary">Opção selecionada: <strong className="text-ink-deep">{selectedVariant.title}</strong></span></div>}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {product.variants.map((v) => {
                     const isSelected = selectedVariant?.id === v.id;
@@ -297,7 +297,7 @@ function ProductDetailPage() {
                             : "border-line bg-warm-white hover:border-copper/40"
                         } ${isVarOutOfStock ? "opacity-40 cursor-not-allowed line-through" : ""}`}
                       >
-                        {(v.images?.[0] || v.imageUrl) && <img src={v.images?.[0] || v.imageUrl} alt="" className="h-12 w-12 rounded-lg object-cover border border-line shrink-0" />}
+                        {(v.images?.[0] || v.imageUrl) && <img src={v.images?.[0] || v.imageUrl} alt="" className="aspect-[9/16] h-14 rounded-lg object-cover border border-line shrink-0" />}
                         <div>
                           <p className="text-xs text-ink-deep">{v.title}</p>
                           {(v.color || v.lengthCm) && (
