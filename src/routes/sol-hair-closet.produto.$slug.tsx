@@ -235,9 +235,9 @@ function ProductDetailPage() {
         {/* Detalhes do Produto: Grid 2 Colunas */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(360px,2fr)] gap-8 lg:gap-12">
           {/* Coluna 1: Galeria de Imagens */}
-          <div className="grid gap-4 lg:grid-cols-[88px_minmax(0,1fr)] lg:items-start">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[88px_minmax(0,1fr)] lg:items-start">
             {allImages.length > 1 && (
-              <div className="order-2 flex gap-3 overflow-x-auto pb-2 lg:order-1 lg:max-h-[760px] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden">
+              <div className="order-2 flex gap-3 overflow-x-auto pb-2 lg:order-1 lg:h-[min(68vh,720px)] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden">
                 {allImages.map((img, i) => (
                   <button
                     key={img}
@@ -250,11 +250,11 @@ function ProductDetailPage() {
                 ))}
               </div>
             )}
-            <div className="relative order-1 aspect-[9/16] max-h-[820px] rounded-3xl overflow-hidden bg-blush border border-line shadow-sm lg:order-2">
+            <div className="relative order-1 h-[min(72vh,680px)] min-h-[420px] w-full min-w-0 overflow-hidden rounded-3xl border border-line bg-blush shadow-sm lg:order-2 lg:h-[min(68vh,720px)] lg:min-h-[520px]">
               <img
                 src={selectedImage || product.image || "/images/produto-fibra-russa.jpg"}
                 alt={product.name}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
               />
               {product.badge?.label && (
                 <span className="absolute top-4 left-4 rounded-full bg-copper text-warm-white px-3.5 py-1 text-[10px] tracking-[0.2em] font-semibold uppercase shadow-md">
