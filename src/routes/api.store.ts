@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { query, db, hashToken } from "@/lib/db.server";
-import { readSession, checkRateLimit, recordFailedLogin, clearFailedLogins } from "@/lib/auth.server";
+import {
+  readSession,
+  checkRateLimit,
+  recordFailedLogin,
+  clearFailedLogins,
+} from "@/lib/auth.server";
 import { createSumUpCheckout, getSumUpCheckoutStatus } from "@/lib/sumup.server";
 import { dispatchNotification, sendStoreOrderNotification } from "@/lib/notifications.server";
 import {
@@ -70,7 +75,9 @@ export const Route = createFileRoute("/api/store")({
           const action = url.searchParams.get("action") ?? "products";
 
           if (action === "store_settings") {
-            const { rows } = await query(`SELECT key, value FROM universe.settings WHERE key = 'brand_logo_url' AND is_public = true`);
+            const { rows } = await query(
+              `SELECT key, value FROM universe.settings WHERE key = 'brand_logo_url' AND is_public = true`,
+            );
             return Response.json({ ok: true, settings: rows });
           }
           const sessionUser = await readSession(request);
@@ -211,7 +218,10 @@ export const Route = createFileRoute("/api/store")({
             const product = rows[0];
 
             if (!product) {
-              return Response.json({ ok: false, message: "Produto não encontrado." }, { status: 404 });
+              return Response.json(
+                { ok: false, message: "Produto não encontrado." },
+                { status: 404 },
+              );
             }
 
             // Buscar variações
@@ -279,7 +289,11 @@ export const Route = createFileRoute("/api/store")({
             const access = await verifyOrderAccess(orderNumber, token, sessionUser);
             if (!access.authorized || !access.order) {
               return Response.json(
-                { ok: false, message: "Acesso não autorizado a este pedido. Informe o token de acesso ou faça login." },
+                {
+                  ok: false,
+                  message:
+                    "Acesso não autorizado a este pedido. Informe o token de acesso ou faça login.",
+                },
                 { status: 403 },
               );
             }
@@ -315,6 +329,9 @@ export const Route = createFileRoute("/api/store")({
             const itemsResult = await query(
               `SELECT product_id as "productId", variant_id as "variantId",
                       product_name as "productName", variant_name as "variantName",
+                      variant_sku as "variantSku", variant_color as "variantColor",
+                      variant_length_cm as "variantLengthCm", variant_weight_g as "variantWeightG",
+                      image_url as "imageUrl",
                       unit_price::float as price, quantity, total_price::float as total
                  FROM universe.store_order_items
                 WHERE order_id = $1`,
@@ -381,6 +398,11 @@ export const Route = createFileRoute("/api/store")({
                           json_build_object(
                             'productName', i.product_name,
                             'variantName', i.variant_name,
+                            'variantSku', i.variant_sku,
+                            'variantColor', i.variant_color,
+                            'variantLengthCm', i.variant_length_cm,
+                            'variantWeightG', i.variant_weight_g,
+                            'imageUrl', i.image_url,
                             'unitPrice', i.unit_price::float,
                             'quantity', i.quantity,
                             'totalPrice', i.total_price::float
@@ -412,8 +434,7 @@ export const Route = createFileRoute("/api/store")({
 
             const token = await createOrderHistoryAccessToken(email, clientIp);
 
-            const storeBaseUrl =
-              process.env.STORE_PUBLIC_URL || "https://loja.carolsol.com.br";
+            const storeBaseUrl = process.env.STORE_PUBLIC_URL || "https://loja.carolsol.com.br";
             const historyUrl = `${storeBaseUrl}/sol-hair-closet/pedidos?email=${encodeURIComponent(email.trim().toLowerCase())}&token=${encodeURIComponent(token)}`;
             await dispatchNotification({
               channel: "email",
@@ -459,7 +480,10 @@ export const Route = createFileRoute("/api/store")({
       POST: async ({ request }) => {
         const pool = db;
         if (!pool) {
-          return Response.json({ ok: false, message: "Banco de dados indisponível." }, { status: 503 });
+          return Response.json(
+            { ok: false, message: "Banco de dados indisponível." },
+            { status: 503 },
+          );
         }
         const client = await pool.connect();
 
@@ -474,11 +498,16 @@ export const Route = createFileRoute("/api/store")({
         let notificationCustomerName = "";
         let notificationCustomerEmail = "";
         let notificationCustomerPhone = "";
-        let authoritativeItems: {
+        const authoritativeItems: {
           productId: string;
           variantId?: string | null;
           productName: string;
           variantName?: string | null;
+          variantSku?: string | null;
+          variantColor?: string | null;
+          variantLengthCm?: number | null;
+          variantWeightG?: number | null;
+          imageUrl?: string | null;
           price: number;
           qty: number;
         }[] = [];
@@ -545,9 +574,16 @@ export const Route = createFileRoute("/api/store")({
               promotional_price: string | null;
               stock_quantity: number;
               status: string;
+              image_url: string | null;
+              has_variants: boolean;
             }>(
-              `SELECT id, name, price, promotional_price, stock_quantity, status
-                 FROM universe.store_products
+              `SELECT p.id, p.name, p.price, p.promotional_price, p.stock_quantity, p.status,
+                      p.image_url,
+                      EXISTS (
+                        SELECT 1 FROM universe.store_product_variants v
+                         WHERE v.product_id = p.id AND v.status <> 'inactive'
+                      ) AS has_variants
+                 FROM universe.store_products p
                 WHERE id = $1
                 FOR UPDATE`,
               [item.productId],
@@ -560,6 +596,15 @@ export const Route = createFileRoute("/api/store")({
 
             let unitPrice = Number(product.promotional_price ?? product.price);
             let variantName: string | null = null;
+            let variantSku: string | null = null;
+            let variantColor: string | null = null;
+            let variantLengthCm: number | null = null;
+            let variantWeightG: number | null = null;
+            let itemImageUrl: string | null = product.image_url;
+
+            if (product.has_variants && !item.variantId) {
+              throw new Error(`Selecione a cor e o tamanho disponíveis para "${product.name}".`);
+            }
 
             if (item.variantId) {
               const varRes = await client.query<{
@@ -569,8 +614,15 @@ export const Route = createFileRoute("/api/store")({
                 promotional_price_override: string | null;
                 stock_quantity: number;
                 status: string;
+                sku: string | null;
+                color: string | null;
+                length_cm: number | null;
+                weight_g: number | null;
+                image_url: string | null;
+                images: string[] | null;
               }>(
-                `SELECT id, title, price_override, promotional_price_override, stock_quantity, status
+                `SELECT id, title, price_override, promotional_price_override, stock_quantity, status,
+                        sku, color, length_cm, weight_g, image_url, images
                    FROM universe.store_product_variants
                   WHERE id = $1 AND product_id = $2
                   FOR UPDATE`,
@@ -595,6 +647,11 @@ export const Route = createFileRoute("/api/store")({
               }
 
               variantName = variant.title;
+              variantSku = variant.sku;
+              variantColor = variant.color;
+              variantLengthCm = variant.length_cm;
+              variantWeightG = variant.weight_g;
+              itemImageUrl = variant.image_url || variant.images?.[0] || product.image_url;
 
               // Decrementar estoque da variação
               await client.query(
@@ -639,6 +696,11 @@ export const Route = createFileRoute("/api/store")({
               variantId: item.variantId,
               productName: product.name,
               variantName,
+              variantSku,
+              variantColor,
+              variantLengthCm,
+              variantWeightG,
+              imageUrl: itemImageUrl,
               price: unitPrice,
               qty: item.qty,
             });
@@ -657,9 +719,7 @@ export const Route = createFileRoute("/api/store")({
             discountType = `pix_${discountPct}%`;
           }
 
-          totalAmount = Number(
-            Math.max(0.01, subtotal + shippingCost - discountAmount).toFixed(2),
-          );
+          totalAmount = Number(Math.max(0.01, subtotal + shippingCost - discountAmount).toFixed(2));
 
           // Gerar número de pedido único de alta entropia
           orderNumber = await generateUniqueOrderNumber();
@@ -724,14 +784,21 @@ export const Route = createFileRoute("/api/store")({
           for (const item of authoritativeItems) {
             await client.query(
               `INSERT INTO universe.store_order_items
-                 (order_id, product_id, variant_id, product_name, variant_name, unit_price, quantity, total_price)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                 (order_id, product_id, variant_id, product_name, variant_name, variant_sku,
+                  variant_color, variant_length_cm, variant_weight_g, image_url,
+                  unit_price, quantity, total_price)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
               [
                 orderId,
                 item.productId,
                 item.variantId || null,
                 item.productName,
                 item.variantName || null,
+                item.variantSku || null,
+                item.variantColor || null,
+                item.variantLengthCm ?? null,
+                item.variantWeightG ?? null,
+                item.imageUrl || null,
                 item.price,
                 item.qty,
                 item.price * item.qty,
@@ -816,8 +883,7 @@ export const Route = createFileRoute("/api/store")({
           });
         } catch (sumupError) {
           console.error("[SumUp Checkout Creation Failed]", sumupError);
-          const sumupMessage =
-            sumupError instanceof Error ? sumupError.message : "";
+          const sumupMessage = sumupError instanceof Error ? sumupError.message : "";
 
           // ─── PASSO 3: COMPENSAÇÃO SEGURA (ROLLBACK DE NEGÓCIO) ───
           if (orderId) {
@@ -874,11 +940,12 @@ export const Route = createFileRoute("/api/store")({
           return Response.json(
             {
               ok: false,
-              message: sumupMessage.startsWith("Falha ao criar checkout SumUp") ||
+              message:
+                sumupMessage.startsWith("Falha ao criar checkout SumUp") ||
                 sumupMessage.startsWith("Falha ao conectar à SumUp") ||
                 sumupMessage.includes("SUMUP_")
-                ? `${sumupMessage} Seu estoque foi liberado.`
-                : "O gateway de pagamento está temporariamente indisponível. Seu estoque foi liberado. Tente novamente em instantes.",
+                  ? `${sumupMessage} Seu estoque foi liberado.`
+                  : "O gateway de pagamento está temporariamente indisponível. Seu estoque foi liberado. Tente novamente em instantes.",
             },
             { status: 502 },
           );

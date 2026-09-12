@@ -4,8 +4,7 @@ import { X, Minus, Plus, ShoppingBag, ArrowRight, ShieldCheck, Sparkles } from "
 import type { CartItem } from "@/hooks/use-store";
 import { FREE_SHIPPING_THRESHOLD } from "@/hooks/use-store";
 
-const fmt = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export function CartDrawer({
   open,
@@ -26,7 +25,12 @@ export function CartDrawer({
 
   const subtotal = cart.reduce((acc, item) => {
     const price = item.variant
-      ? Number(item.variant.promotionalPriceOverride ?? item.variant.priceOverride ?? item.product.promotionalPrice ?? item.product.price)
+      ? Number(
+          item.variant.promotionalPriceOverride ??
+            item.variant.priceOverride ??
+            item.product.promotionalPrice ??
+            item.product.price,
+        )
       : Number(item.product.promotionalPrice ?? item.product.price);
     return acc + price * item.qty;
   }, 0);
@@ -66,8 +70,8 @@ export function CartDrawer({
           <div className="px-6 py-3 bg-blush/60 border-b border-line">
             {missingForFreeShipping > 0 ? (
               <p className="text-xs text-ink-deep font-medium">
-                Faltam <span className="font-bold text-copper">{fmt(missingForFreeShipping)}</span> para{" "}
-                <span className="font-bold">Frete Grátis!</span>
+                Faltam <span className="font-bold text-copper">{fmt(missingForFreeShipping)}</span>{" "}
+                para <span className="font-bold">Frete Grátis!</span>
               </p>
             ) : (
               <p className="text-xs text-[#2E7D32] font-semibold flex items-center gap-1.5">
@@ -89,9 +93,12 @@ export function CartDrawer({
                 <div className="h-16 w-16 rounded-full bg-blush flex items-center justify-center text-copper mb-4">
                   <ShoppingBag size={28} />
                 </div>
-                <p className="font-serif text-lg text-ink-deep font-medium">Sua sacola está vazia</p>
+                <p className="font-serif text-lg text-ink-deep font-medium">
+                  Sua sacola está vazia
+                </p>
                 <p className="text-xs text-text-secondary mt-1 max-w-xs">
-                  Explore nossas coleções exclusivas de fibras, laces e acessórios de alta qualidade.
+                  Explore nossas coleções exclusivas de fibras, laces e acessórios de alta
+                  qualidade.
                 </p>
                 <Link
                   to="/sol-hair-closet/produtos"
@@ -104,13 +111,26 @@ export function CartDrawer({
             ) : (
               cart.map((item, idx) => {
                 const itemPrice = item.variant
-                  ? Number(item.variant.promotionalPriceOverride ?? item.variant.priceOverride ?? item.product.promotionalPrice ?? item.product.price)
+                  ? Number(
+                      item.variant.promotionalPriceOverride ??
+                        item.variant.priceOverride ??
+                        item.product.promotionalPrice ??
+                        item.product.price,
+                    )
                   : Number(item.product.promotionalPrice ?? item.product.price);
 
                 return (
-                  <div key={`${item.product.id}-${item.variant?.id || "base"}-${idx}`} className="pt-4 first:pt-0 flex gap-4">
+                  <div
+                    key={`${item.product.id}-${item.variant?.id || "base"}-${idx}`}
+                    className="pt-4 first:pt-0 flex gap-4"
+                  >
                     <img
-                      src={item.variant?.imageUrl || item.product.image || "/images/produto-fibra-russa.jpg"}
+                      src={
+                        item.variant?.images?.[0] ||
+                        item.variant?.imageUrl ||
+                        item.product.image ||
+                        "/images/produto-fibra-russa.jpg"
+                      }
                       alt={item.product.name}
                       className="h-20 w-20 rounded-xl object-cover border border-line bg-blush shrink-0"
                     />
@@ -120,9 +140,19 @@ export function CartDrawer({
                           {item.product.name}
                         </h4>
                         {item.variant ? (
-                          <span className="inline-block mt-0.5 rounded bg-blush px-2 py-0.5 text-[10px] font-medium text-copper">
-                            {item.variant.title}
-                          </span>
+                          <div className="mt-0.5 text-[10px] text-text-secondary">
+                            <span className="font-medium text-copper">{item.variant.title}</span>
+                            {(item.variant.color || item.variant.lengthCm) && (
+                              <span className="block">
+                                {[
+                                  item.variant.color,
+                                  item.variant.lengthCm ? `${item.variant.lengthCm} cm` : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" • ")}
+                              </span>
+                            )}
+                          </div>
                         ) : item.product.info ? (
                           <p className="text-[11px] text-text-secondary truncate mt-0.5">
                             {item.product.info}
@@ -133,7 +163,9 @@ export function CartDrawer({
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center border border-line rounded-full bg-warm-white">
                           <button
-                            onClick={() => onSetQty(item.product.id, item.variant?.id, item.qty - 1)}
+                            onClick={() =>
+                              onSetQty(item.product.id, item.variant?.id, item.qty - 1)
+                            }
                             className="p-1.5 text-ink-deep hover:text-copper transition"
                             aria-label="Diminuir"
                           >
@@ -141,7 +173,13 @@ export function CartDrawer({
                           </button>
                           <span className="px-2 text-xs font-semibold font-mono">{item.qty}</span>
                           <button
-                            onClick={() => onSetQty(item.product.id, item.variant?.id, item.qty + 1)}
+                            onClick={() =>
+                              onSetQty(item.product.id, item.variant?.id, item.qty + 1)
+                            }
+                            disabled={
+                              item.qty >=
+                              (item.variant?.stockQuantity ?? item.product.stockQuantity)
+                            }
                             className="p-1.5 text-ink-deep hover:text-copper transition"
                             aria-label="Aumentar"
                           >

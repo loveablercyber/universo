@@ -3,8 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Heart, ShoppingBag, Star } from "lucide-react";
 import type { Product } from "@/lib/sol-data";
 
-const fmt = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export function ProductCard({
   product,
@@ -94,22 +93,22 @@ export function ProductCard({
           <p className="mt-1 text-[11px] text-text-secondary truncate">{product.info}</p>
         )}
 
-        <div className="mt-2 flex items-center gap-1.5">
-          <div className="flex text-copper">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <Star
-                key={i}
-                size={12}
-                fill="currentColor"
-                strokeWidth={0}
-                className={i < Math.floor(product.rating || 5) ? "" : "opacity-25"}
-              />
-            ))}
+        {product.reviews > 0 && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <div className="flex text-copper">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Star
+                  key={i}
+                  size={12}
+                  fill="currentColor"
+                  strokeWidth={0}
+                  className={i < Math.floor(product.rating) ? "" : "opacity-25"}
+                />
+              ))}
+            </div>
+            <span className="text-[11px] text-text-secondary font-mono">({product.reviews})</span>
           </div>
-          <span className="text-[11px] text-text-secondary font-mono">
-            ({product.reviews || 0})
-          </span>
-        </div>
+        )}
 
         <div className="mt-auto pt-3">
           <div className="flex items-baseline gap-2">
@@ -117,9 +116,7 @@ export function ProductCard({
               {fmt(currentPrice)}
             </p>
             {oldPrice && (
-              <span className="text-xs text-text-secondary line-through">
-                {fmt(oldPrice)}
-              </span>
+              <span className="text-xs text-text-secondary line-through">{fmt(oldPrice)}</span>
             )}
           </div>
           <p className="text-[10px] tracking-wider text-copper font-medium mt-0.5">
@@ -127,7 +124,7 @@ export function ProductCard({
           </p>
 
           <div className="mt-4 flex gap-2">
-            {onAdd && !isOutOfStock ? (
+            {onAdd && !isOutOfStock && !product.variants?.length ? (
               <button
                 onClick={() => onAdd(product)}
                 className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-ink-deep px-4 py-2.5 text-[10px] sm:text-[11px] tracking-[0.2em] font-semibold text-cream hover:bg-copper transition-colors active:scale-95"

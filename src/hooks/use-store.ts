@@ -72,20 +72,22 @@ export function useStore() {
   const addToCart = useCallback(
     (product: Product, variant?: ProductVariant | null, qty = 1) => {
       setCart((prev) => {
+        const available = Math.max(0, variant?.stockQuantity ?? product.stockQuantity);
+        const requested = Math.min(Math.max(1, qty), available);
+        if (requested <= 0) return prev;
         const existingIdx = prev.findIndex(
           (i) =>
-            i.product.id === product.id &&
-            (variant ? i.variant?.id === variant.id : !i.variant),
+            i.product.id === product.id && (variant ? i.variant?.id === variant.id : !i.variant),
         );
         if (existingIdx >= 0) {
           const updated = [...prev];
           updated[existingIdx] = {
             ...updated[existingIdx],
-            qty: updated[existingIdx].qty + qty,
+            qty: Math.min(updated[existingIdx].qty + requested, available),
           };
           return updated;
         }
-        return [...prev, { product, variant: variant || null, qty }];
+        return [...prev, { product, variant: variant || null, qty: requested }];
       });
       const title = variant ? `${product.name} (${variant.title})` : product.name;
       showToast(`${title} adicionado à sacola!`);
@@ -93,27 +95,27 @@ export function useStore() {
     [showToast],
   );
 
-  const setItemQty = useCallback((productId: string, variantId: string | null | undefined, qty: number) => {
-    setCart((prev) =>
-      prev.flatMap((i) => {
-        const match =
-          i.product.id === productId &&
-          (variantId ? i.variant?.id === variantId : !i.variant);
-        if (!match) return [i];
-        if (qty <= 0) return [];
-        return [{ ...i, qty }];
-      }),
-    );
-  }, []);
+  const setItemQty = useCallback(
+    (productId: string, variantId: string | null | undefined, qty: number) => {
+      setCart((prev) =>
+        prev.flatMap((i) => {
+          const match =
+            i.product.id === productId && (variantId ? i.variant?.id === variantId : !i.variant);
+          if (!match) return [i];
+          if (qty <= 0) return [];
+          const available = Math.max(0, i.variant?.stockQuantity ?? i.product.stockQuantity);
+          return [{ ...i, qty: Math.min(qty, available) }];
+        }),
+      );
+    },
+    [],
+  );
 
   const removeFromCart = useCallback((productId: string, variantId?: string | null) => {
     setCart((prev) =>
       prev.filter(
         (i) =>
-          !(
-            i.product.id === productId &&
-            (variantId ? i.variant?.id === variantId : !i.variant)
-          ),
+          !(i.product.id === productId && (variantId ? i.variant?.id === variantId : !i.variant)),
       ),
     );
   }, []);
@@ -151,7 +153,12 @@ export function useStore() {
   const subtotal = useMemo(() => {
     return cart.reduce((acc, item) => {
       const price = item.variant
-        ? Number(item.variant.promotionalPriceOverride ?? item.variant.priceOverride ?? item.product.promotionalPrice ?? item.product.price)
+        ? Number(
+            item.variant.promotionalPriceOverride ??
+              item.variant.priceOverride ??
+              item.product.promotionalPrice ??
+              item.product.price,
+          )
         : Number(item.product.promotionalPrice ?? item.product.price);
       return acc + price * item.qty;
     }, 0);

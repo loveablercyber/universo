@@ -45,6 +45,10 @@ type StoreProduct = {
   name: string;
   info?: string;
   description?: string;
+  shortDescription?: string;
+  characteristics?: string;
+  methods?: string;
+  careInstructions?: string;
   price: number;
   promotionalPrice?: number | null;
   stockQuantity: number;
@@ -97,6 +101,11 @@ type StoreOrder = {
   items?: Array<{
     productName: string;
     variantName?: string | null;
+    variantSku?: string | null;
+    variantColor?: string | null;
+    variantLengthCm?: number | null;
+    variantWeightG?: number | null;
+    imageUrl?: string | null;
     unitPrice: number;
     quantity: number;
     totalPrice: number;
@@ -883,6 +892,8 @@ function ProductEditorModal({
   const [imageUrl, setImageUrl] = useState(product?.image || "");
   const [gallery, setGallery] = useState<string[]>(product?.images || []);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [generatorColors, setGeneratorColors] = useState("");
+  const [generatorSizes, setGeneratorSizes] = useState("");
 
   const addVariant = () => {
     setVariants([
@@ -897,6 +908,51 @@ function ProductEditorModal({
 
   const removeVariant = (index: number) => {
     setVariants(variants.filter((_, i) => i !== index));
+  };
+
+  const generateVariants = () => {
+    const colors = generatorColors
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const sizes = generatorSizes
+      .split(",")
+      .map((value) => Number(value.replace(/[^0-9]/g, "")))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const colorValues = colors.length ? colors : [""];
+    const sizeValues: Array<number | undefined> = sizes.length ? sizes : [undefined];
+    if (!colors.length && !sizes.length) {
+      setError("Informe ao menos uma cor ou um tamanho para gerar as variações.");
+      return;
+    }
+    const existing = new Set(
+      variants.map((variant) => `${(variant.color || "").toLowerCase()}|${variant.lengthCm || ""}`),
+    );
+    const baseSlug = product?.slug || "produto";
+    const generated = [...variants];
+    for (const color of colorValues)
+      for (const size of sizeValues) {
+        const key = `${color.toLowerCase()}|${size || ""}`;
+        if (existing.has(key)) continue;
+        const suffix = [color, size ? `${size}cm` : ""]
+          .filter(Boolean)
+          .join("-")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-");
+        generated.push({
+          sku: `${baseSlug}-${suffix || `opcao-${generated.length + 1}`}-${crypto.randomUUID().slice(0, 6)}`.toUpperCase(),
+          title: [color, size ? `${size} cm` : ""].filter(Boolean).join(" / "),
+          color: color || undefined,
+          lengthCm: size,
+          stockQuantity: 0,
+          status: "active",
+        });
+        existing.add(key);
+      }
+    setVariants(generated);
+    setError("");
   };
 
   const updateVariant = <K extends keyof StoreVariant>(
@@ -924,7 +980,12 @@ function ProductEditorModal({
         throw new Error(payload.message || "Não foi possível enviar a imagem");
       }
       if (gallerySlot === undefined) setImageUrl(payload.publicUrl);
-      else setGallery((current) => { const next = [...current]; next[gallerySlot] = payload.publicUrl; return next.slice(0, 4); });
+      else
+        setGallery((current) => {
+          const next = [...current];
+          next[gallerySlot] = payload.publicUrl;
+          return next.slice(0, 4);
+        });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível enviar a imagem");
     } finally {
@@ -933,15 +994,25 @@ function ProductEditorModal({
   };
 
   const uploadVariantImage = async (file: File, variantIndex: number, slot: number) => {
-    setUploadingImage(true); setError("");
+    setUploadingImage(true);
+    setError("");
     try {
-      const form = new FormData(); form.append("file", file); form.append("title", `${product?.name || "Produto"} - variação`);
-      const res = await fetch("/api/admin/media", { method: "POST", body: form }); const payload = await res.json();
-      if (!res.ok || !payload.publicUrl) throw new Error(payload.message || "Não foi possível enviar a imagem");
-      const current = variants[variantIndex].images || []; const next = [...current]; next[slot] = payload.publicUrl;
+      const form = new FormData();
+      form.append("file", file);
+      form.append("title", `${product?.name || "Produto"} - variação`);
+      const res = await fetch("/api/admin/media", { method: "POST", body: form });
+      const payload = await res.json();
+      if (!res.ok || !payload.publicUrl)
+        throw new Error(payload.message || "Não foi possível enviar a imagem");
+      const current = variants[variantIndex].images || [];
+      const next = [...current];
+      next[slot] = payload.publicUrl;
       updateVariant(variantIndex, "images", next.slice(0, 4));
-    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível enviar a imagem"); }
-    finally { setUploadingImage(false); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível enviar a imagem");
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -953,6 +1024,19 @@ function ProductEditorModal({
     setLoading(true);
     setError("");
     const form = new FormData(e.currentTarget);
+
+    const combinations = new Set<string>();
+    for (const variant of variants) {
+      const combination = [variant.color || "", variant.lengthCm || ""]
+        .map((value) => String(value).trim().toLowerCase())
+        .join("|");
+      if (combinations.has(combination)) {
+        setError("Existem variações duplicadas com a mesma cor e tamanho.");
+        setLoading(false);
+        return;
+      }
+      combinations.add(combination);
+    }
 
     try {
       const body = {
@@ -1026,9 +1110,17 @@ function ProductEditorModal({
                   name="name"
                   defaultValue={product?.name}
                   onChange={(event) => {
-                    const slug = event.currentTarget.form?.elements.namedItem("slug") as HTMLInputElement | null;
+                    const slug = event.currentTarget.form?.elements.namedItem(
+                      "slug",
+                    ) as HTMLInputElement | null;
                     if (slug && !slug.dataset.edited) {
-                      slug.value = event.currentTarget.value.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100);
+                      slug.value = event.currentTarget.value
+                        .toLowerCase()
+                        .normalize("NFD")
+                        .replace(/[\\u0300-\\u036f]/g, "")
+                        .replace(/[^a-z0-9]+/g, "-")
+                        .replace(/^-+|-+$/g, "")
+                        .slice(0, 100);
                     }
                   }}
                   required
@@ -1041,7 +1133,9 @@ function ProductEditorModal({
                 <input
                   name="slug"
                   defaultValue={product?.slug}
-                  onChange={(event) => { event.currentTarget.dataset.edited = "true"; }}
+                  onChange={(event) => {
+                    event.currentTarget.dataset.edited = "true";
+                  }}
                   required
                   placeholder="ex: fibra-russa-lisa"
                   className="w-full h-10 rounded-xl border border-copper/20 px-3 outline-none focus:border-copper text-sm font-mono"
@@ -1179,18 +1273,51 @@ function ProductEditorModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-brown">Descrição curta (abaixo da compra)</label>
-              <textarea name="shortDescription" defaultValue={product?.shortDescription || ""} rows={2} placeholder="Resumo objetivo do produto" className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" />
+              <label className="text-xs font-medium text-brown">
+                Descrição curta (abaixo da compra)
+              </label>
+              <textarea
+                name="shortDescription"
+                defaultValue={product?.shortDescription || ""}
+                rows={2}
+                placeholder="Resumo objetivo do produto"
+                className="w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper"
+              />
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-brown">Galeria do produto (até 4 fotos)</label>
+              <label className="text-xs font-medium text-brown">
+                Galeria do produto (até 4 fotos)
+              </label>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[0, 1, 2, 3].map((slot) => (
-                  <label key={slot} className="cursor-pointer rounded-xl border border-dashed border-copper/30 bg-cream/20 p-2 text-center">
-                    {gallery[slot] ? <img src={gallery[slot]} alt={`Foto ${slot + 1}`} className="aspect-[9/16] w-full rounded-lg object-cover" /> : <div className="grid aspect-[9/16] w-full place-items-center text-copper/60"><ImagePlus size={24} /></div>}
+                  <label
+                    key={slot}
+                    className="cursor-pointer rounded-xl border border-dashed border-copper/30 bg-cream/20 p-2 text-center"
+                  >
+                    {gallery[slot] ? (
+                      <img
+                        src={gallery[slot]}
+                        alt={`Foto ${slot + 1}`}
+                        className="aspect-[9/16] w-full rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="grid aspect-[9/16] w-full place-items-center text-copper/60">
+                        <ImagePlus size={24} />
+                      </div>
+                    )}
                     <span className="mt-1 block text-[10px] text-brown/60">Foto {slot + 1}</span>
-                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploadingImage} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file, slot); event.currentTarget.value = ""; }} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="sr-only"
+                      disabled={uploadingImage}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void uploadImage(file, slot);
+                        event.currentTarget.value = "";
+                      }}
+                    />
                   </label>
                 ))}
               </div>
@@ -1206,9 +1333,36 @@ function ProductEditorModal({
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <label className="text-xs font-medium text-brown">Características<textarea name="characteristics" defaultValue={product?.characteristics || ""} rows={5} placeholder="Uma por linha" className="mt-2 w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" /></label>
-              <label className="text-xs font-medium text-brown">Métodos<textarea name="methods" defaultValue={product?.methods || ""} rows={5} placeholder="Um por linha" className="mt-2 w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" /></label>
-              <label className="text-xs font-medium text-brown">Cuidados<textarea name="careInstructions" defaultValue={product?.careInstructions || ""} rows={5} placeholder="Um por linha" className="mt-2 w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper" /></label>
+              <label className="text-xs font-medium text-brown">
+                Características
+                <textarea
+                  name="characteristics"
+                  defaultValue={product?.characteristics || ""}
+                  rows={5}
+                  placeholder="Uma por linha"
+                  className="mt-2 w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper"
+                />
+              </label>
+              <label className="text-xs font-medium text-brown">
+                Métodos
+                <textarea
+                  name="methods"
+                  defaultValue={product?.methods || ""}
+                  rows={5}
+                  placeholder="Um por linha"
+                  className="mt-2 w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper"
+                />
+              </label>
+              <label className="text-xs font-medium text-brown">
+                Cuidados
+                <textarea
+                  name="careInstructions"
+                  defaultValue={product?.careInstructions || ""}
+                  rows={5}
+                  placeholder="Um por linha"
+                  className="mt-2 w-full rounded-xl border border-copper/20 p-3 text-sm outline-none focus:border-copper"
+                />
+              </label>
             </div>
           </div>
 
@@ -1229,6 +1383,34 @@ function ProductEditorModal({
                 className="rounded-xl border border-copper/30 bg-copper/10 px-3 py-1.5 text-xs font-semibold text-copper hover:bg-copper hover:text-white transition flex items-center gap-1"
               >
                 <Plus size={14} /> Adicionar Opção
+              </button>
+            </div>
+
+            <div className="grid gap-3 rounded-2xl border border-copper/15 bg-white p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <label className="text-[10px] font-medium text-brown/70">
+                Cores (separadas por vírgula)
+                <input
+                  value={generatorColors}
+                  onChange={(event) => setGeneratorColors(event.target.value)}
+                  placeholder="Preto, Loiro, Castanho"
+                  className="mt-1 h-9 w-full rounded-lg border border-copper/20 px-2 text-xs outline-none"
+                />
+              </label>
+              <label className="text-[10px] font-medium text-brown/70">
+                Tamanhos em cm (separados por vírgula)
+                <input
+                  value={generatorSizes}
+                  onChange={(event) => setGeneratorSizes(event.target.value)}
+                  placeholder="50, 60, 70"
+                  className="mt-1 h-9 w-full rounded-lg border border-copper/20 px-2 text-xs outline-none"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={generateVariants}
+                className="h-9 rounded-lg bg-ink px-4 text-xs font-semibold text-white hover:bg-copper"
+              >
+                Gerar combinações
               </button>
             </div>
 
@@ -1291,15 +1473,144 @@ function ProductEditorModal({
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] font-medium text-brown/70">Fotos desta variação (até 4)</label>
+                      <label className="text-[10px] font-medium text-brown/70">
+                        Fotos desta variação (até 4)
+                      </label>
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                         {[0, 1, 2, 3].map((slot) => (
-                          <label key={slot} className="cursor-pointer rounded-lg border border-dashed border-copper/30 p-1 text-center">
-                            {(v.images || [])[slot] ? <img src={(v.images || [])[slot]} alt={`Foto da variação ${slot + 1}`} className="aspect-[9/16] w-full rounded object-cover" /> : <div className="grid aspect-[9/16] w-full place-items-center text-copper/60"><ImagePlus size={18} /></div>}
+                          <label
+                            key={slot}
+                            className="cursor-pointer rounded-lg border border-dashed border-copper/30 p-1 text-center"
+                          >
+                            {(v.images || [])[slot] ? (
+                              <img
+                                src={(v.images || [])[slot]}
+                                alt={`Foto da variação ${slot + 1}`}
+                                className="aspect-[9/16] w-full rounded object-cover"
+                              />
+                            ) : (
+                              <div className="grid aspect-[9/16] w-full place-items-center text-copper/60">
+                                <ImagePlus size={18} />
+                              </div>
+                            )}
                             <span className="text-[9px] text-brown/60">Foto {slot + 1}</span>
-                            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploadingImage} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadVariantImage(file, idx, slot); event.currentTarget.value = ""; }} />
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/gif"
+                              className="sr-only"
+                              disabled={uploadingImage}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (file) void uploadVariantImage(file, idx, slot);
+                                event.currentTarget.value = "";
+                              }}
+                            />
                           </label>
                         ))}
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-brown/70">SKU único</label>
+                        <input
+                          value={v.sku || ""}
+                          onChange={(e) => updateVariant(idx, "sku", e.target.value)}
+                          placeholder="Gerado automaticamente se vazio"
+                          className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-brown/70">
+                          Comprimento (cm)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={v.lengthCm ?? ""}
+                          onChange={(e) =>
+                            updateVariant(
+                              idx,
+                              "lengthCm",
+                              e.target.value ? Number(e.target.value) : undefined,
+                            )
+                          }
+                          className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-brown/70">Peso (g)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={v.weightG ?? ""}
+                          onChange={(e) =>
+                            updateVariant(
+                              idx,
+                              "weightG",
+                              e.target.value ? Number(e.target.value) : undefined,
+                            )
+                          }
+                          className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-brown/70">Textura</label>
+                        <input
+                          value={v.texture || ""}
+                          onChange={(e) => updateVariant(idx, "texture", e.target.value)}
+                          placeholder="Ex: lisa"
+                          className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-brown/70">
+                          Preço próprio (R$)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={v.priceOverride ?? ""}
+                          onChange={(e) =>
+                            updateVariant(
+                              idx,
+                              "priceOverride",
+                              e.target.value ? Number(e.target.value) : null,
+                            )
+                          }
+                          className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-brown/70">
+                          Preço promocional (R$)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={v.promotionalPriceOverride ?? ""}
+                          onChange={(e) =>
+                            updateVariant(
+                              idx,
+                              "promotionalPriceOverride",
+                              e.target.value ? Number(e.target.value) : null,
+                            )
+                          }
+                          className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-brown/70">Status</label>
+                        <select
+                          value={v.status}
+                          onChange={(e) =>
+                            updateVariant(idx, "status", e.target.value as StoreVariant["status"])
+                          }
+                          className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none"
+                        >
+                          <option value="active">Ativa</option>
+                          <option value="out_of_stock">Sem estoque</option>
+                          <option value="inactive">Inativa</option>
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -1451,6 +1762,44 @@ function OrderDetailModal({
               </p>
               <p className="font-mono text-brown/70">CEP: {order.shippingAddress.zipCode}</p>
             </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-copper">
+              Itens comprados
+            </h3>
+            {(order.items || []).map((item, index) => (
+              <div
+                key={`${item.productName}-${index}`}
+                className="flex gap-3 rounded-2xl border border-copper/10 p-3 text-xs"
+              >
+                {item.imageUrl && (
+                  <img src={item.imageUrl} alt="" className="h-20 w-14 rounded-lg object-cover" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-brown">{item.productName}</p>
+                  {item.variantName && <p className="text-brown/70">{item.variantName}</p>}
+                  <p className="text-brown/60">
+                    {[
+                      item.variantColor ? `Cor: ${item.variantColor}` : null,
+                      item.variantLengthCm ? `Tamanho: ${item.variantLengthCm} cm` : null,
+                      item.variantWeightG ? `Peso: ${item.variantWeightG} g` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" • ")}
+                  </p>
+                  {item.variantSku && (
+                    <p className="font-mono text-[10px] text-brown/55">SKU: {item.variantSku}</p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p>{item.quantity} un.</p>
+                  <p className="font-semibold">
+                    R$ {item.totalPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

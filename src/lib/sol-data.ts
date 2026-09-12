@@ -79,6 +79,11 @@ export interface StoreOrderItem {
   variantId?: string;
   productName: string;
   variantName?: string;
+  variantSku?: string;
+  variantColor?: string;
+  variantLengthCm?: number;
+  variantWeightG?: number;
+  imageUrl?: string;
   unitPrice: number;
   quantity: number;
   totalPrice: number;

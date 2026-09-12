@@ -12,14 +12,15 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Leaf,
+  Gem,
 } from "lucide-react";
 import { useStore } from "@/hooks/use-store";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
 import type { Product, ProductVariant } from "@/lib/sol-data";
 
-const fmt = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export const Route = createFileRoute("/sol-hair-closet/produto/$slug")({
   component: ProductDetailPage,
@@ -29,12 +30,17 @@ function ProductDetailPage() {
   const { slug } = useParams({ from: "/sol-hair-closet/produto/$slug" });
   const store = useStore();
 
-  const [product, setProduct] = useState<(Product & { categoryName?: string; categorySlug?: string; relatedProducts?: Product[] }) | null>(null);
+  const [product, setProduct] = useState<
+    (Product & { categoryName?: string; categorySlug?: string; relatedProducts?: Product[] }) | null
+  >(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedLength, setSelectedLength] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectionError, setSelectionError] = useState("");
 
   useEffect(() => {
     async function loadProduct() {
@@ -46,8 +52,22 @@ function ProductDetailPage() {
         if (res.ok && data.ok && data.product) {
           setProduct(data.product);
           setSelectedImage(data.product.image);
-          if (data.product.variants && data.product.variants.length > 0) {
-            setSelectedVariant(data.product.variants[0]);
+          const availableVariants = (data.product.variants || []).filter(
+            (variant: ProductVariant) => variant.status !== "inactive",
+          );
+          if (availableVariants.length === 1) {
+            setSelectedVariant(availableVariants[0]);
+            setSelectedColor(availableVariants[0].color || "");
+            setSelectedLength(availableVariants[0].lengthCm ?? null);
+            setSelectedImage(
+              availableVariants[0].images?.[0] ||
+                availableVariants[0].imageUrl ||
+                data.product.image,
+            );
+          } else {
+            setSelectedVariant(null);
+            setSelectedColor("");
+            setSelectedLength(null);
           }
         } else {
           setError(data.message || "Produto não encontrado.");
@@ -66,7 +86,9 @@ function ProductDetailPage() {
       <StoreLayout storeState={store}>
         <div className="flex flex-col items-center justify-center py-36 text-text-secondary">
           <Loader2 size={36} className="animate-spin text-copper mb-4" />
-          <p className="font-serif text-lg text-ink-deep font-medium">Carregando detalhes do produto...</p>
+          <p className="font-serif text-lg text-ink-deep font-medium">
+            Carregando detalhes do produto...
+          </p>
         </div>
       </StoreLayout>
     );
@@ -78,8 +100,12 @@ function ProductDetailPage() {
         <div className="container-shell py-20 text-center">
           <div className="max-w-md mx-auto rounded-3xl border border-line bg-warm-white p-8 shadow-sm">
             <AlertCircle size={40} className="text-[#B7476A] mx-auto mb-4" />
-            <h1 className="font-serif text-2xl text-ink-deep font-bold">Ops! Produto Indisponível</h1>
-            <p className="text-xs text-text-secondary mt-2">{error || "Não conseguimos encontrar este item."}</p>
+            <h1 className="font-serif text-2xl text-ink-deep font-bold">
+              Ops! Produto Indisponível
+            </h1>
+            <p className="text-xs text-text-secondary mt-2">
+              {error || "Não conseguimos encontrar este item."}
+            </p>
             <Link
               to="/sol-hair-closet/produtos"
               className="mt-6 inline-block rounded-full bg-ink-deep px-8 py-3 text-xs tracking-widest font-semibold text-cream hover:bg-copper transition"
@@ -93,37 +119,87 @@ function ProductDetailPage() {
   }
 
   const currentPrice = selectedVariant
-    ? Number(selectedVariant.promotionalPriceOverride ?? selectedVariant.priceOverride ?? product.promotionalPrice ?? product.price)
+    ? Number(
+        selectedVariant.promotionalPriceOverride ??
+          selectedVariant.priceOverride ??
+          product.promotionalPrice ??
+          product.price,
+      )
     : Number(product.promotionalPrice ?? product.price);
 
   const oldPrice = selectedVariant?.promotionalPriceOverride
     ? Number(selectedVariant.priceOverride ?? product.price)
     : product.promotionalPrice
-    ? Number(product.price)
-    : null;
+      ? Number(product.price)
+      : null;
 
-  const currentStock = selectedVariant ? selectedVariant.stockQuantity : product.stockQuantity;
-  const isOutOfStock = currentStock <= 0;
-  const colorOptions = Array.from(new Set((product.variants || []).map((v) => v.color).filter(Boolean))) as string[];
-  const sizeOptions = Array.from(new Set((product.variants || []).map((v) => v.lengthCm).filter(Boolean))) as number[];
-  const selectVariant = (key: string, value: string) => {
-    const next = (product.variants || []).find((v) => {
-      if (key === "color") return v.color === value && (!selectedVariant?.lengthCm || v.lengthCm === selectedVariant.lengthCm);
-      return String(v.lengthCm || "") === value && (!selectedVariant?.color || v.color === selectedVariant.color);
-    }) || (product.variants || []).find((v) => key === "color" ? v.color === value : String(v.lengthCm || "") === value);
-    if (next) { setSelectedVariant(next); setSelectedImage(next.images?.[0] || next.imageUrl || product.image); }
+  const variants = (product.variants || []).filter((variant) => variant.status !== "inactive");
+  const hasVariants = variants.length > 0;
+  const currentStock = selectedVariant
+    ? selectedVariant.stockQuantity
+    : hasVariants
+      ? 0
+      : product.stockQuantity;
+  const isOutOfStock = selectedVariant
+    ? selectedVariant.stockQuantity <= 0
+    : !hasVariants && product.stockQuantity <= 0;
+  const colorOptions = Array.from(
+    new Set(variants.map((v) => v.color).filter(Boolean)),
+  ) as string[];
+  const variantsForColor = selectedColor
+    ? variants.filter((v) => v.color === selectedColor)
+    : variants;
+  const sizeOptions = Array.from(
+    new Set(
+      variantsForColor.map((v) => v.lengthCm).filter((value): value is number => value != null),
+    ),
+  ).sort((a, b) => a - b);
+  const requiresColor = colorOptions.length > 0;
+  const requiresLength = variants.some((variant) => variant.lengthCm != null);
+  const resolveVariant = (color: string, length: number | null) =>
+    variants.find(
+      (variant) =>
+        (!requiresColor || variant.color === color) &&
+        (!requiresLength || variant.lengthCm === length),
+    ) || null;
+  const chooseCombination = (color: string, length: number | null) => {
+    setSelectedColor(color);
+    setSelectedLength(length);
+    const next = resolveVariant(color, length);
+    setSelectedVariant(next);
+    setQuantity(1);
+    setSelectionError("");
+    const images = next
+      ? ([...(next.images || []), next.imageUrl].filter(Boolean) as string[])
+      : [];
+    setSelectedImage(images[0] || product.image);
   };
 
-  const allImages = [
-    product.image,
-    ...(Array.isArray(product.images) ? product.images : []),
-  ].filter((value, index, list): value is string => Boolean(value) && list.indexOf(value) === index);
+  const variantImages = selectedVariant
+    ? [...(selectedVariant.images || []), selectedVariant.imageUrl].filter(
+        (value): value is string => Boolean(value),
+      )
+    : [];
+  const sourceImages = variantImages.length
+    ? variantImages
+    : [product.image, ...(product.images || [])];
+  const allImages = sourceImages.filter(
+    (value, index, list): value is string => Boolean(value) && list.indexOf(value) === index,
+  );
 
   const handleAddToCart = () => {
+    if (hasVariants && !selectedVariant) {
+      setSelectionError("Selecione todas as opções do produto antes de continuar.");
+      return;
+    }
     store.addToCart(product, selectedVariant, quantity);
   };
 
   const handleBuyNow = () => {
+    if (hasVariants && !selectedVariant) {
+      setSelectionError("Selecione todas as opções do produto antes de continuar.");
+      return;
+    }
     store.addToCart(product, selectedVariant, quantity);
     store.setShowCheckoutModal(true);
   };
@@ -157,10 +233,24 @@ function ProductDetailPage() {
         </div>
 
         {/* Detalhes do Produto: Grid 2 Colunas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(360px,2fr)] gap-8 lg:gap-12">
           {/* Coluna 1: Galeria de Imagens */}
-          <div className="space-y-4">
-            <div className="relative aspect-[9/16] rounded-3xl overflow-hidden bg-blush border border-line shadow-sm">
+          <div className="grid gap-4 lg:grid-cols-[88px_minmax(0,1fr)] lg:items-start">
+            {allImages.length > 1 && (
+              <div className="order-2 flex gap-3 overflow-x-auto pb-2 lg:order-1 lg:max-h-[760px] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden">
+                {allImages.map((img, i) => (
+                  <button
+                    key={img}
+                    onClick={() => setSelectedImage(img)}
+                    className={`aspect-[9/16] h-24 rounded-xl overflow-hidden border-2 transition shrink-0 ${selectedImage === img ? "border-copper shadow-md" : "border-line opacity-70 hover:opacity-100"}`}
+                    aria-label={`Ver imagem ${i + 1}`}
+                  >
+                    <img src={img} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="relative order-1 aspect-[9/16] max-h-[820px] rounded-3xl overflow-hidden bg-blush border border-line shadow-sm lg:order-2">
               <img
                 src={selectedImage || product.image || "/images/produto-fibra-russa.jpg"}
                 alt={product.name}
@@ -177,25 +267,6 @@ function ProductDetailPage() {
                 </span>
               )}
             </div>
-
-            {/* Thumbnails */}
-            {allImages.length > 1 && (
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {allImages.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedImage(img)}
-                    className={`aspect-[9/16] h-24 rounded-2xl overflow-hidden border-2 transition shrink-0 ${
-                      selectedImage === img
-                        ? "border-copper shadow-md ring-2 ring-copper/20"
-                        : "border-line opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <img src={img} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Coluna 2: Informações, Variações e Compra */}
@@ -222,26 +293,30 @@ function ProductDetailPage() {
                 <p className="mt-1 text-xs sm:text-sm text-text-secondary">{product.info}</p>
               )}
 
-              {/* Avaliações */}
-              <div className="mt-3 flex items-center gap-2">
-                <div className="flex text-copper">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <Star
-                      key={i}
-                      size={14}
-                      fill="currentColor"
-                      strokeWidth={0}
-                      className={i < Math.floor(product.rating || 5) ? "" : "opacity-25"}
-                    />
-                  ))}
+              {/* Avaliações reais: sem números inventados quando ainda não há avaliações. */}
+              {product.reviews > 0 ? (
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="flex text-copper">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <Star
+                        key={i}
+                        size={14}
+                        fill="currentColor"
+                        strokeWidth={0}
+                        className={i < Math.floor(product.rating) ? "" : "opacity-25"}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs font-semibold text-ink-deep">{product.rating}</span>
+                  <span className="text-xs text-text-secondary">
+                    ({product.reviews} avaliações de clientes verificadas)
+                  </span>
                 </div>
-                <span className="text-xs font-semibold text-ink-deep">
-                  {product.rating || 4.8}
-                </span>
-                <span className="text-xs text-text-secondary">
-                  ({product.reviews || 120} avaliações de clientes verificadas)
-                </span>
-              </div>
+              ) : (
+                <p className="mt-3 text-xs text-text-secondary">
+                  Este produto ainda não recebeu avaliações.
+                </p>
+              )}
             </div>
 
             {/* Preços e Desconto Pix */}
@@ -251,15 +326,15 @@ function ProductDetailPage() {
                   {fmt(currentPrice)}
                 </span>
                 {oldPrice && (
-                  <span className="text-sm text-text-secondary line-through">
-                    {fmt(oldPrice)}
-                  </span>
+                  <span className="text-sm text-text-secondary line-through">{fmt(oldPrice)}</span>
                 )}
               </div>
 
               <div className="inline-flex items-center gap-2 rounded-lg bg-copper/10 px-3 py-1.5 text-xs font-semibold text-copper">
                 <Sparkles size={14} />
-                <span>5% OFF no Pix: <b>{fmt(currentPrice * 0.95)}</b></span>
+                <span>
+                  5% OFF no Pix: <b>{fmt(currentPrice * 0.95)}</b>
+                </span>
               </div>
 
               <p className="text-xs text-text-secondary pt-1">
@@ -267,55 +342,118 @@ function ProductDetailPage() {
               </p>
             </div>
 
+            {product.shortDescription && (
+              <p className="text-sm leading-relaxed text-text-secondary">
+                {product.shortDescription}
+              </p>
+            )}
+
             {/* Variações de Produto (Cor, Comprimento, Peso) */}
-            {product.variants && product.variants.length > 0 && (
-              <div className="space-y-3">
-                <label className="text-xs font-bold tracking-wider uppercase text-ink-deep">
-                  Opções Disponíveis:
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {colorOptions.length > 0 && <label className="text-xs font-semibold text-ink-deep">Cor<select value={selectedVariant?.color || ""} onChange={(e) => selectVariant("color", e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-line bg-warm-white px-3 text-sm"><option value="">Selecione a cor</option>{colorOptions.map((color) => <option key={color} value={color}>{color}</option>)}</select></label>}
-                  {sizeOptions.length > 0 && <label className="text-xs font-semibold text-ink-deep">Tamanho / comprimento<select value={String(selectedVariant?.lengthCm || "")} onChange={(e) => selectVariant("length", e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-line bg-warm-white px-3 text-sm"><option value="">Selecione</option>{sizeOptions.map((size) => <option key={size} value={size}>{size} cm</option>)}</select></label>}
-                </div>
-                {selectedVariant && (selectedVariant.images?.[0] || selectedVariant.imageUrl) && <div className="flex items-center gap-3 rounded-xl border border-copper/20 bg-copper/5 p-2"><img src={selectedVariant.images?.[0] || selectedVariant.imageUrl} alt="" className="aspect-[9/16] h-16 rounded-lg object-cover" /><span className="text-xs text-text-secondary">Opção selecionada: <strong className="text-ink-deep">{selectedVariant.title}</strong></span></div>}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {product.variants.map((v) => {
-                    const isSelected = selectedVariant?.id === v.id;
-                    const isVarOutOfStock = v.stockQuantity <= 0;
-                    return (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedVariant(v);
-                          if (v.images?.[0] || v.imageUrl) setSelectedImage(v.images?.[0] || v.imageUrl || product.image);
-                        }}
-                        disabled={isVarOutOfStock}
-                        className={`flex items-center justify-between rounded-xl border p-3 text-left transition ${
-                          isSelected
-                            ? "border-copper bg-copper/10 ring-2 ring-copper/30 font-semibold"
-                            : "border-line bg-warm-white hover:border-copper/40"
-                        } ${isVarOutOfStock ? "opacity-40 cursor-not-allowed line-through" : ""}`}
+            {hasVariants && (
+              <div className="space-y-4 rounded-2xl border border-line bg-warm-white p-4">
+                {requiresColor && (
+                  <label className="block text-xs font-semibold text-ink-deep">
+                    Cor
+                    <select
+                      value={selectedColor}
+                      onChange={(event) => {
+                        const color = event.target.value;
+                        const compatibleLength =
+                          requiresLength &&
+                          selectedLength != null &&
+                          resolveVariant(color, selectedLength)
+                            ? selectedLength
+                            : requiresLength
+                              ? null
+                              : selectedLength;
+                        chooseCombination(color, compatibleLength);
+                      }}
+                      className="mt-1 h-11 w-full rounded-xl border border-line bg-white px-3 text-sm"
+                    >
+                      <option value="">Selecione a cor</option>
+                      {colorOptions.map((color) => (
+                        <option
+                          key={color}
+                          value={color}
+                          disabled={
+                            !variants.some(
+                              (variant) =>
+                                variant.color === color &&
+                                variant.status === "active" &&
+                                variant.stockQuantity > 0,
+                            )
+                          }
+                        >
+                          {color}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {requiresLength && (!requiresColor || selectedColor) && (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold text-ink-deep">
+                      Tamanho / comprimento
+                    </p>
+                    {sizeOptions.length <= 5 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {sizeOptions.map((size) => {
+                          const option = resolveVariant(selectedColor, size);
+                          const unavailable =
+                            !option || option.status !== "active" || option.stockQuantity <= 0;
+                          return (
+                            <button
+                              key={size}
+                              type="button"
+                              disabled={unavailable}
+                              onClick={() => chooseCombination(selectedColor, size)}
+                              className={`min-w-16 rounded-xl border px-4 py-2 text-xs transition ${selectedLength === size ? "border-copper bg-copper text-white" : "border-line bg-white text-ink-deep"} disabled:cursor-not-allowed disabled:opacity-35`}
+                            >
+                              {size} cm
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <select
+                        value={selectedLength ?? ""}
+                        onChange={(event) =>
+                          chooseCombination(
+                            selectedColor,
+                            event.target.value ? Number(event.target.value) : null,
+                          )
+                        }
+                        className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm"
                       >
-                        {(v.images?.[0] || v.imageUrl) && <img src={v.images?.[0] || v.imageUrl} alt="" className="aspect-[9/16] h-14 rounded-lg object-cover border border-line shrink-0" />}
-                        <div>
-                          <p className="text-xs text-ink-deep">{v.title}</p>
-                          {(v.color || v.lengthCm) && (
-                            <p className="text-[10px] text-text-secondary">
-                              {[v.color, v.lengthCm ? `${v.lengthCm}cm` : null, v.weightG ? `${v.weightG}g` : null]
-                                .filter(Boolean)
-                                .join(" • ")}
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-[10px] font-mono text-copper">
-                          {isVarOutOfStock ? "Esgotado" : `${v.stockQuantity} unid.`}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        <option value="">Selecione o tamanho</option>
+                        {sizeOptions.map((size) => (
+                          <option key={size} value={size}>
+                            {size} cm
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+                {selectedVariant && (
+                  <p className="text-xs text-text-secondary">
+                    SKU:{" "}
+                    <span className="font-mono text-ink-deep">
+                      {selectedVariant.sku || "não informado"}
+                    </span>
+                    {selectedVariant.texture ? ` • ${selectedVariant.texture}` : ""}
+                    {selectedVariant.weightG ? ` • ${selectedVariant.weightG} g` : ""}
+                  </p>
+                )}
               </div>
+            )}
+            {selectionError && (
+              <p
+                role="alert"
+                className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
+              >
+                {selectionError}
+              </p>
             )}
 
             {/* Quantidade e Botões de Compra */}
@@ -352,7 +490,7 @@ function ProductDetailPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <button
                   onClick={handleAddToCart}
-                  disabled={isOutOfStock}
+                  disabled={isOutOfStock || (hasVariants && !selectedVariant)}
                   className="rounded-full border-2 border-ink-deep bg-warm-white py-3.5 text-xs tracking-[0.2em] font-semibold text-ink-deep hover:bg-ink-deep hover:text-cream transition disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   <ShoppingBag size={16} /> ADICIONAR À SACOLA
@@ -360,7 +498,7 @@ function ProductDetailPage() {
 
                 <button
                   onClick={handleBuyNow}
-                  disabled={isOutOfStock}
+                  disabled={isOutOfStock || (hasVariants && !selectedVariant)}
                   className="rounded-full bg-copper py-3.5 text-xs tracking-[0.2em] font-semibold text-warm-white hover:bg-copper/90 transition shadow-lg shadow-copper/20 active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   COMPRAR AGORA <ArrowRight size={16} />
@@ -383,39 +521,65 @@ function ProductDetailPage() {
                 <span>Garantia de 7 dias após o recebimento</span>
               </div>
             </div>
-
-            {product.info && (
-              <p className="text-sm text-text-secondary leading-relaxed">{product.info}</p>
-            )}
-
-            {/* Descrição Completa */}
-            {product.shortDescription && (
-              <section className="border-t border-line pt-4"><h3 className="text-xs font-bold tracking-wider uppercase text-ink-deep">Especificação curta</h3><p className="mt-2 text-sm text-text-secondary leading-relaxed">{product.shortDescription}</p></section>
-            )}
-            {product.description && (
-              <div className="pt-4 border-t border-line space-y-2">
-                <h3 className="text-xs font-bold tracking-wider uppercase text-ink-deep">
-                  Descrição do Produto
-                </h3>
-                <p className="text-xs sm:text-sm text-text-secondary leading-relaxed whitespace-pre-line">
-                  {product.description}
-                </p>
-              </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-line pt-5">
-              {[
-                ["Características", product.characteristics],
-                ["Métodos", product.methods],
-                ["Cuidados", product.careInstructions],
-              ].map(([title, content]) => content ? (
-                <section key={title}>
-                  <h3 className="text-xs font-bold tracking-wider uppercase text-ink-deep">{title}</h3>
-                  <p className="mt-2 text-xs sm:text-sm text-text-secondary leading-relaxed whitespace-pre-line">{content}</p>
-                </section>
-              ) : null)}
-            </div>
           </div>
         </div>
+
+        <div className="mt-8 grid grid-cols-2 gap-3 border-y border-line py-5 text-center lg:grid-cols-4">
+          {[
+            [Leaf, "Toque macio", "e sedoso"],
+            [Gem, "Aparência", "natural"],
+            [ShieldCheck, "Alta", "durabilidade"],
+            [Sparkles, "Resultado", "profissional"],
+          ].map(([Icon, title, subtitle]) => {
+            const BenefitIcon = Icon as typeof Leaf;
+            return (
+              <div key={String(title)} className="flex items-center justify-center gap-3">
+                <BenefitIcon size={21} className="text-copper" />
+                <p className="text-xs font-semibold text-ink-deep">
+                  {String(title)}
+                  <span className="block font-normal text-text-secondary">{String(subtitle)}</span>
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <section className="mt-10 rounded-2xl border border-line bg-warm-white p-5 lg:p-7">
+          <div className="hidden grid-cols-4 divide-x divide-line lg:grid">
+            {[
+              ["Descrição", product.description],
+              ["Características", product.characteristics],
+              ["Métodos", product.methods],
+              ["Cuidados", product.careInstructions],
+            ].map(([title, content]) => (
+              <div key={title} className="px-6 first:pl-0 last:pr-0">
+                <h2 className="border-b-2 border-copper pb-3 text-xs font-bold uppercase tracking-[0.14em] text-ink-deep">
+                  {title}
+                </h2>
+                <p className="mt-5 whitespace-pre-line text-sm leading-7 text-text-secondary">
+                  {content || "Informação ainda não cadastrada."}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="divide-y divide-line lg:hidden">
+            {[
+              ["Descrição", product.description],
+              ["Características", product.characteristics],
+              ["Métodos", product.methods],
+              ["Cuidados", product.careInstructions],
+            ].map(([title, content], index) => (
+              <details key={title} open={index === 0} className="py-3">
+                <summary className="cursor-pointer text-xs font-bold uppercase tracking-wider text-ink-deep">
+                  {title}
+                </summary>
+                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-text-secondary">
+                  {content || "Informação ainda não cadastrada."}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
 
         {/* Produtos Relacionados */}
         {product.relatedProducts && product.relatedProducts.length > 0 && (
@@ -423,8 +587,8 @@ function ProductDetailPage() {
             <h2 className="font-serif text-2xl uppercase tracking-wide text-ink-deep mb-6">
               Você também pode gostar
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {product.relatedProducts.map((rel) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+              {product.relatedProducts.slice(0, 5).map((rel) => (
                 <ProductCard
                   key={rel.id}
                   product={rel}
@@ -436,6 +600,18 @@ function ProductDetailPage() {
             </div>
           </div>
         )}
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-4 border-t border-line bg-warm-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(61,34,19,0.12)] backdrop-blur lg:hidden">
+        <p className="min-w-0 flex-1 font-serif text-xl font-bold text-ink-deep">
+          {fmt(currentPrice)}
+        </p>
+        <button
+          onClick={handleBuyNow}
+          disabled={isOutOfStock || (hasVariants && !selectedVariant)}
+          className="rounded-full bg-copper px-6 py-3 text-xs font-semibold uppercase tracking-wider text-white disabled:opacity-40"
+        >
+          Comprar agora
+        </button>
       </div>
     </StoreLayout>
   );

@@ -92,6 +92,15 @@ async function audit(
 function errorResponse(error: unknown) {
   if (error instanceof Response) return error;
   console.error("[Admin Store API]", error);
+  if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+    return Response.json(
+      {
+        ok: false,
+        message: "Já existe uma variação com este SKU ou com a mesma combinação de cor e tamanho.",
+      },
+      { status: 409 },
+    );
+  }
   const message = error instanceof Error ? error.message : "Não foi possível concluir a operação.";
   return Response.json({ ok: false, message }, { status: 500 });
 }
@@ -165,6 +174,11 @@ export const Route = createFileRoute("/api/admin/store")({
                                   json_build_object(
                                     'productName', i.product_name,
                                     'variantName', i.variant_name,
+                                    'variantSku', i.variant_sku,
+                                    'variantColor', i.variant_color,
+                                    'variantLengthCm', i.variant_length_cm,
+                                    'variantWeightG', i.variant_weight_g,
+                                    'imageUrl', i.image_url,
                                     'unitPrice', i.unit_price::float,
                                     'quantity', i.quantity,
                                     'totalPrice', i.total_price::float
@@ -382,23 +396,40 @@ export const Route = createFileRoute("/api/admin/store")({
 
             // Atualizar variações do produto se enviadas
             if (variants && Array.isArray(variants)) {
+              const combinations = new Set<string>();
+              const skus = new Set<string>();
+              const retainedIds: string[] = [];
+              for (const v of variants) {
+                const combination = [v.color || "", v.lengthCm || ""]
+                  .map((value) => String(value).trim().toLowerCase())
+                  .join("|");
+                if (combinations.has(combination))
+                  throw new Error("Não é permitido cadastrar combinações de variação duplicadas.");
+                combinations.add(combination);
+                const normalizedSku = v.sku?.trim().toLowerCase();
+                if (normalizedSku && skus.has(normalizedSku))
+                  throw new Error("Cada variação deve possuir um SKU único.");
+                if (normalizedSku) skus.add(normalizedSku);
+              }
               for (const v of variants) {
                 if (v.id) {
+                  retainedIds.push(v.id);
                   await client.query(
                     `UPDATE universe.store_product_variants
-                        SET title = $1, color = $2, color_hex = $3, length_cm = $4, weight_g = $5,
-                            texture = $6, price_override = $7, promotional_price_override = $8,
-                            stock_quantity = $9, image_url = $10, images = $11::jsonb, status = $12, updated_at = now()
-                      WHERE id = $13 AND product_id = $14`,
+                        SET sku = nullif($1, ''), title = $2, color = $3, color_hex = $4, length_cm = $5, weight_g = $6,
+                            texture = $7, price_override = $8, promotional_price_override = $9,
+                            stock_quantity = $10, image_url = $11, images = $12::jsonb, status = $13, updated_at = now()
+                      WHERE id = $14 AND product_id = $15`,
                     [
+                      v.sku || "",
                       v.title,
                       v.color || null,
                       v.colorHex || null,
                       v.lengthCm || null,
                       v.weightG || null,
                       v.texture || null,
-                      v.priceOverride || null,
-                      v.promotionalPriceOverride || null,
+                      v.priceOverride ?? null,
+                      v.promotionalPriceOverride ?? null,
                       v.stockQuantity,
                       v.imageUrl || null,
                       JSON.stringify(v.images || []),
@@ -408,30 +439,41 @@ export const Route = createFileRoute("/api/admin/store")({
                     ],
                   );
                 } else {
-                  await client.query(
+                  const insertedVariant = await client.query<{ id: string }>(
                     `INSERT INTO universe.store_product_variants
                        (product_id, sku, title, color, color_hex, length_cm, weight_g, texture,
                         price_override, promotional_price_override, stock_quantity, image_url, images, status)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14)`,
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14) RETURNING id`,
                     [
                       productId,
-                      v.sku || `${slug}-${Date.now()}`,
+                      v.sku ||
+                        `${slug}-${String(v.color || "opcao")
+                          .toLowerCase()
+                          .replace(
+                            /[^a-z0-9]+/g,
+                            "-",
+                          )}-${v.lengthCm || "unico"}-${crypto.randomUUID().slice(0, 8)}`,
                       v.title,
                       v.color || null,
                       v.colorHex || null,
                       v.lengthCm || null,
                       v.weightG || null,
                       v.texture || null,
-                      v.priceOverride || null,
-                      v.promotionalPriceOverride || null,
+                      v.priceOverride ?? null,
+                      v.promotionalPriceOverride ?? null,
                       v.stockQuantity,
                       v.imageUrl || null,
                       JSON.stringify(v.images || []),
                       v.status,
                     ],
                   );
+                  retainedIds.push(insertedVariant.rows[0].id);
                 }
               }
+              await client.query(
+                `UPDATE universe.store_product_variants SET status='inactive', updated_at=now() WHERE product_id=$1 AND NOT (id=ANY($2::uuid[]))`,
+                [productId, retainedIds],
+              );
             }
 
             await audit(user.id, "store.product.saved", "store_product", productId!, {
