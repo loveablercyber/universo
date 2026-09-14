@@ -1,10 +1,23 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, ShieldCheck, Truck, CreditCard, QrCode, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import {
+  X,
+  ShieldCheck,
+  Truck,
+  CreditCard,
+  QrCode,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import type { CartItem } from "@/hooks/use-store";
-import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_COST, PIX_DISCOUNT_PERCENT } from "@/hooks/use-store";
+import {
+  FREE_SHIPPING_THRESHOLD,
+  DEFAULT_SHIPPING_COST,
+  PIX_DISCOUNT_PERCENT,
+} from "@/hooks/use-store";
+import { calculateStoreDiscounts } from "@/lib/store-discounts";
 
-const fmt = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export function CheckoutModal({
   cart,
@@ -90,16 +103,22 @@ export function CheckoutModal({
     }
   };
 
-  const subtotal = cart.reduce((acc, item) => {
-    const price = item.variant
-      ? Number(item.variant.promotionalPriceOverride ?? item.variant.priceOverride ?? item.product.promotionalPrice ?? item.product.price)
-      : Number(item.product.promotionalPrice ?? item.product.price);
-    return acc + price * item.qty;
-  }, 0);
-
-  const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_COST;
-  const pixDiscount = paymentMethod === "pix" ? Number(((subtotal * PIX_DISCOUNT_PERCENT) / 100).toFixed(2)) : 0;
-  const totalAmount = Math.max(0.01, subtotal + shippingCost - pixDiscount);
+  const pricing = calculateStoreDiscounts(
+    cart.map((item, index) => ({
+      key: String(index),
+      quantity: item.qty,
+      regularUnitPrice: Number(item.variant?.priceOverride ?? item.product.price),
+      promotionalUnitPrice:
+        item.variant?.promotionalPriceOverride ??
+        (item.variant?.priceOverride != null ? null : item.product.promotionalPrice),
+      wholesaleEligible: Boolean(item.product.wholesaleEligible),
+    })),
+    { paymentMethod, pixDiscountPercent: PIX_DISCOUNT_PERCENT },
+  );
+  const subtotal = pricing.baseSubtotal;
+  const shippingCost =
+    pricing.merchandiseSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_COST;
+  const totalAmount = Math.max(0.01, pricing.merchandiseSubtotal + shippingCost);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -128,9 +147,7 @@ export function CheckoutModal({
           variantId: i.variant?.id || null,
           productName: i.product.name,
           variantName: i.variant?.title || null,
-          price: i.variant
-            ? Number(i.variant.promotionalPriceOverride ?? i.variant.priceOverride ?? i.product.promotionalPrice ?? i.product.price)
-            : Number(i.product.promotionalPrice ?? i.product.price),
+          price: Number(i.variant?.priceOverride ?? i.product.price),
           qty: i.qty,
         })),
       };
@@ -172,7 +189,9 @@ export function CheckoutModal({
         <header className="flex items-center justify-between border-b border-line bg-cream/40 px-6 py-4">
           <div>
             <h2 className="font-serif text-2xl text-ink-deep font-bold">Finalizar Compra</h2>
-            <p className="text-xs text-text-secondary">Preencha seus dados de entrega e pagamento</p>
+            <p className="text-xs text-text-secondary">
+              Preencha seus dados de entrega e pagamento
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -194,12 +213,16 @@ export function CheckoutModal({
           {/* Dados Pessoais */}
           <div className="space-y-3">
             <h3 className="text-xs tracking-wider uppercase font-semibold text-ink-deep flex items-center gap-2">
-              <span className="h-5 w-5 rounded-full bg-copper text-warm-white grid place-items-center text-[10px]">1</span>
+              <span className="h-5 w-5 rounded-full bg-copper text-warm-white grid place-items-center text-[10px]">
+                1
+              </span>
               Dados Pessoais
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-medium text-text-secondary">Nome Completo *</label>
+                <label className="text-[11px] font-medium text-text-secondary">
+                  Nome Completo *
+                </label>
                 <input
                   required
                   value={customer.fullName}
@@ -220,7 +243,9 @@ export function CheckoutModal({
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium text-text-secondary">WhatsApp / Telefone *</label>
+                <label className="text-[11px] font-medium text-text-secondary">
+                  WhatsApp / Telefone *
+                </label>
                 <input
                   required
                   value={customer.phone}
@@ -245,7 +270,9 @@ export function CheckoutModal({
           {/* Endereço de Entrega */}
           <div className="space-y-3 pt-4 border-t border-line">
             <h3 className="text-xs tracking-wider uppercase font-semibold text-ink-deep flex items-center gap-2">
-              <span className="h-5 w-5 rounded-full bg-copper text-warm-white grid place-items-center text-[10px]">2</span>
+              <span className="h-5 w-5 rounded-full bg-copper text-warm-white grid place-items-center text-[10px]">
+                2
+              </span>
               Endereço de Entrega
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -264,7 +291,9 @@ export function CheckoutModal({
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="text-[11px] font-medium text-text-secondary">Rua / Logradouro *</label>
+                <label className="text-[11px] font-medium text-text-secondary">
+                  Rua / Logradouro *
+                </label>
                 <input
                   required
                   value={address.street}
@@ -329,7 +358,9 @@ export function CheckoutModal({
           {/* Opção de Pagamento */}
           <div className="space-y-3 pt-4 border-t border-line">
             <h3 className="text-xs tracking-wider uppercase font-semibold text-ink-deep flex items-center gap-2">
-              <span className="h-5 w-5 rounded-full bg-copper text-warm-white grid place-items-center text-[10px]">3</span>
+              <span className="h-5 w-5 rounded-full bg-copper text-warm-white grid place-items-center text-[10px]">
+                3
+              </span>
               Forma de Pagamento
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -382,6 +413,34 @@ export function CheckoutModal({
 
           {/* Resumo Financeiro */}
           <div className="rounded-2xl border border-line bg-cream/40 p-4 space-y-2 text-xs">
+            {pricing.wholesaleEligibleQuantity > 0 && (
+              <div className="mb-3 rounded-xl border border-copper/20 bg-white p-3">
+                <div className="flex justify-between font-semibold text-ink-deep">
+                  <span>Atacado: {pricing.wholesaleEligibleQuantity} itens elegíveis</span>
+                  <span>
+                    {pricing.wholesaleActive
+                      ? `${pricing.wholesaleDiscountPercent}% OFF`
+                      : "Varejo"}
+                  </span>
+                </div>
+                {pricing.nextWholesaleThreshold && (
+                  <>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-line">
+                      <div
+                        className="h-full bg-copper"
+                        style={{
+                          width: `${Math.min(100, (pricing.wholesaleEligibleQuantity / pricing.nextWholesaleThreshold) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="mt-1 text-[10px] text-text-secondary">
+                      Adicione mais {pricing.unitsUntilNextWholesaleTier} unidade(s) elegível(is)
+                      para {pricing.nextWholesaleThreshold === 15 ? "40%" : "50%"} OFF.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
             <div className="flex justify-between text-text-secondary">
               <span>Subtotal ({cart.reduce((a, b) => a + b.qty, 0)} itens)</span>
               <span className="font-semibold text-ink-deep">{fmt(subtotal)}</span>
@@ -398,10 +457,16 @@ export function CheckoutModal({
                 )}
               </span>
             </div>
-            {paymentMethod === "pix" && (
+            {pricing.discountAmount > 0 && (
               <div className="flex justify-between text-copper font-medium">
-                <span>Desconto Pix (5% OFF)</span>
-                <span>-{fmt(pixDiscount)}</span>
+                <span>
+                  {pricing.wholesaleActive
+                    ? `Desconto atacado (${pricing.wholesaleDiscountPercent}% nos elegíveis)`
+                    : pricing.discountRule === "pix"
+                      ? `Melhor desconto Pix (${PIX_DISCOUNT_PERCENT}% OFF)`
+                      : "Preço promocional"}
+                </span>
+                <span>-{fmt(pricing.discountAmount)}</span>
               </div>
             )}
             <div className="pt-2 border-t border-line/60 flex justify-between items-baseline">
@@ -428,7 +493,9 @@ export function CheckoutModal({
 
           <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary">
             <ShieldCheck size={14} className="text-[#2E7D32]" />
-            <span>Seus dados são criptografados. Pagamento protegido pelo SumUp Hosted Checkout.</span>
+            <span>
+              Seus dados são criptografados. Pagamento protegido pelo SumUp Hosted Checkout.
+            </span>
           </div>
         </form>
       </div>

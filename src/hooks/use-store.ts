@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Product, ProductVariant } from "@/lib/sol-data";
+import { calculateStoreDiscounts, DEFAULT_PIX_DISCOUNT } from "@/lib/store-discounts";
 
 export interface CartItem {
   product: Product;
@@ -9,7 +10,7 @@ export interface CartItem {
 
 export const FREE_SHIPPING_THRESHOLD = 299.9;
 export const DEFAULT_SHIPPING_COST = 20.0;
-export const PIX_DISCOUNT_PERCENT = 5;
+export const PIX_DISCOUNT_PERCENT = DEFAULT_PIX_DISCOUNT;
 
 export function useStore() {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -18,6 +19,7 @@ export function useStore() {
   const [openDrawer, setOpenDrawer] = useState<null | "cat" | "search" | "cart" | "fav">(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const catalogRefreshed = useRef(false);
 
   // Carregar do localStorage
   useEffect(() => {
@@ -38,6 +40,35 @@ export function useStore() {
       setStorageLoaded(true);
     }
   }, []);
+
+  // Revalida preço, estoque, elegibilidade e variações salvos no navegador.
+  // O checkout ainda faz a validação autoritativa no servidor.
+  useEffect(() => {
+    if (!storageLoaded || cart.length === 0 || catalogRefreshed.current) return;
+    catalogRefreshed.current = true;
+    void fetch("/api/store?action=products&limit=100")
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload.ok || !Array.isArray(payload.products)) return;
+        const products = new Map<string, Product>(
+          payload.products.map((product: Product) => [product.id, product]),
+        );
+        setCart((current) =>
+          current.flatMap((item) => {
+            const product = products.get(item.product.id);
+            if (!product) return [];
+            const variant = item.variant
+              ? product.variants?.find((candidate) => candidate.id === item.variant?.id)
+              : null;
+            if (item.variant && !variant) return [];
+            const available = variant?.stockQuantity ?? product.stockQuantity;
+            if (available <= 0) return [];
+            return [{ product, variant: variant || null, qty: Math.min(item.qty, available) }];
+          }),
+        );
+      })
+      .catch(() => {});
+  }, [cart.length, storageLoaded]);
 
   // Salvar no localStorage
   useEffect(() => {
@@ -150,19 +181,32 @@ export function useStore() {
   // Cálculos financeiros
   const cartCount = useMemo(() => cart.reduce((acc, item) => acc + item.qty, 0), [cart]);
 
-  const subtotal = useMemo(() => {
-    return cart.reduce((acc, item) => {
-      const price = item.variant
-        ? Number(
-            item.variant.promotionalPriceOverride ??
-              item.variant.priceOverride ??
-              item.product.promotionalPrice ??
-              item.product.price,
-          )
-        : Number(item.product.promotionalPrice ?? item.product.price);
-      return acc + price * item.qty;
-    }, 0);
-  }, [cart]);
+  const discountLines = useMemo(
+    () =>
+      cart.map((item, index) => ({
+        key: String(index),
+        quantity: item.qty,
+        regularUnitPrice: Number(item.variant?.priceOverride ?? item.product.price),
+        promotionalUnitPrice:
+          item.variant?.promotionalPriceOverride ??
+          (item.variant?.priceOverride != null ? null : item.product.promotionalPrice),
+        wholesaleEligible: Boolean(item.product.wholesaleEligible),
+      })),
+    [cart],
+  );
+  const cardPricing = useMemo(
+    () => calculateStoreDiscounts(discountLines, { paymentMethod: "card" }),
+    [discountLines],
+  );
+  const pixPricing = useMemo(
+    () =>
+      calculateStoreDiscounts(discountLines, {
+        paymentMethod: "pix",
+        pixDiscountPercent: PIX_DISCOUNT_PERCENT,
+      }),
+    [discountLines],
+  );
+  const subtotal = cardPricing.merchandiseSubtotal;
 
   const shippingCost = useMemo(() => {
     if (cart.length === 0) return 0;
@@ -170,8 +214,8 @@ export function useStore() {
   }, [cart.length, subtotal]);
 
   const pixDiscount = useMemo(() => {
-    return Number(((subtotal * PIX_DISCOUNT_PERCENT) / 100).toFixed(2));
-  }, [subtotal]);
+    return Number(Math.max(0, subtotal - pixPricing.merchandiseSubtotal).toFixed(2));
+  }, [subtotal, pixPricing.merchandiseSubtotal]);
 
   const pixTotal = useMemo(() => {
     return Math.max(0, subtotal + shippingCost - pixDiscount);
@@ -202,5 +246,11 @@ export function useStore() {
     pixDiscount,
     pixTotal,
     total,
+    cardPricing,
+    pixPricing,
+    wholesaleEligibleQuantity: cardPricing.wholesaleEligibleQuantity,
+    wholesaleDiscountPercent: cardPricing.wholesaleDiscountPercent,
+    unitsUntilNextWholesaleTier: cardPricing.unitsUntilNextWholesaleTier,
+    nextWholesaleThreshold: cardPricing.nextWholesaleThreshold,
   };
 }

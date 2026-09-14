@@ -456,6 +456,16 @@ function ProductDetailPage() {
               </p>
             )}
 
+            {product.wholesaleEligible && (
+              <div className="rounded-xl border border-copper/25 bg-copper/5 px-4 py-3 text-xs text-ink-deep">
+                <p className="font-semibold">Produto participante do atacado</p>
+                <p className="mt-1 text-text-secondary">
+                  Misture produtos e variações elegíveis: 15 unidades liberam 40% OFF e 25 unidades
+                  liberam 50% OFF automaticamente na sacola.
+                </p>
+              </div>
+            )}
+
             {/* Quantidade e Botões de Compra */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center gap-4">

@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { X, Minus, Plus, ShoppingBag, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import type { CartItem } from "@/hooks/use-store";
 import { FREE_SHIPPING_THRESHOLD } from "@/hooks/use-store";
+import { calculateStoreDiscounts, DEFAULT_PIX_DISCOUNT } from "@/lib/store-discounts";
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -23,21 +24,25 @@ export function CartDrawer({
 }) {
   if (!open) return null;
 
-  const subtotal = cart.reduce((acc, item) => {
-    const price = item.variant
-      ? Number(
-          item.variant.promotionalPriceOverride ??
-            item.variant.priceOverride ??
-            item.product.promotionalPrice ??
-            item.product.price,
-        )
-      : Number(item.product.promotionalPrice ?? item.product.price);
-    return acc + price * item.qty;
-  }, 0);
+  const discountLines = cart.map((item, index) => ({
+    key: String(index),
+    quantity: item.qty,
+    regularUnitPrice: Number(item.variant?.priceOverride ?? item.product.price),
+    promotionalUnitPrice:
+      item.variant?.promotionalPriceOverride ??
+      (item.variant?.priceOverride != null ? null : item.product.promotionalPrice),
+    wholesaleEligible: Boolean(item.product.wholesaleEligible),
+  }));
+  const pricing = calculateStoreDiscounts(discountLines, { paymentMethod: "card" });
+  const pixPricing = calculateStoreDiscounts(discountLines, {
+    paymentMethod: "pix",
+    pixDiscountPercent: DEFAULT_PIX_DISCOUNT,
+  });
+  const subtotal = pricing.merchandiseSubtotal;
 
   const missingForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
   const progressPercent = Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100));
-  const pixTotal = subtotal * 0.95;
+  const pixTotal = pixPricing.merchandiseSubtotal;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
@@ -65,6 +70,37 @@ export function CartDrawer({
               <X size={20} />
             </button>
           </div>
+
+          {pricing.wholesaleEligibleQuantity > 0 && (
+            <div className="border-b border-line bg-copper/5 px-6 py-3 text-xs">
+              <div className="flex justify-between font-semibold text-ink-deep">
+                <span>{pricing.wholesaleEligibleQuantity} itens elegíveis ao atacado</span>
+                <span>
+                  {pricing.wholesaleActive ? `${pricing.wholesaleDiscountPercent}% OFF` : ""}
+                </span>
+              </div>
+              {pricing.nextWholesaleThreshold ? (
+                <>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-copper/20">
+                    <div
+                      className="h-full bg-copper"
+                      style={{
+                        width: `${Math.min(100, (pricing.wholesaleEligibleQuantity / pricing.nextWholesaleThreshold) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] text-text-secondary">
+                    Faltam {pricing.unitsUntilNextWholesaleTier} para liberar{" "}
+                    {pricing.nextWholesaleThreshold === 15 ? "40%" : "50%"} OFF.
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-[10px] text-[#2E7D32]">
+                  Maior faixa de atacado aplicada automaticamente.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Frete Grátis Bar */}
           <div className="px-6 py-3 bg-blush/60 border-b border-line">
@@ -102,6 +138,7 @@ export function CartDrawer({
                 </p>
                 <Link
                   to="/sol-hair-closet/produtos"
+                  search={{}}
                   onClick={onClose}
                   className="mt-6 rounded-full bg-ink-deep px-6 py-2.5 text-[11px] tracking-[0.2em] font-semibold text-cream hover:bg-copper transition"
                 >
@@ -110,14 +147,9 @@ export function CartDrawer({
               </div>
             ) : (
               cart.map((item, idx) => {
-                const itemPrice = item.variant
-                  ? Number(
-                      item.variant.promotionalPriceOverride ??
-                        item.variant.priceOverride ??
-                        item.product.promotionalPrice ??
-                        item.product.price,
-                    )
-                  : Number(item.product.promotionalPrice ?? item.product.price);
+                const itemPrice =
+                  pricing.lines[idx]?.appliedUnitPrice ??
+                  Number(item.variant?.priceOverride ?? item.product.price);
 
                 return (
                   <div
@@ -224,8 +256,22 @@ export function CartDrawer({
                     )}
                   </span>
                 </div>
+                {pricing.discountAmount > 0 && (
+                  <div className="flex justify-between font-medium text-copper">
+                    <span>
+                      {pricing.wholesaleActive
+                        ? `Atacado ${pricing.wholesaleDiscountPercent}%`
+                        : "Promoções"}
+                    </span>
+                    <span>-{fmt(pricing.discountAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-copper font-medium pt-1 border-t border-line/50">
-                  <span>À vista no Pix (5% OFF)</span>
+                  <span>
+                    {pricing.wholesaleActive
+                      ? "Atacado não acumula com Pix"
+                      : "Melhor preço no Pix"}
+                  </span>
                   <span className="font-bold">{fmt(pixTotal)}</span>
                 </div>
               </div>

@@ -44,6 +44,7 @@ import { MediaLibrary } from "@/components/admin/MediaLibrary";
 import { EloManager } from "@/components/admin/EloManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { StoreManager } from "@/components/admin/StoreManager";
+import { BrandLogoSetting } from "@/components/admin/BrandLogoSetting";
 import { AcademyManager } from "@/components/admin/AcademyManager";
 import { NotificationManager } from "@/components/admin/NotificationManager";
 import { Image as ImageIcon, GraduationCap, Bell } from "lucide-react";
@@ -617,35 +618,43 @@ function SectionContent({
       <div className="grid gap-4">
         {(
           (data.settings ?? []) as Array<{ key: string; value: unknown; description?: string }>
-        ).map((setting) => (
-          <form
-            key={setting.key}
-            className="rounded-2xl border border-copper/10 bg-white p-6"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              try {
-                void save({
-                  action: "save-setting",
-                  key: setting.key,
-                  value: JSON.parse(String(form.get("value"))),
-                });
-              } catch {
-                window.alert("O conteúdo precisa estar em formato JSON válido.");
-              }
-            }}
-          >
-            <h3 className="font-serif text-xl">{setting.key}</h3>
-            <p className="mt-1 text-xs text-brown/55">{setting.description}</p>
-            <TextArea
-              label="Configuração"
-              name="value"
-              defaultValue={JSON.stringify(setting.value, null, 2)}
-              className="font-mono"
+        ).map((setting) =>
+          setting.key === "brand_logo_url" ? (
+            <BrandLogoSetting
+              key={setting.key}
+              value={setting.value}
+              onSave={(url) => save({ action: "save-setting", key: setting.key, value: url })}
             />
-            <SaveButton />
-          </form>
-        ))}
+          ) : (
+            <form
+              key={setting.key}
+              className="rounded-2xl border border-copper/10 bg-white p-6"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                try {
+                  void save({
+                    action: "save-setting",
+                    key: setting.key,
+                    value: JSON.parse(String(form.get("value"))),
+                  });
+                } catch {
+                  window.alert("O conteúdo precisa estar em formato JSON válido.");
+                }
+              }}
+            >
+              <h3 className="font-serif text-xl">{setting.key}</h3>
+              <p className="mt-1 text-xs text-brown/55">{setting.description}</p>
+              <TextArea
+                label="Configuração"
+                name="value"
+                defaultValue={JSON.stringify(setting.value, null, 2)}
+                className="font-mono"
+              />
+              <SaveButton />
+            </form>
+          ),
+        )}
       </div>
     );
   }

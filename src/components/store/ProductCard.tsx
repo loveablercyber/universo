@@ -92,6 +92,11 @@ export function ProductCard({
         {product.info && (
           <p className="mt-1 text-[11px] text-text-secondary truncate">{product.info}</p>
         )}
+        {product.wholesaleEligible && (
+          <p className="mt-2 rounded-lg bg-copper/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-copper">
+            Atacado: 40% a partir de 15 • 50% a partir de 25
+          </p>
+        )}
 
         {product.reviews > 0 && (
           <div className="mt-2 flex items-center gap-1.5">

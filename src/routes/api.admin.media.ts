@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { assertSameOrigin, requireAdmin } from "@/lib/auth.server";
-import { query } from "@/lib/db.server";
+import { query, requireDatabase } from "@/lib/db.server";
 import { storage } from "@/lib/storage.server";
 
 const MAX_FILE_SIZE = (Number(process.env.UPLOAD_MAX_SIZE_MB) || 5) * 1024 * 1024;
@@ -82,31 +82,38 @@ export const Route = createFileRoute("/api/admin/media")({
 
             const { storageKey, publicUrl } = await storage.put(file.name, buffer, file.type);
             const driverName = process.env.STORAGE_DRIVER || "local";
-
-            const { rows } = await query<{ id: string }>(
-              `insert into universe.media(file_name, storage_key, public_url, mime_type, size_bytes, title, alt_text, uploaded_by, storage_driver)
-               values($1, $2, $3, $4, $5, $6, $7, $8, $9)
-               returning id`,
-              [
-                file.name,
-                storageKey,
-                publicUrl,
-                file.type,
-                file.size,
-                title,
-                altText,
-                actor.id,
-                driverName,
-              ],
-            );
-
-            await query(
-              `insert into universe.audit_logs(actor_id, action, entity_type, entity_id, metadata)
-               values($1, 'media.uploaded', 'media', $2, $3::jsonb)`,
-              [actor.id, rows[0].id, JSON.stringify({ fileName: file.name, size: file.size })],
-            );
-
-            return Response.json({ ok: true, mediaId: rows[0].id, publicUrl });
+            const client = await requireDatabase().connect();
+            try {
+              await client.query("BEGIN");
+              const { rows } = await client.query<{ id: string }>(
+                `insert into universe.media(file_name, storage_key, public_url, mime_type, size_bytes, title, alt_text, uploaded_by, storage_driver)
+                 values($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id`,
+                [
+                  file.name,
+                  storageKey,
+                  publicUrl,
+                  file.type,
+                  file.size,
+                  title,
+                  altText,
+                  actor.id,
+                  driverName,
+                ],
+              );
+              await client.query(
+                `insert into universe.audit_logs(actor_id, action, entity_type, entity_id, metadata)
+                 values($1, 'media.uploaded', 'media', $2, $3::jsonb)`,
+                [actor.id, rows[0].id, JSON.stringify({ fileName: file.name, size: file.size })],
+              );
+              await client.query("COMMIT");
+              return Response.json({ ok: true, mediaId: rows[0].id, publicUrl });
+            } catch (error) {
+              await client.query("ROLLBACK");
+              await storage.delete(storageKey);
+              throw error;
+            } finally {
+              client.release();
+            }
           }
 
           // 2. Ações JSON (exclusão, atualização de altText)
@@ -115,12 +122,29 @@ export const Route = createFileRoute("/api/admin/media")({
 
           if (deleteInput.success) {
             const { id } = deleteInput.data;
-            const { rows } = await query<{ storage_key: string }>(
-              `select storage_key from universe.media where id = $1`,
+            const { rows } = await query<{ storage_key: string; public_url: string }>(
+              `select storage_key, public_url from universe.media where id = $1`,
               [id],
             );
 
             if (rows.length > 0) {
+              const usage = await query<{ count: number }>(
+                `select (
+                   (select count(*) from universe.store_products p where p.image_url=$1 or p.images @> to_jsonb(array[$1]::text[])) +
+                   (select count(*) from universe.store_product_variants v where v.image_url=$1 or v.images @> to_jsonb(array[$1]::text[])) +
+                   (select count(*) from universe.settings s where s.value::text like '%' || $1 || '%')
+                 )::int as count`,
+                [rows[0].public_url],
+              );
+              if ((usage.rows[0]?.count || 0) > 0)
+                return Response.json(
+                  {
+                    ok: false,
+                    message:
+                      "Esta imagem está em uso por produto, variação ou configuração e não pode ser excluída.",
+                  },
+                  { status: 409 },
+                );
               await storage.delete(rows[0].storage_key);
               await query(`delete from universe.media where id = $1`, [id]);
               await query(

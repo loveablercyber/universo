@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { assertSameOrigin, requirePermission } from "@/lib/auth.server";
-import { query, db } from "@/lib/db.server";
+import { query, requireDatabase } from "@/lib/db.server";
 import { sendStoreShippingNotification } from "@/lib/notifications.server";
 
 const variantSchema = z.object({
@@ -37,6 +37,7 @@ const productSchema = z.object({
   stockQuantity: z.number().int().min(0),
   categoryId: z.string().nullable().optional(),
   subcategoryId: z.string().nullable().optional(),
+  wholesaleEligible: z.boolean().default(false),
   image: z.string().min(1),
   images: z.array(z.string()).optional(),
   badgeLabel: z.string().max(50).nullable().optional(),
@@ -53,11 +54,19 @@ const deleteProductSchema = z.object({
 const categorySchema = z.object({
   action: z.literal("save-category"),
   id: z.string().min(1),
+  originalId: z.string().min(1).optional(),
   name: z.string().min(2),
   description: z.string().nullable().optional(),
   image: z.string().nullable().optional(),
   sortOrder: z.number().int().default(0),
   parentId: z.string().nullable().optional(),
+  status: z.enum(["active", "inactive"]).default("active"),
+});
+
+const deleteCategorySchema = z.object({
+  action: z.literal("delete-category"),
+  id: z.string().min(1),
+  transferToId: z.string().min(1).nullable().optional(),
 });
 
 const updateOrderStatusSchema = z.object({
@@ -93,6 +102,16 @@ function errorResponse(error: unknown) {
   if (error instanceof Response) return error;
   console.error("[Admin Store API]", error);
   if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+    const constraint = "constraint" in error ? String(error.constraint || "") : "";
+    if (constraint.includes("categories")) {
+      return Response.json(
+        {
+          ok: false,
+          message: "Já existe uma categoria ou subcategoria com este nome/slug no mesmo nível.",
+        },
+        { status: 409 },
+      );
+    }
     return Response.json(
       {
         ok: false,
@@ -117,8 +136,9 @@ export const Route = createFileRoute("/api/admin/store")({
           if (action === "categories") {
             const { rows } = await query(
               `SELECT id, coalesce(slug, id) as slug, name, description, parent_id as "parentId",
-                      image_url as image, sort_order as "sortOrder",
-                      (SELECT count(*)::int FROM universe.store_products WHERE category_id = c.id) as "productCount"
+                      image_url as image, sort_order as "sortOrder", status,
+                      (SELECT count(*)::int FROM universe.store_products WHERE category_id = c.id OR subcategory_id = c.id) as "productCount",
+                      (SELECT count(*)::int FROM universe.store_categories WHERE parent_id = c.id) as "childrenCount"
                  FROM universe.store_categories c
                 ORDER BY sort_order ASC, name ASC`,
             );
@@ -130,6 +150,7 @@ export const Route = createFileRoute("/api/admin/store")({
               `SELECT p.id, p.slug, p.name, p.info, p.description, p.short_description as "shortDescription", p.characteristics, p.methods, p.care_instructions as "careInstructions",
                       p.price::float as price, p.promotional_price::float as "promotionalPrice",
                       p.stock_quantity as "stockQuantity", p.category_id as "categoryId", p.subcategory_id as "subcategoryId",
+                      p.wholesale_eligible as "wholesaleEligible",
                       p.image_url as image, p.images, p.badge_label as "badgeLabel", p.badge_tone as "badgeTone",
                       p.rating::float as rating, p.reviews_count as reviews, p.sold_count as sold,
                       p.status, p.created_at as "createdAt", c.name as "categoryName",
@@ -152,7 +173,7 @@ export const Route = createFileRoute("/api/admin/store")({
                  LEFT JOIN universe.store_categories c ON c.id = p.category_id
                  LEFT JOIN universe.store_product_variants v ON v.product_id = p.id
                 GROUP BY p.id, p.slug, p.name, p.info, p.description, p.short_description, p.characteristics, p.methods, p.care_instructions, p.price,
-                         p.promotional_price, p.stock_quantity, p.category_id, p.subcategory_id,
+                         p.promotional_price, p.stock_quantity, p.category_id, p.subcategory_id, p.wholesale_eligible,
                          p.image_url, p.images, p.badge_label, p.badge_tone,
                          p.rating, p.reviews_count, p.sold_count, p.status, p.created_at, c.name
                 ORDER BY p.created_at DESC`,
@@ -167,6 +188,8 @@ export const Route = createFileRoute("/api/admin/store")({
                               o.customer_document as "customerDocument", o.shipping_address as "shippingAddress",
                               o.shipping_cost::float as "shippingCost", o.subtotal::float as subtotal,
                               o.discount_amount::float as "discountAmount",
+                              o.discount_percent::float as "discountPercent", o.discount_rule as "discountRule",
+                              o.wholesale_eligible_quantity as "wholesaleEligibleQuantity",
                               o.total_amount::float as "totalAmount", o.status, o.tracking_code as "trackingCode",
                               o.paid_at as "paidAt", o.created_at as "createdAt",
                               coalesce(
@@ -180,6 +203,12 @@ export const Route = createFileRoute("/api/admin/store")({
                                     'variantWeightG', i.variant_weight_g,
                                     'imageUrl', i.image_url,
                                     'unitPrice', i.unit_price::float,
+                                    'baseUnitPrice', i.base_unit_price::float,
+                                    'finalUnitPrice', i.final_unit_price::float,
+                                    'discountAmount', i.discount_amount::float,
+                                    'discountPercent', i.discount_percent::float,
+                                    'discountType', i.discount_type,
+                                    'wholesaleEligible', i.wholesale_eligible,
                                     'quantity', i.quantity,
                                     'totalPrice', i.total_price::float
                                   )
@@ -198,6 +227,7 @@ export const Route = createFileRoute("/api/admin/store")({
             sql += ` GROUP BY o.id, o.order_number, o.customer_name, o.customer_email,
                               o.customer_phone, o.customer_document, o.shipping_address,
                               o.shipping_cost, o.subtotal, o.discount_amount, o.total_amount,
+                              o.discount_percent, o.discount_rule, o.wholesale_eligible_quantity,
                               o.status, o.tracking_code, o.paid_at, o.created_at
                      ORDER BY o.created_at DESC LIMIT 200`;
 
@@ -258,8 +288,7 @@ export const Route = createFileRoute("/api/admin/store")({
       },
 
       POST: async ({ request }) => {
-        const pool = db;
-        const client = await pool.connect();
+        const client = await requireDatabase().connect();
 
         try {
           assertSameOrigin(request);
@@ -275,23 +304,134 @@ export const Route = createFileRoute("/api/admin/store")({
                 { status: 400 },
               );
             }
-            const { id, name, description, image, sortOrder, parentId } = parsed.data;
+            const { id, originalId, name, description, image, sortOrder, parentId, status } =
+              parsed.data;
+            if (parentId === (originalId || id))
+              return Response.json(
+                { ok: false, message: "Uma categoria não pode ser filha dela mesma." },
+                { status: 400 },
+              );
 
-            await client.query(
-              `INSERT INTO universe.store_categories(id, slug, name, description, image_url, sort_order, parent_id)
-               VALUES ($1, $1, $2, $3, $4, $5, $6)
-               ON CONFLICT (id) DO UPDATE
-                 SET name = excluded.name,
-                     description = excluded.description,
-                     image_url = coalesce(excluded.image_url, universe.store_categories.image_url),
-                     sort_order = excluded.sort_order,
-                     parent_id = excluded.parent_id,
-                     updated_at = now()`,
-              [id, name, description || null, image || null, sortOrder, parentId || null],
-            );
+            if (parentId) {
+              const parent = await client.query(
+                `SELECT id FROM universe.store_categories WHERE id=$1 AND parent_id IS NULL`,
+                [parentId],
+              );
+              if (!parent.rows[0])
+                return Response.json(
+                  {
+                    ok: false,
+                    message: "A categoria pai deve existir e ser uma categoria principal.",
+                  },
+                  { status: 400 },
+                );
+            }
+
+            if (originalId) {
+              const updated = await client.query(
+                `UPDATE universe.store_categories SET name=$1, description=$2,
+                    image_url=coalesce($3,image_url), sort_order=$4, parent_id=$5, status=$6, updated_at=now()
+                  WHERE id=$7 RETURNING id`,
+                [
+                  name,
+                  description || null,
+                  image || null,
+                  sortOrder,
+                  parentId || null,
+                  status,
+                  originalId,
+                ],
+              );
+              if (!updated.rows[0])
+                return Response.json(
+                  { ok: false, message: "Categoria não encontrada." },
+                  { status: 404 },
+                );
+            } else {
+              await client.query(
+                `INSERT INTO universe.store_categories(id,slug,name,description,image_url,sort_order,parent_id,status)
+                 VALUES($1,$1,$2,$3,$4,$5,$6,$7)`,
+                [id, name, description || null, image || null, sortOrder, parentId || null, status],
+              );
+            }
 
             await audit(user.id, "store.category.saved", "store_category", id, { name });
             return Response.json({ ok: true, message: "Categoria salva com sucesso!" });
+          }
+
+          if (body.action === "delete-category") {
+            const parsed = deleteCategorySchema.safeParse(body);
+            if (!parsed.success)
+              return Response.json({ ok: false, message: "Categoria inválida." }, { status: 400 });
+            const { id, transferToId } = parsed.data;
+            const source = await client.query<{ parent_id: string | null }>(
+              `SELECT parent_id FROM universe.store_categories WHERE id=$1`,
+              [id],
+            );
+            if (!source.rows[0])
+              return Response.json(
+                { ok: false, message: "Categoria não encontrada." },
+                { status: 404 },
+              );
+            const deps = await client.query<{ products: number; children: number }>(
+              `SELECT (SELECT count(*)::int FROM universe.store_products WHERE category_id=$1 OR subcategory_id=$1) products,
+                      (SELECT count(*)::int FROM universe.store_categories WHERE parent_id=$1) children`,
+              [id],
+            );
+            if (deps.rows[0].children > 0)
+              return Response.json(
+                {
+                  ok: false,
+                  requiresTransfer: true,
+                  message: "Transfira ou exclua as subcategorias antes de excluir esta categoria.",
+                  dependencies: deps.rows[0],
+                },
+                { status: 409 },
+              );
+            if (deps.rows[0].products > 0 && !transferToId)
+              return Response.json(
+                {
+                  ok: false,
+                  requiresTransfer: true,
+                  message:
+                    "Esta categoria possui produtos. Escolha outra categoria para transferi-los.",
+                  dependencies: deps.rows[0],
+                },
+                { status: 409 },
+              );
+            await client.query("BEGIN");
+            if (transferToId) {
+              const target = await client.query<{ parent_id: string | null }>(
+                `SELECT parent_id FROM universe.store_categories WHERE id=$1 AND id<>$2`,
+                [transferToId, id],
+              );
+              if (!target.rows[0]) throw new Error("Categoria de destino inválida.");
+              if (source.rows[0].parent_id !== target.rows[0].parent_id)
+                throw new Error(
+                  "Transfira para outra categoria do mesmo nível e, no caso de subcategoria, com o mesmo pai.",
+                );
+              if (source.rows[0].parent_id) {
+                await client.query(
+                  `UPDATE universe.store_products SET subcategory_id=$2, updated_at=now() WHERE subcategory_id=$1`,
+                  [id, transferToId],
+                );
+              } else {
+                await client.query(
+                  `UPDATE universe.store_products SET category_id=$2, updated_at=now() WHERE category_id=$1`,
+                  [id, transferToId],
+                );
+              }
+            }
+            const deleted = await client.query(
+              `DELETE FROM universe.store_categories WHERE id=$1 RETURNING id,name`,
+              [id],
+            );
+            if (!deleted.rows[0]) throw new Error("Categoria não encontrada.");
+            await audit(user.id, "store.category.deleted", "store_category", id, {
+              transferToId: transferToId || null,
+            });
+            await client.query("COMMIT");
+            return Response.json({ ok: true, message: "Categoria excluída com segurança." });
           }
 
           // 2. Salvar Produto (com galeria de imagens e variações)
@@ -319,6 +459,7 @@ export const Route = createFileRoute("/api/admin/store")({
               stockQuantity,
               categoryId,
               subcategoryId,
+              wholesaleEligible,
               image,
               images,
               badgeLabel,
@@ -338,8 +479,8 @@ export const Route = createFileRoute("/api/admin/store")({
                     SET slug = $1, name = $2, info = $3, description = $4, short_description = $5, characteristics = $6, methods = $7, care_instructions = $8, price = $9,
                         promotional_price = $10, stock_quantity = $11, category_id = $12, subcategory_id = $13,
                         image_url = $14, images = $15::jsonb, badge_label = $16, badge_tone = $17,
-                        status = $18, updated_at = now()
-                  WHERE id = $19`,
+                        status = $18, wholesale_eligible=$19, updated_at = now()
+                  WHERE id = $20`,
                 [
                   slug,
                   name,
@@ -359,6 +500,7 @@ export const Route = createFileRoute("/api/admin/store")({
                   badgeLabel ?? null,
                   badgeTone ?? "gold",
                   status,
+                  wholesaleEligible,
                   productId,
                 ],
               );
@@ -367,8 +509,8 @@ export const Route = createFileRoute("/api/admin/store")({
               const insertRes = await client.query<{ id: string }>(
                 `INSERT INTO universe.store_products
                    (slug, name, info, description, short_description, characteristics, methods, care_instructions, price, promotional_price, stock_quantity,
-                    category_id, subcategory_id, image_url, images, badge_label, badge_tone, status)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17, $18)
+                    category_id, subcategory_id, image_url, images, badge_label, badge_tone, status, wholesale_eligible)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17, $18, $19)
                  RETURNING id`,
                 [
                   slug,
@@ -389,6 +531,7 @@ export const Route = createFileRoute("/api/admin/store")({
                   badgeLabel ?? null,
                   badgeTone ?? "gold",
                   status,
+                  wholesaleEligible,
                 ],
               );
               productId = insertRes.rows[0].id;
@@ -553,7 +696,6 @@ export const Route = createFileRoute("/api/admin/store")({
             if (status === "shipped" && trackingCode) {
               void sendStoreShippingNotification(
                 order.order_number,
-                order.customer_name,
                 order.customer_email,
                 trackingCode,
               );

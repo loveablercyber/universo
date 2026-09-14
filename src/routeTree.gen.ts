@@ -61,6 +61,7 @@ import { Route as ApiAdminEloRouteImport } from './routes/api.admin.elo'
 import { Route as ApiAdminMediaRouteImport } from './routes/api.admin.media'
 import { Route as ApiAdminNotificationsRouteImport } from './routes/api.admin.notifications'
 import { Route as ApiAdminStoreRouteImport } from './routes/api.admin.store'
+import { Route as ApiAdminStorePricingRouteImport } from './routes/api.admin.store-pricing'
 import { Route as ApiAdminSummaryRouteImport } from './routes/api.admin.summary'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin.users'
 import { Route as ApiWebhookSumupRouteImport } from './routes/api.webhook.sumup'
@@ -334,6 +335,11 @@ const ApiAdminStoreRoute = ApiAdminStoreRouteImport.update({
   path: '/api/admin/store',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminStorePricingRoute = ApiAdminStorePricingRouteImport.update({
+  id: '/api/admin/store-pricing',
+  path: '/api/admin/store-pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminSummaryRoute = ApiAdminSummaryRouteImport.update({
   id: '/api/admin/summary',
   path: '/api/admin/summary',
@@ -439,6 +445,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/notifications': typeof ApiAdminNotificationsRoute
   '/api/admin/store': typeof ApiAdminStoreRoute
+  '/api/admin/store-pricing': typeof ApiAdminStorePricingRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/webhook/sumup': typeof ApiWebhookSumupRoute
@@ -500,6 +507,7 @@ export interface FileRoutesByTo {
   '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/notifications': typeof ApiAdminNotificationsRoute
   '/api/admin/store': typeof ApiAdminStoreRoute
+  '/api/admin/store-pricing': typeof ApiAdminStorePricingRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/webhook/sumup': typeof ApiWebhookSumupRoute
@@ -564,6 +572,7 @@ export interface FileRoutesById {
   '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/notifications': typeof ApiAdminNotificationsRoute
   '/api/admin/store': typeof ApiAdminStoreRoute
+  '/api/admin/store-pricing': typeof ApiAdminStorePricingRoute
   '/api/admin/summary': typeof ApiAdminSummaryRoute
   '/api/admin/users': typeof ApiAdminUsersRoute
   '/api/webhook/sumup': typeof ApiWebhookSumupRoute
@@ -629,6 +638,7 @@ export interface FileRouteTypes {
     | '/api/admin/media'
     | '/api/admin/notifications'
     | '/api/admin/store'
+    | '/api/admin/store-pricing'
     | '/api/admin/summary'
     | '/api/admin/users'
     | '/api/webhook/sumup'
@@ -690,6 +700,7 @@ export interface FileRouteTypes {
     | '/api/admin/media'
     | '/api/admin/notifications'
     | '/api/admin/store'
+    | '/api/admin/store-pricing'
     | '/api/admin/summary'
     | '/api/admin/users'
     | '/api/webhook/sumup'
@@ -753,6 +764,7 @@ export interface FileRouteTypes {
     | '/api/admin/media'
     | '/api/admin/notifications'
     | '/api/admin/store'
+    | '/api/admin/store-pricing'
     | '/api/admin/summary'
     | '/api/admin/users'
     | '/api/webhook/sumup'
@@ -802,6 +814,7 @@ export interface RootRouteChildren {
   ApiAdminMediaRoute: typeof ApiAdminMediaRoute
   ApiAdminNotificationsRoute: typeof ApiAdminNotificationsRoute
   ApiAdminStoreRoute: typeof ApiAdminStoreRoute
+  ApiAdminStorePricingRoute: typeof ApiAdminStorePricingRoute
   ApiAdminSummaryRoute: typeof ApiAdminSummaryRoute
   ApiAdminUsersRoute: typeof ApiAdminUsersRoute
   ApiWebhookSumupRoute: typeof ApiWebhookSumupRoute
@@ -1173,6 +1186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminStoreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/store-pricing': {
+      id: '/api/admin/store-pricing'
+      path: '/api/admin/store-pricing'
+      fullPath: '/api/admin/store-pricing'
+      preLoaderRoute: typeof ApiAdminStorePricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/summary': {
       id: '/api/admin/summary'
       path: '/api/admin/summary'
@@ -1367,6 +1387,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminMediaRoute: ApiAdminMediaRoute,
   ApiAdminNotificationsRoute: ApiAdminNotificationsRoute,
   ApiAdminStoreRoute: ApiAdminStoreRoute,
+  ApiAdminStorePricingRoute: ApiAdminStorePricingRoute,
   ApiAdminSummaryRoute: ApiAdminSummaryRoute,
   ApiAdminUsersRoute: ApiAdminUsersRoute,
   ApiWebhookSumupRoute: ApiWebhookSumupRoute,

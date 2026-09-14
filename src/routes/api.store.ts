@@ -17,6 +17,7 @@ import {
   verifyOrderHistoryAccessToken,
   releaseExpiredReservations,
 } from "@/lib/store.server";
+import { calculateStoreDiscounts } from "@/lib/store-discounts";
 
 // Validações Zod estritas
 const cartItemSchema = z.object({
@@ -86,11 +87,12 @@ export const Route = createFileRoute("/api/store")({
           if (action === "categories") {
             const { rows } = await query(
               `SELECT c.id, coalesce(c.slug, c.id) as slug, c.name, c.description,
-                      c.image_url as "image", c.sort_order as "sortOrder",
+                      c.image_url as "image", c.sort_order as "sortOrder", c.parent_id as "parentId", c.status,
                       count(p.id)::int as "productCount"
                  FROM universe.store_categories c
-                 LEFT JOIN universe.store_products p ON p.category_id = c.id AND p.status = 'active'
-                GROUP BY c.id, c.slug, c.name, c.description, c.image_url, c.sort_order
+                 LEFT JOIN universe.store_products p ON (p.category_id = c.id OR p.subcategory_id = c.id) AND p.status = 'active'
+                WHERE c.status = 'active'
+                GROUP BY c.id, c.slug, c.name, c.description, c.image_url, c.sort_order, c.parent_id, c.status
                 ORDER BY c.sort_order ASC, c.name ASC`,
             );
             return Response.json({ ok: true, categories: rows });
@@ -109,7 +111,8 @@ export const Route = createFileRoute("/api/store")({
 
             if (categorySlug) {
               params.push(categorySlug);
-              whereClause += ` AND (p.category_id = $${params.length} OR c.slug = $${params.length})`;
+              whereClause += ` AND (p.category_id = $${params.length} OR p.subcategory_id = $${params.length} OR c.slug = $${params.length}
+                OR EXISTS (SELECT 1 FROM universe.store_categories sc WHERE sc.id=p.subcategory_id AND sc.slug=$${params.length}))`;
             }
 
             if (search && search.trim()) {
@@ -137,7 +140,8 @@ export const Route = createFileRoute("/api/store")({
                      p.short_description as "shortDescription", p.characteristics, p.methods,
                      p.care_instructions as "careInstructions",
                      p.price::float as price, p.promotional_price::float as "promotionalPrice",
-                     p.stock_quantity as "stockQuantity", p.category_id as "categoryId",
+                     p.stock_quantity as "stockQuantity", p.category_id as "categoryId", p.subcategory_id as "subcategoryId",
+                     p.wholesale_eligible as "wholesaleEligible",
                      p.image_url as image, p.images,
                      json_build_object('label', p.badge_label, 'tone', p.badge_tone) as badge,
                      p.rating::float as rating, p.reviews_count as reviews, p.sold_count as sold,
@@ -154,7 +158,7 @@ export const Route = createFileRoute("/api/store")({
                            'priceOverride', v.price_override::float,
                            'promotionalPriceOverride', v.promotional_price_override::float,
                            'stockQuantity', v.stock_quantity,
-                           'imageUrl', v.image_url,
+                           'imageUrl', v.image_url, 'images', v.images,
                            'status', v.status
                          )
                        ) FILTER (WHERE v.id IS NOT NULL AND v.status = 'active'),
@@ -165,7 +169,7 @@ export const Route = createFileRoute("/api/store")({
                 LEFT JOIN universe.store_product_variants v ON v.product_id = p.id
                ${whereClause}
                GROUP BY p.id, p.slug, p.name, p.info, p.description, p.price,
-                        p.promotional_price, p.stock_quantity, p.category_id,
+                        p.promotional_price, p.stock_quantity, p.category_id, p.subcategory_id, p.wholesale_eligible,
                         p.image_url, p.images, p.badge_label, p.badge_tone,
                         p.rating, p.reviews_count, p.sold_count, p.created_at
                ORDER BY ${orderBy}
@@ -203,7 +207,8 @@ export const Route = createFileRoute("/api/store")({
                      p.short_description as "shortDescription", p.characteristics, p.methods,
                      p.care_instructions as "careInstructions",
                      p.price::float as price, p.promotional_price::float as "promotionalPrice",
-                     p.stock_quantity as "stockQuantity", p.category_id as "categoryId",
+                     p.stock_quantity as "stockQuantity", p.category_id as "categoryId", p.subcategory_id as "subcategoryId",
+                     p.wholesale_eligible as "wholesaleEligible",
                      p.image_url as image, p.images,
                      json_build_object('label', p.badge_label, 'tone', p.badge_tone) as badge,
                      p.rating::float as rating, p.reviews_count as reviews, p.sold_count as sold,
@@ -493,6 +498,9 @@ export const Route = createFileRoute("/api/store")({
         let totalAmount = 0;
         let discountAmount = 0;
         let discountType: string | null = null;
+        let discountPercent = 0;
+        let discountRule = "none";
+        let wholesaleEligibleQuantity = 0;
         let shippingCost = 0;
         let subtotal = 0;
         let notificationCustomerName = "";
@@ -509,6 +517,12 @@ export const Route = createFileRoute("/api/store")({
           variantWeightG?: number | null;
           imageUrl?: string | null;
           price: number;
+          basePrice: number;
+          promotionalPrice?: number | null;
+          wholesaleEligible: boolean;
+          itemDiscountAmount?: number;
+          itemDiscountPercent?: number;
+          itemDiscountType?: string;
           qty: number;
         }[] = [];
 
@@ -576,9 +590,10 @@ export const Route = createFileRoute("/api/store")({
               status: string;
               image_url: string | null;
               has_variants: boolean;
+              wholesale_eligible: boolean;
             }>(
               `SELECT p.id, p.name, p.price, p.promotional_price, p.stock_quantity, p.status,
-                      p.image_url,
+                      p.image_url, p.wholesale_eligible,
                       EXISTS (
                         SELECT 1 FROM universe.store_product_variants v
                          WHERE v.product_id = p.id AND v.status <> 'inactive'
@@ -594,7 +609,9 @@ export const Route = createFileRoute("/api/store")({
               throw new Error(`O produto "${item.productName}" não está mais disponível.`);
             }
 
-            let unitPrice = Number(product.promotional_price ?? product.price);
+            let baseUnitPrice = Number(product.price);
+            let promotionalUnitPrice =
+              product.promotional_price == null ? null : Number(product.promotional_price);
             let variantName: string | null = null;
             let variantSku: string | null = null;
             let variantColor: string | null = null;
@@ -640,11 +657,13 @@ export const Route = createFileRoute("/api/store")({
                 );
               }
 
-              if (variant.promotional_price_override) {
-                unitPrice = Number(variant.promotional_price_override);
-              } else if (variant.price_override) {
-                unitPrice = Number(variant.price_override);
-              }
+              if (variant.price_override != null) baseUnitPrice = Number(variant.price_override);
+              promotionalUnitPrice =
+                variant.promotional_price_override != null
+                  ? Number(variant.promotional_price_override)
+                  : variant.price_override != null
+                    ? null
+                    : promotionalUnitPrice;
 
               variantName = variant.title;
               variantSku = variant.sku;
@@ -690,7 +709,6 @@ export const Route = createFileRoute("/api/store")({
               );
             }
 
-            subtotal += unitPrice * item.qty;
             authoritativeItems.push({
               productId: product.id,
               variantId: item.variantId,
@@ -701,23 +719,45 @@ export const Route = createFileRoute("/api/store")({
               variantLengthCm,
               variantWeightG,
               imageUrl: itemImageUrl,
-              price: unitPrice,
+              price: baseUnitPrice,
+              basePrice: baseUnitPrice,
+              promotionalPrice: promotionalUnitPrice,
+              wholesaleEligible: product.wholesale_eligible,
               qty: item.qty,
             });
           }
 
-          // Frete Fixo: Grátis >= R$ 299,90 ou R$ 20,00
-          shippingCost = subtotal >= 299.9 ? 0 : 20.0;
-
-          // Desconto Pix (5% OFF) se selecionado
-          if (paymentMethod === "pix") {
-            const settRes = await client.query<{ value: { value?: number } }>(
-              `SELECT value FROM universe.settings WHERE key = 'pix_discount_percent'`,
-            );
-            const discountPct = Number(settRes.rows[0]?.value?.value ?? 5);
-            discountAmount = Number(((subtotal * discountPct) / 100).toFixed(2));
-            discountType = `pix_${discountPct}%`;
+          const settRes = await client.query<{ value: { value?: number } }>(
+            `SELECT value FROM universe.settings WHERE key = 'pix_discount_percent'`,
+          );
+          const pixPct = Number(settRes.rows[0]?.value?.value ?? 5);
+          const calculatedDiscount = calculateStoreDiscounts(
+            authoritativeItems.map((item, index) => ({
+              key: String(index),
+              quantity: item.qty,
+              regularUnitPrice: item.basePrice,
+              promotionalUnitPrice: item.promotionalPrice,
+              wholesaleEligible: item.wholesaleEligible,
+            })),
+            { paymentMethod, pixDiscountPercent: pixPct },
+          );
+          for (const line of calculatedDiscount.lines) {
+            const item = authoritativeItems[Number(line.key)];
+            item.price = line.appliedUnitPrice;
+            item.itemDiscountAmount = line.lineDiscount;
+            item.itemDiscountPercent = line.discountPercent;
+            item.itemDiscountType = line.discountType;
           }
+          subtotal = calculatedDiscount.baseSubtotal;
+          discountAmount = calculatedDiscount.discountAmount;
+          discountPercent = calculatedDiscount.discountPercent;
+          discountRule = calculatedDiscount.discountRule;
+          discountType =
+            calculatedDiscount.discountRule === "none" ? null : calculatedDiscount.discountRule;
+          wholesaleEligibleQuantity = calculatedDiscount.wholesaleEligibleQuantity;
+
+          // Frete e desconto usam exatamente o resultado do motor central.
+          shippingCost = calculatedDiscount.merchandiseSubtotal >= 299.9 ? 0 : 20.0;
 
           totalAmount = Number(Math.max(0.01, subtotal + shippingCost - discountAmount).toFixed(2));
 
@@ -754,11 +794,11 @@ export const Route = createFileRoute("/api/store")({
           const orderRes = await client.query<{ id: string }>(
             `INSERT INTO universe.store_orders
                (order_number, customer_id, customer_name, customer_email, customer_phone, customer_document,
-                shipping_address, shipping_cost, subtotal, discount_amount, discount_type,
+                shipping_address, shipping_cost, subtotal, base_subtotal, discount_amount, discount_type, discount_percent, discount_rule, wholesale_eligible_quantity,
                 total_amount, payment_method, payment_method_selected, stock_reserved,
                 reservation_expires_at, access_token_hash, idempotency_key)
-             VALUES ($1, $2, $3, lower($4), $5, $6, $7::jsonb, $8, $9, $10, $11, $12,
-                     'sumup_online', $13, true, now() + interval '30 minutes', $14, $15)
+             VALUES ($1, $2, $3, lower($4), $5, $6, $7::jsonb, $8, $9, $9, $10, $11, $12, $13, $14, $15,
+                     'sumup_online', $16, true, now() + interval '30 minutes', $17, $18)
              RETURNING id`,
             [
               orderNumber,
@@ -772,6 +812,9 @@ export const Route = createFileRoute("/api/store")({
               subtotal,
               discountAmount,
               discountType,
+              discountPercent,
+              discountRule,
+              wholesaleEligibleQuantity,
               totalAmount,
               paymentMethod,
               tokenData.hash,
@@ -786,8 +829,9 @@ export const Route = createFileRoute("/api/store")({
               `INSERT INTO universe.store_order_items
                  (order_id, product_id, variant_id, product_name, variant_name, variant_sku,
                   variant_color, variant_length_cm, variant_weight_g, image_url,
-                  unit_price, quantity, total_price)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                  unit_price, base_unit_price, final_unit_price, discount_amount, discount_percent, discount_type,
+                  wholesale_eligible, quantity, total_price)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
               [
                 orderId,
                 item.productId,
@@ -800,8 +844,14 @@ export const Route = createFileRoute("/api/store")({
                 item.variantWeightG ?? null,
                 item.imageUrl || null,
                 item.price,
+                item.basePrice,
+                item.price,
+                item.itemDiscountAmount || 0,
+                item.itemDiscountPercent || 0,
+                item.itemDiscountType || null,
+                item.wholesaleEligible,
                 item.qty,
-                item.price * item.qty,
+                Number((item.price * item.qty).toFixed(2)),
               ],
             );
 

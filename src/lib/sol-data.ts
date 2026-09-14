@@ -36,6 +36,8 @@ export interface Product {
   promotionalPrice?: number | null;
   stockQuantity: number;
   categoryId?: string;
+  subcategoryId?: string;
+  wholesaleEligible?: boolean;
   image: string;
   images?: string[];
   badge?: ProductBadge;
@@ -53,6 +55,8 @@ export interface Category {
   image: string;
   sortOrder?: number;
   productCount?: number;
+  parentId?: string | null;
+  status?: "active" | "inactive";
 }
 
 export interface CustomerProfile {

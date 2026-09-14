@@ -3,13 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { X, Sparkles, ArrowRight, Grid } from "lucide-react";
 import type { Category } from "@/lib/sol-data";
 
-export function CategoryDrawer({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function CategoryDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -33,6 +27,12 @@ export function CategoryDrawer({
   }, [open]);
 
   if (!open) return null;
+  const orderedCategories = categories
+    .filter((category) => !category.parentId)
+    .flatMap((parent) => [
+      parent,
+      ...categories.filter((category) => category.parentId === parent.id),
+    ]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
@@ -61,6 +61,7 @@ export function CategoryDrawer({
           <div className="p-4 border-b border-line bg-blush/40">
             <Link
               to="/sol-hair-closet/produtos"
+              search={{}}
               onClick={onClose}
               className="flex items-center justify-between p-3.5 rounded-xl bg-warm-white border border-copper/30 text-ink-deep hover:bg-copper hover:text-cream transition group shadow-sm"
             >
@@ -81,13 +82,13 @@ export function CategoryDrawer({
                 Carregando categorias...
               </div>
             ) : (
-              categories.map((cat) => (
+              orderedCategories.map((cat) => (
                 <Link
                   key={cat.id}
                   to="/sol-hair-closet/categoria/$slug"
                   params={{ slug: cat.slug || cat.id }}
                   onClick={onClose}
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-blush/80 text-ink-deep transition group"
+                  className={`flex items-center justify-between rounded-xl p-3 text-ink-deep transition group hover:bg-blush/80 ${cat.parentId ? "ml-7 border-l border-copper/20" : ""}`}
                 >
                   <div className="flex items-center gap-3">
                     {cat.image ? (
@@ -103,7 +104,7 @@ export function CategoryDrawer({
                     )}
                     <div>
                       <p className="text-[13px] font-medium tracking-wide uppercase group-hover:text-copper transition">
-                        {cat.name}
+                        {cat.parentId ? `↳ ${cat.name}` : cat.name}
                       </p>
                       {cat.productCount !== undefined && (
                         <p className="text-[10px] text-text-secondary">
@@ -112,7 +113,10 @@ export function CategoryDrawer({
                       )}
                     </div>
                   </div>
-                  <ArrowRight size={14} className="text-text-secondary group-hover:text-copper group-hover:translate-x-1 transition" />
+                  <ArrowRight
+                    size={14}
+                    className="text-text-secondary group-hover:text-copper group-hover:translate-x-1 transition"
+                  />
                 </Link>
               ))
             )}

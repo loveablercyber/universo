@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   ImagePlus,
 } from "lucide-react";
+import { StorePricingManager } from "./StorePricingManager";
 
 type StoreVariant = {
   id?: string;
@@ -54,6 +55,7 @@ type StoreProduct = {
   stockQuantity: number;
   categoryId?: string | null;
   subcategoryId?: string | null;
+  wholesaleEligible?: boolean;
   categoryName?: string;
   image: string;
   images?: string[];
@@ -72,6 +74,9 @@ type StoreCategory = {
   image?: string;
   sortOrder: number;
   productCount?: number;
+  childrenCount?: number;
+  parentId?: string | null;
+  status?: "active" | "inactive";
 };
 
 type StoreOrder = {
@@ -93,6 +98,9 @@ type StoreOrder = {
   shippingCost: number;
   subtotal: number;
   discountAmount?: number;
+  discountPercent?: number;
+  discountRule?: string | null;
+  wholesaleEligibleQuantity?: number;
   totalAmount: number;
   status: "pending" | "paid" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
   trackingCode?: string | null;
@@ -107,6 +115,12 @@ type StoreOrder = {
     variantWeightG?: number | null;
     imageUrl?: string | null;
     unitPrice: number;
+    baseUnitPrice?: number;
+    finalUnitPrice?: number;
+    discountAmount?: number;
+    discountPercent?: number;
+    discountType?: string | null;
+    wholesaleEligible?: boolean;
     quantity: number;
     totalPrice: number;
   }>;
@@ -136,9 +150,9 @@ type StoreCustomer = {
 };
 
 export function StoreManager() {
-  const [activeTab, setActiveTab] = useState<"products" | "categories" | "orders" | "customers">(
-    "products",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "products" | "categories" | "orders" | "customers" | "pricing"
+  >("products");
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [orders, setOrders] = useState<StoreOrder[]>([]);
@@ -233,6 +247,12 @@ export function StoreManager() {
     const matchesStatus = !statusFilter || o.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+  const orderedCategories = categories
+    .filter((category) => !category.parentId)
+    .flatMap((parent) => [
+      parent,
+      ...categories.filter((category) => category.parentId === parent.id),
+    ]);
 
   return (
     <div className="space-y-6">
@@ -302,7 +322,7 @@ export function StoreManager() {
 
       {/* Navegação de Abas */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-copper/10 pb-4">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setActiveTab("products")}
             className={`rounded-2xl px-5 py-2.5 text-xs font-semibold tracking-wider transition uppercase ${
@@ -342,6 +362,12 @@ export function StoreManager() {
             }`}
           >
             <Users size={14} className="inline mr-1.5" /> Clientes ({customers.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("pricing")}
+            className={`rounded-2xl px-5 py-2.5 text-xs font-semibold tracking-wider transition uppercase ${activeTab === "pricing" ? "bg-copper text-white shadow-md shadow-copper/20" : "bg-white text-brown/70 hover:bg-copper/10"}`}
+          >
+            <DollarSign size={14} className="inline mr-1.5" /> Precificação
           </button>
         </div>
 
@@ -525,7 +551,7 @@ export function StoreManager() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-copper/5">
-                {categories.map((c) => (
+                {orderedCategories.map((c) => (
                   <tr key={c.id} className="hover:bg-cream/20 transition">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -541,7 +567,13 @@ export function StoreManager() {
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold text-brown">{c.name}</p>
+                          <p className="font-semibold text-brown">
+                            {c.parentId ? `↳ ${c.name}` : c.name}
+                          </p>
+                          <p className="text-[10px] uppercase tracking-wider text-copper">
+                            {c.parentId ? "Subcategoria" : "Categoria principal"} •{" "}
+                            {c.status === "inactive" ? "Inativa" : "Ativa"}
+                          </p>
                           {c.description && (
                             <p className="text-xs text-brown/50">{c.description}</p>
                           )}
@@ -708,6 +740,8 @@ export function StoreManager() {
         </div>
       )}
 
+      {activeTab === "pricing" && <StorePricingManager />}
+
       {/* Modais */}
       {editingProduct && (
         <ProductEditorModal
@@ -721,6 +755,7 @@ export function StoreManager() {
       {editingCategory && (
         <CategoryEditorModal
           category={editingCategory.id ? editingCategory : null}
+          categories={categories}
           onClose={() => setEditingCategory(null)}
           onUpdate={loadData}
         />
@@ -743,15 +778,18 @@ export function StoreManager() {
 
 function CategoryEditorModal({
   category,
+  categories,
   onClose,
   onUpdate,
 }: {
   category: StoreCategory | null;
+  categories: StoreCategory[];
   onClose: () => void;
   onUpdate: () => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [transferToId, setTransferToId] = useState("");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -762,11 +800,14 @@ function CategoryEditorModal({
     try {
       const body = {
         action: "save-category",
-        id: form.get("id"),
+        id: category?.id || form.get("id"),
+        originalId: category?.id || undefined,
         name: form.get("name"),
         description: form.get("description"),
         image: form.get("image"),
         sortOrder: parseInt(String(form.get("sortOrder")), 10) || 0,
+        parentId: form.get("parentId") || null,
+        status: form.get("status") || "active",
       };
 
       const res = await fetch("/api/admin/store", {
@@ -782,6 +823,37 @@ function CategoryEditorModal({
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (
+      !category ||
+      !window.confirm(
+        `Excluir “${category.name}”? Produtos vinculados só serão transferidos se você escolher um destino.`,
+      )
+    )
+      return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete-category",
+          id: category.id,
+          transferToId: transferToId || null,
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.message || "Não foi possível excluir a categoria.");
+      onUpdate();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível excluir a categoria.");
     } finally {
       setLoading(false);
     }
@@ -807,10 +879,42 @@ function CategoryEditorModal({
             <input
               name="id"
               defaultValue={category?.id}
+              disabled={Boolean(category)}
               required
               placeholder="ex: fibra-russa"
               className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm outline-none focus:border-copper font-mono"
             />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-brown">Categoria principal</label>
+              <select
+                name="parentId"
+                defaultValue={category?.parentId || ""}
+                className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm"
+              >
+                <option value="">Nenhuma — categoria principal</option>
+                {categories
+                  .filter((item) => !item.parentId && item.id !== category?.id)
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-brown">Status</label>
+              <select
+                name="status"
+                defaultValue={category?.status || "active"}
+                className="w-full h-10 rounded-xl border border-copper/20 px-3 text-sm"
+              >
+                <option value="active">Ativa</option>
+                <option value="inactive">Inativa</option>
+              </select>
+            </div>
           </div>
 
           <div className="space-y-1">
@@ -854,6 +958,36 @@ function CategoryEditorModal({
           </div>
 
           <footer className="pt-4 border-t border-copper/10 flex justify-end gap-3">
+            {category && (
+              <div className="mr-auto flex items-center gap-2">
+                <select
+                  value={transferToId}
+                  onChange={(e) => setTransferToId(e.target.value)}
+                  aria-label="Transferir produtos para"
+                  className="h-9 max-w-44 rounded-lg border border-copper/20 px-2 text-[11px]"
+                >
+                  <option value="">Sem transferência</option>
+                  {categories
+                    .filter(
+                      (item) =>
+                        item.id !== category.id && item.parentId === (category.parentId || null),
+                    )
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={loading}
+                  className="rounded-lg px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                >
+                  Excluir
+                </button>
+              </div>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -894,6 +1028,7 @@ function ProductEditorModal({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [generatorColors, setGeneratorColors] = useState("");
   const [generatorSizes, setGeneratorSizes] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(product?.categoryId || "");
 
   const addVariant = () => {
     setVariants([
@@ -1015,6 +1150,20 @@ function ProductEditorModal({
     }
   };
 
+  const moveGalleryImage = (slot: number, direction: -1 | 1) => {
+    const target = slot + direction;
+    if (target < 0 || target > 3 || !gallery[slot]) return;
+    const next = [...gallery];
+    [next[slot], next[target]] = [next[target], next[slot]];
+    setGallery(next.filter(Boolean).slice(0, 4));
+  };
+  const removeGalleryImage = (slot: number) =>
+    setGallery((current) => current.filter((_, index) => index !== slot));
+  const removeVariantGalleryImage = (variantIndex: number, slot: number) => {
+    const images = (variants[variantIndex].images || []).filter((_, index) => index !== slot);
+    updateVariant(variantIndex, "images", images);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!imageUrl) {
@@ -1057,6 +1206,7 @@ function ProductEditorModal({
         stockQuantity: parseInt(String(form.get("stockQuantity")), 10),
         categoryId: form.get("categoryId") || null,
         subcategoryId: form.get("subcategoryId") || null,
+        wholesaleEligible: form.get("wholesaleEligible") === "on",
         image: imageUrl,
         images: gallery.filter(Boolean).slice(0, 4),
         badgeLabel: form.get("badgeLabel") || null,
@@ -1148,15 +1298,36 @@ function ProductEditorModal({
                 <label className="text-xs font-medium text-brown">Categoria</label>
                 <select
                   name="categoryId"
-                  defaultValue={product?.categoryId || ""}
+                  value={selectedCategoryId}
+                  onChange={(event) => setSelectedCategoryId(event.target.value)}
                   className="w-full h-10 rounded-xl border border-copper/20 px-3 outline-none focus:border-copper text-sm"
                 >
                   <option value="">Selecione...</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {categories
+                    .filter((c) => !c.parentId)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-brown">Subcategoria</label>
+                <select
+                  name="subcategoryId"
+                  defaultValue={product?.subcategoryId || ""}
+                  className="w-full h-10 rounded-xl border border-copper/20 px-3 outline-none focus:border-copper text-sm"
+                >
+                  <option value="">Sem subcategoria</option>
+                  {categories
+                    .filter((c) => c.parentId === selectedCategoryId)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -1185,7 +1356,7 @@ function ProductEditorModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-brown">Estoque Geral</label>
                 <input
@@ -1220,6 +1391,15 @@ function ProductEditorModal({
                   className="w-full h-10 rounded-xl border border-copper/20 px-3 outline-none focus:border-copper text-sm"
                 />
               </div>
+              <label className="flex items-center gap-2 rounded-xl border border-copper/20 px-3 text-xs font-medium text-brown">
+                <input
+                  name="wholesaleEligible"
+                  type="checkbox"
+                  defaultChecked={product?.wholesaleEligible || false}
+                  className="h-4 w-4 accent-copper"
+                />
+                Elegível para atacado
+              </label>
             </div>
 
             <div className="space-y-2">
@@ -1291,34 +1471,66 @@ function ProductEditorModal({
               </label>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[0, 1, 2, 3].map((slot) => (
-                  <label
+                  <div
                     key={slot}
-                    className="cursor-pointer rounded-xl border border-dashed border-copper/30 bg-cream/20 p-2 text-center"
+                    className="relative rounded-xl border border-dashed border-copper/30 bg-cream/20 p-2 text-center"
                   >
-                    {gallery[slot] ? (
-                      <img
-                        src={gallery[slot]}
-                        alt={`Foto ${slot + 1}`}
-                        className="aspect-[9/16] w-full rounded-lg object-cover"
+                    <label className="cursor-pointer">
+                      {gallery[slot] ? (
+                        <img
+                          src={gallery[slot]}
+                          alt={`Foto ${slot + 1}`}
+                          className="aspect-[9/16] w-full rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="grid aspect-[9/16] w-full place-items-center text-copper/60">
+                          <ImagePlus size={24} />
+                        </div>
+                      )}
+                      <span className="mt-1 block text-[10px] text-brown/60">Foto {slot + 1}</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="sr-only"
+                        disabled={uploadingImage}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void uploadImage(file, slot);
+                          event.currentTarget.value = "";
+                        }}
                       />
-                    ) : (
-                      <div className="grid aspect-[9/16] w-full place-items-center text-copper/60">
-                        <ImagePlus size={24} />
+                    </label>
+                    {gallery[slot] && (
+                      <div className="mt-1 flex justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => moveGalleryImage(slot, -1)}
+                          disabled={slot === 0}
+                          className="rounded bg-white px-2 text-xs disabled:opacity-30"
+                          aria-label="Mover foto para a esquerda"
+                        >
+                          ←
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeGalleryImage(slot)}
+                          className="rounded bg-red-50 px-2 text-xs text-red-600"
+                          aria-label="Remover foto"
+                        >
+                          ×
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveGalleryImage(slot, 1)}
+                          disabled={slot === gallery.filter(Boolean).length - 1}
+                          className="rounded bg-white px-2 text-xs disabled:opacity-30"
+                          aria-label="Mover foto para a direita"
+                        >
+                          →
+                        </button>
                       </div>
                     )}
-                    <span className="mt-1 block text-[10px] text-brown/60">Foto {slot + 1}</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="sr-only"
-                      disabled={uploadingImage}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) void uploadImage(file, slot);
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
@@ -1478,34 +1690,45 @@ function ProductEditorModal({
                       </label>
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                         {[0, 1, 2, 3].map((slot) => (
-                          <label
+                          <div
                             key={slot}
-                            className="cursor-pointer rounded-lg border border-dashed border-copper/30 p-1 text-center"
+                            className="rounded-lg border border-dashed border-copper/30 p-1 text-center"
                           >
-                            {(v.images || [])[slot] ? (
-                              <img
-                                src={(v.images || [])[slot]}
-                                alt={`Foto da variação ${slot + 1}`}
-                                className="aspect-[9/16] w-full rounded object-cover"
+                            <label className="cursor-pointer">
+                              {(v.images || [])[slot] ? (
+                                <img
+                                  src={(v.images || [])[slot]}
+                                  alt={`Foto da variação ${slot + 1}`}
+                                  className="aspect-[9/16] w-full rounded object-cover"
+                                />
+                              ) : (
+                                <div className="grid aspect-[9/16] w-full place-items-center text-copper/60">
+                                  <ImagePlus size={18} />
+                                </div>
+                              )}
+                              <span className="text-[9px] text-brown/60">Foto {slot + 1}</span>
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                className="sr-only"
+                                disabled={uploadingImage}
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  if (file) void uploadVariantImage(file, idx, slot);
+                                  event.currentTarget.value = "";
+                                }}
                               />
-                            ) : (
-                              <div className="grid aspect-[9/16] w-full place-items-center text-copper/60">
-                                <ImagePlus size={18} />
-                              </div>
+                            </label>
+                            {(v.images || [])[slot] && (
+                              <button
+                                type="button"
+                                onClick={() => removeVariantGalleryImage(idx, slot)}
+                                className="mt-1 rounded bg-red-50 px-2 text-[10px] text-red-600"
+                              >
+                                Remover
+                              </button>
                             )}
-                            <span className="text-[9px] text-brown/60">Foto {slot + 1}</span>
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp,image/gif"
-                              className="sr-only"
-                              disabled={uploadingImage}
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                if (file) void uploadVariantImage(file, idx, slot);
-                                event.currentTarget.value = "";
-                              }}
-                            />
-                          </label>
+                          </div>
                         ))}
                       </div>
                       <div>
@@ -1794,12 +2017,58 @@ function OrderDetailModal({
                 </div>
                 <div className="text-right">
                   <p>{item.quantity} un.</p>
+                  {item.discountAmount ? (
+                    <p className="text-[10px] font-medium text-copper">
+                      {item.discountType === "wholesale_40" || item.discountType === "wholesale_50"
+                        ? `Atacado ${item.discountPercent}%`
+                        : item.discountType === "pix"
+                          ? `Pix ${item.discountPercent}%`
+                          : "Promoção"}
+                    </p>
+                  ) : null}
                   <p className="font-semibold">
                     R$ {item.totalPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>
             ))}
+            <div className="mt-4 space-y-1 border-t border-copper/10 pt-4 text-xs">
+              <div className="flex justify-between">
+                <span>Subtotal normal</span>
+                <strong>
+                  R$ {order.subtotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </strong>
+              </div>
+              {(order.discountAmount || 0) > 0 && (
+                <div className="flex justify-between text-copper">
+                  <span>Desconto {order.discountRule ? `(${order.discountRule})` : ""}</span>
+                  <strong>
+                    - R${" "}
+                    {(order.discountAmount || 0).toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </strong>
+                </div>
+              )}
+              {(order.wholesaleEligibleQuantity || 0) > 0 && (
+                <div className="flex justify-between text-brown/60">
+                  <span>Unidades elegíveis ao atacado</span>
+                  <span>{order.wholesaleEligibleQuantity}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>Frete</span>
+                <strong>
+                  R$ {order.shippingCost.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </strong>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Total</span>
+                <strong>
+                  R$ {order.totalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </strong>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -69,9 +69,11 @@ export function MediaLibrary({ onSelect }: { onSelect?: (url: string) => void })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete-media", id }),
       });
-      if (res.ok) await fetchMedia();
-    } catch {
-      setError("Não foi possível excluir a mídia.");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Não foi possível excluir a mídia.");
+      await fetchMedia();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Não foi possível excluir a mídia.");
     }
   };
 

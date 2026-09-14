@@ -68,6 +68,12 @@ function ProductsPage() {
     const price = Number(p.promotionalPrice ?? p.price);
     return price <= priceRange;
   });
+  const orderedCategories = categories
+    .filter((category) => !category.parentId)
+    .flatMap((parent) => [
+      parent,
+      ...categories.filter((category) => category.parentId === parent.id),
+    ]);
 
   return (
     <StoreLayout storeState={store}>
@@ -86,13 +92,16 @@ function ProductsPage() {
               Todos os Produtos
             </h1>
             <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-xl">
-              Fibras russas, perucas, laces, apliques e acessórios profissionais de alta durabilidade e acabamento natural.
+              Fibras russas, perucas, laces, apliques e acessórios profissionais de alta
+              durabilidade e acabamento natural.
             </p>
           </div>
 
           {/* Ordenação */}
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-text-secondary whitespace-nowrap">Ordenar por:</span>
+            <span className="text-xs font-semibold text-text-secondary whitespace-nowrap">
+              Ordenar por:
+            </span>
             <select
               value={selectedSort}
               onChange={(e) => setSelectedSort(e.target.value)}
@@ -127,7 +136,7 @@ function ProductsPage() {
                   <span>Todas as Categorias</span>
                   <span>{products.length}</span>
                 </button>
-                {categories.map((cat) => (
+                {orderedCategories.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.slug || cat.id)}
@@ -137,7 +146,9 @@ function ProductsPage() {
                         : "text-ink-deep hover:bg-blush"
                     }`}
                   >
-                    <span>{cat.name}</span>
+                    <span className={cat.parentId ? "pl-4" : ""}>
+                      {cat.parentId ? `↳ ${cat.name}` : cat.name}
+                    </span>
                     {cat.productCount !== undefined && (
                       <span className="text-[10px] opacity-80">({cat.productCount})</span>
                     )}
@@ -171,7 +182,9 @@ function ProductsPage() {
             <div className="rounded-2xl bg-gradient-to-br from-ink-deep to-ink text-cream p-5 text-center space-y-2 border border-copper/30">
               <Sparkles size={22} className="text-copper-light mx-auto" />
               <p className="font-serif text-lg font-bold text-copper-light">Frete Grátis</p>
-              <p className="text-[11px] text-cream/80">Em compras a partir de R$ 299,90 para todo o Brasil.</p>
+              <p className="text-[11px] text-cream/80">
+                Em compras a partir de R$ 299,90 para todo o Brasil.
+              </p>
             </div>
           </aside>
 
@@ -184,9 +197,12 @@ function ProductsPage() {
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-line bg-warm-white p-8">
-                <p className="font-serif text-xl text-ink-deep font-semibold">Nenhum produto encontrado</p>
+                <p className="font-serif text-xl text-ink-deep font-semibold">
+                  Nenhum produto encontrado
+                </p>
                 <p className="text-xs text-text-secondary mt-1 max-w-sm">
-                  Não encontramos produtos correspondentes aos filtros selecionados. Tente limpar os filtros.
+                  Não encontramos produtos correspondentes aos filtros selecionados. Tente limpar os
+                  filtros.
                 </p>
                 <button
                   onClick={() => {
@@ -201,7 +217,8 @@ function ProductsPage() {
             ) : (
               <div>
                 <p className="text-xs text-text-secondary mb-4 font-medium">
-                  Exibindo <b>{filteredProducts.length}</b> {filteredProducts.length === 1 ? "produto" : "produtos"}
+                  Exibindo <b>{filteredProducts.length}</b>{" "}
+                  {filteredProducts.length === 1 ? "produto" : "produtos"}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filteredProducts.map((p) => (
