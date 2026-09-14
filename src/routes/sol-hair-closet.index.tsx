@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Sparkles,
@@ -9,6 +9,8 @@ import {
   Users,
   Truck,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useStore } from "@/hooks/use-store";
 import { StoreLayout } from "@/components/store/StoreLayout";
@@ -25,6 +27,14 @@ export function StoreHomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const categoriesScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollCategories = (direction: -1 | 1) => {
+    categoriesScrollRef.current?.scrollBy({
+      left: direction * Math.max(280, categoriesScrollRef.current.clientWidth * 0.75),
+      behavior: "smooth",
+    });
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -69,7 +79,8 @@ export function StoreHomePage() {
             </h1>
 
             <p className="text-sm sm:text-base text-text-secondary max-w-lg leading-relaxed mx-auto lg:mx-0">
-              A maior seleção de fibras russas, perucas, laces, apliques e acessórios selecionados pessoalmente por Carol Sol para realçar sua beleza natural.
+              A maior seleção de fibras russas, perucas, laces, apliques e acessórios selecionados
+              pessoalmente por Carol Sol para realçar sua beleza natural.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
@@ -98,8 +109,12 @@ export function StoreHomePage() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-ink-deep/40 to-transparent" />
             <div className="absolute bottom-6 left-6 right-6 text-warm-white">
-              <p className="font-serif text-xl sm:text-2xl font-bold">Qualidade & Acabamento Invisível</p>
-              <p className="text-xs text-warm-white/80 mt-1">Desenvolvido para profissionais e entusiastas</p>
+              <p className="font-serif text-xl sm:text-2xl font-bold">
+                Qualidade & Acabamento Invisível
+              </p>
+              <p className="text-xs text-warm-white/80 mt-1">
+                Desenvolvido para profissionais e entusiastas
+              </p>
             </div>
           </div>
         </div>
@@ -108,28 +123,49 @@ export function StoreHomePage() {
       {/* Categorias em Destaque */}
       {categories.length > 0 && (
         <section className="container-shell py-14">
-          <div className="flex items-end justify-between mb-8">
+          <div className="flex items-end justify-between gap-4 mb-8">
             <div>
               <p className="text-xs font-bold tracking-widest text-copper uppercase">Navegue por</p>
               <h2 className="font-serif text-3xl uppercase tracking-wide text-ink-deep font-bold mt-1">
                 Categorias
               </h2>
             </div>
-            <Link
-              to="/sol-hair-closet/produtos"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-copper hover:text-ink-deep transition tracking-wider uppercase"
-            >
-              Ver Todas <ArrowRight size={14} />
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => scrollCategories(-1)}
+                aria-label="Ver categorias anteriores"
+                className="grid h-10 w-10 place-items-center rounded-full border border-line bg-warm-white text-ink-deep shadow-sm transition hover:border-copper hover:text-copper"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollCategories(1)}
+                aria-label="Ver próximas categorias"
+                className="grid h-10 w-10 place-items-center rounded-full border border-line bg-warm-white text-ink-deep shadow-sm transition hover:border-copper hover:text-copper"
+              >
+                <ChevronRight size={18} />
+              </button>
+              <Link
+                to="/sol-hair-closet/produtos"
+                className="hidden items-center gap-1.5 text-xs font-semibold text-copper transition hover:text-ink-deep sm:inline-flex tracking-wider uppercase"
+              >
+                Ver Todas <ArrowRight size={14} />
+              </Link>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
+          <div
+            ref={categoriesScrollRef}
+            className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 sm:gap-6 [scrollbar-width:thin] [scrollbar-color:rgba(176,112,75,0.45)_transparent]"
+          >
             {categories.map((c) => (
               <Link
                 key={c.id}
                 to="/sol-hair-closet/categoria/$slug"
                 params={{ slug: c.slug || c.id }}
-                className="group flex flex-col items-center p-4 rounded-2xl bg-warm-white border border-line hover:border-copper/40 hover:shadow-md transition text-center"
+                className="group flex w-[44%] min-w-[150px] shrink-0 snap-start flex-col items-center rounded-2xl border border-line bg-warm-white p-4 text-center transition hover:border-copper/40 hover:shadow-md sm:w-[29%] lg:w-[calc((100%-7.5rem)/6)] lg:min-w-[170px]"
               >
                 <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full overflow-hidden border border-copper/30 bg-blush transition-transform group-hover:scale-105 shadow-inner">
                   <img
@@ -232,7 +268,8 @@ export function StoreHomePage() {
               Perucas & Laces Front
             </h2>
             <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-              Modelos modernos com visual autêntico, repartição livre e fixação ultra segura para o seu dia a dia.
+              Modelos modernos com visual autêntico, repartição livre e fixação ultra segura para o
+              seu dia a dia.
             </p>
             <div className="pt-2">
               <Link
@@ -269,7 +306,9 @@ export function StoreHomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="flex flex-col items-start gap-3 p-6 rounded-2xl bg-warm-white border border-line shadow-sm">
             <Shield size={28} className="text-copper" />
-            <h3 className="text-xs font-bold tracking-wider text-ink-deep uppercase">QUALIDADE PREMIUM</h3>
+            <h3 className="text-xs font-bold tracking-wider text-ink-deep uppercase">
+              QUALIDADE PREMIUM
+            </h3>
             <p className="text-xs text-text-secondary leading-relaxed">
               Fibras selecionadas com durabilidade prolongada e resistência a altas temperaturas.
             </p>
@@ -277,7 +316,9 @@ export function StoreHomePage() {
 
           <div className="flex flex-col items-start gap-3 p-6 rounded-2xl bg-warm-white border border-line shadow-sm">
             <Award size={28} className="text-copper" />
-            <h3 className="text-xs font-bold tracking-wider text-ink-deep uppercase">TESTADO & APROVADO</h3>
+            <h3 className="text-xs font-bold tracking-wider text-ink-deep uppercase">
+              TESTADO & APROVADO
+            </h3>
             <p className="text-xs text-text-secondary leading-relaxed">
               Produtos testados nos atendimentos do salão por especialistas em mega hair.
             </p>
@@ -285,7 +326,9 @@ export function StoreHomePage() {
 
           <div className="flex flex-col items-start gap-3 p-6 rounded-2xl bg-warm-white border border-line shadow-sm">
             <Wind size={28} className="text-copper" />
-            <h3 className="text-xs font-bold tracking-wider text-ink-deep uppercase">EFEITO NATURAL</h3>
+            <h3 className="text-xs font-bold tracking-wider text-ink-deep uppercase">
+              EFEITO NATURAL
+            </h3>
             <p className="text-xs text-text-secondary leading-relaxed">
               Leveza, caimento perfeito e movimento que se funde harmoniosamente com os fios.
             </p>
@@ -293,7 +336,9 @@ export function StoreHomePage() {
 
           <div className="flex flex-col items-start gap-3 p-6 rounded-2xl bg-warm-white border border-line shadow-sm">
             <Users size={28} className="text-copper" />
-            <h3 className="text-xs font-bold tracking-wider text-ink-deep uppercase">TODOS OS ESTILOS</h3>
+            <h3 className="text-xs font-bold tracking-wider text-ink-deep uppercase">
+              TODOS OS ESTILOS
+            </h3>
             <p className="text-xs text-text-secondary leading-relaxed">
               Variedade de cores, texturas lisas e cacheadas para todos os tipos de beleza.
             </p>

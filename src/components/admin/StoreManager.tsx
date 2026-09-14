@@ -149,6 +149,31 @@ type StoreCustomer = {
   >;
 };
 
+const SKU_DIGITS = 8;
+
+function createNumericSku(usedSkus: Set<string> = new Set()) {
+  let sku = "";
+  do {
+    const random = crypto.getRandomValues(new Uint32Array(1))[0] % 100_000_000;
+    sku = String(random).padStart(SKU_DIGITS, "0");
+  } while (usedSkus.has(sku));
+  usedSkus.add(sku);
+  return sku;
+}
+
+function normalizeVariantSkus(items: StoreVariant[]) {
+  const usedSkus = new Set<string>();
+  return items.map((variant) => {
+    const current = String(variant.sku || "")
+      .replace(/\D/g, "")
+      .slice(0, 10);
+    const sku =
+      current.length >= 6 && !usedSkus.has(current) ? current : createNumericSku(usedSkus);
+    usedSkus.add(sku);
+    return { ...variant, sku };
+  });
+}
+
 export function StoreManager() {
   const [activeTab, setActiveTab] = useState<
     "products" | "categories" | "orders" | "customers" | "pricing"
@@ -1022,7 +1047,9 @@ function ProductEditorModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [variants, setVariants] = useState<StoreVariant[]>(product?.variants || []);
+  const [variants, setVariants] = useState<StoreVariant[]>(() =>
+    normalizeVariantSkus(product?.variants || []),
+  );
   const [imageUrl, setImageUrl] = useState(product?.image || "");
   const [gallery, setGallery] = useState<string[]>(product?.images || []);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -1031,9 +1058,11 @@ function ProductEditorModal({
   const [selectedCategoryId, setSelectedCategoryId] = useState(product?.categoryId || "");
 
   const addVariant = () => {
+    const usedSkus = new Set(variants.map((variant) => variant.sku).filter(Boolean) as string[]);
     setVariants([
       ...variants,
       {
+        sku: createNumericSku(usedSkus),
         title: "Nova Opção (Cor / Comprimento)",
         stockQuantity: 10,
         status: "active",
@@ -1063,21 +1092,14 @@ function ProductEditorModal({
     const existing = new Set(
       variants.map((variant) => `${(variant.color || "").toLowerCase()}|${variant.lengthCm || ""}`),
     );
-    const baseSlug = product?.slug || "produto";
     const generated = [...variants];
+    const usedSkus = new Set(variants.map((variant) => variant.sku).filter(Boolean) as string[]);
     for (const color of colorValues)
       for (const size of sizeValues) {
         const key = `${color.toLowerCase()}|${size || ""}`;
         if (existing.has(key)) continue;
-        const suffix = [color, size ? `${size}cm` : ""]
-          .filter(Boolean)
-          .join("-")
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-z0-9]+/g, "-");
         generated.push({
-          sku: `${baseSlug}-${suffix || `opcao-${generated.length + 1}`}-${crypto.randomUUID().slice(0, 6)}`.toUpperCase(),
+          sku: createNumericSku(usedSkus),
           title: [color, size ? `${size} cm` : ""].filter(Boolean).join(" / "),
           color: color || undefined,
           lengthCm: size,
@@ -1212,7 +1234,7 @@ function ProductEditorModal({
         badgeLabel: form.get("badgeLabel") || null,
         badgeTone: form.get("badgeTone") || "gold",
         status: form.get("status"),
-        variants,
+        variants: normalizeVariantSkus(variants),
       };
 
       const res = await fetch("/api/admin/store", {
@@ -1514,10 +1536,10 @@ function ProductEditorModal({
                         <button
                           type="button"
                           onClick={() => removeGalleryImage(slot)}
-                          className="rounded bg-red-50 px-2 text-xs text-red-600"
-                          aria-label="Remover foto"
+                          className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-100"
+                          aria-label={`Remover foto ${slot + 1} da galeria`}
                         >
-                          ×
+                          <Trash2 size={11} /> Remover
                         </button>
                         <button
                           type="button"
@@ -1735,10 +1757,21 @@ function ProductEditorModal({
                         <label className="text-[10px] font-medium text-brown/70">SKU único</label>
                         <input
                           value={v.sku || ""}
-                          onChange={(e) => updateVariant(idx, "sku", e.target.value)}
-                          placeholder="Gerado automaticamente se vazio"
+                          inputMode="numeric"
+                          pattern="[0-9]{6,10}"
+                          minLength={6}
+                          maxLength={10}
+                          onChange={(e) =>
+                            updateVariant(
+                              idx,
+                              "sku",
+                              e.target.value.replace(/\D/g, "").slice(0, 10),
+                            )
+                          }
+                          placeholder="Ex: 00481273"
                           className="w-full h-8 rounded-lg border border-copper/20 px-2 text-xs outline-none font-mono"
                         />
+                        <p className="mt-1 text-[9px] text-brown/50">Somente 6 a 10 números.</p>
                       </div>
                       <div>
                         <label className="text-[10px] font-medium text-brown/70">

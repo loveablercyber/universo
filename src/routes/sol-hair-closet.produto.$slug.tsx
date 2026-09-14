@@ -41,6 +41,7 @@ function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectionError, setSelectionError] = useState("");
+  const [activeDetailsTab, setActiveDetailsTab] = useState("Descrição");
 
   useEffect(() => {
     async function loadProduct() {
@@ -59,11 +60,6 @@ function ProductDetailPage() {
             setSelectedVariant(availableVariants[0]);
             setSelectedColor(availableVariants[0].color || "");
             setSelectedLength(availableVariants[0].lengthCm ?? null);
-            setSelectedImage(
-              availableVariants[0].images?.[0] ||
-                availableVariants[0].imageUrl ||
-                data.product.image,
-            );
           } else {
             setSelectedVariant(null);
             setSelectedColor("");
@@ -169,23 +165,23 @@ function ProductDetailPage() {
     setSelectedVariant(next);
     setQuantity(1);
     setSelectionError("");
-    const images = next
-      ? ([...(next.images || []), next.imageUrl].filter(Boolean) as string[])
-      : [];
-    setSelectedImage(images[0] || product.image);
   };
 
-  const variantImages = selectedVariant
-    ? [...(selectedVariant.images || []), selectedVariant.imageUrl].filter(
-        (value): value is string => Boolean(value),
-      )
-    : [];
-  const sourceImages = variantImages.length
-    ? variantImages
-    : [product.image, ...(product.images || [])];
-  const allImages = sourceImages.filter(
+  // A galeria principal pertence ao produto. Fotos de variações não devem
+  // substituir nem aparecer junto das fotos editoriais do produto.
+  const allImages = [product.image, ...(product.images || [])].filter(
     (value, index, list): value is string => Boolean(value) && list.indexOf(value) === index,
   );
+
+  const detailsTabs = [
+    ["Descrição", product.description],
+    ["Características", product.characteristics],
+    ["Métodos", product.methods],
+    ["Cuidados", product.careInstructions],
+  ] as const;
+  const activeDetailsContent =
+    detailsTabs.find(([title]) => title === activeDetailsTab)?.[1] ||
+    "Informação ainda não cadastrada.";
 
   const handleAddToCart = () => {
     if (hasVariants && !selectedVariant) {
@@ -436,14 +432,48 @@ function ProductDetailPage() {
                   </div>
                 )}
                 {selectedVariant && (
-                  <p className="text-xs text-text-secondary">
-                    SKU:{" "}
-                    <span className="font-mono text-ink-deep">
-                      {selectedVariant.sku || "não informado"}
-                    </span>
-                    {selectedVariant.texture ? ` • ${selectedVariant.texture}` : ""}
-                    {selectedVariant.weightG ? ` • ${selectedVariant.weightG} g` : ""}
-                  </p>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line pt-4 text-xs sm:grid-cols-3">
+                    <div>
+                      <dt className="font-semibold text-ink-deep">SKU</dt>
+                      <dd className="mt-0.5 font-mono text-text-secondary">
+                        {selectedVariant.sku || "Não informado"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-ink-deep">Comprimento (cm)</dt>
+                      <dd className="mt-0.5 text-text-secondary">
+                        {selectedVariant.lengthCm ?? "Não informado"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-ink-deep">Peso (g)</dt>
+                      <dd className="mt-0.5 text-text-secondary">
+                        {selectedVariant.weightG ?? "Não informado"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-ink-deep">Textura</dt>
+                      <dd className="mt-0.5 text-text-secondary">
+                        {selectedVariant.texture || "Não informada"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-ink-deep">Preço próprio (R$)</dt>
+                      <dd className="mt-0.5 text-text-secondary">
+                        {selectedVariant.priceOverride != null
+                          ? fmt(Number(selectedVariant.priceOverride))
+                          : "Preço padrão do produto"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-ink-deep">Preço promocional (R$)</dt>
+                      <dd className="mt-0.5 text-text-secondary">
+                        {selectedVariant.promotionalPriceOverride != null
+                          ? fmt(Number(selectedVariant.promotionalPriceOverride))
+                          : "Sem preço promocional próprio"}
+                      </dd>
+                    </div>
+                  </dl>
                 )}
               </div>
             )}
@@ -554,40 +584,38 @@ function ProductDetailPage() {
           })}
         </div>
 
-        <section className="mt-10 rounded-2xl border border-line bg-warm-white p-5 lg:p-7">
-          <div className="hidden grid-cols-4 divide-x divide-line lg:grid">
-            {[
-              ["Descrição", product.description],
-              ["Características", product.characteristics],
-              ["Métodos", product.methods],
-              ["Cuidados", product.careInstructions],
-            ].map(([title, content]) => (
-              <div key={title} className="px-6 first:pl-0 last:pr-0">
-                <h2 className="border-b-2 border-copper pb-3 text-xs font-bold uppercase tracking-[0.14em] text-ink-deep">
+        <section className="mt-10 overflow-hidden rounded-2xl border border-line bg-warm-white">
+          <div
+            role="tablist"
+            aria-label="Informações do produto"
+            className="flex overflow-x-auto border-b border-line"
+          >
+            {detailsTabs.map(([title]) => {
+              const isActive = activeDetailsTab === title;
+              return (
+                <button
+                  key={title}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls="product-details-panel"
+                  onClick={() => setActiveDetailsTab(title)}
+                  className={`min-w-max flex-1 border-b-2 px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] transition ${
+                    isActive
+                      ? "border-copper bg-copper/5 text-copper"
+                      : "border-transparent text-text-secondary hover:text-ink-deep"
+                  }`}
+                >
                   {title}
-                </h2>
-                <p className="mt-5 whitespace-pre-line text-sm leading-7 text-text-secondary">
-                  {content || "Informação ainda não cadastrada."}
-                </p>
-              </div>
-            ))}
+                </button>
+              );
+            })}
           </div>
-          <div className="divide-y divide-line lg:hidden">
-            {[
-              ["Descrição", product.description],
-              ["Características", product.characteristics],
-              ["Métodos", product.methods],
-              ["Cuidados", product.careInstructions],
-            ].map(([title, content], index) => (
-              <details key={title} open={index === 0} className="py-3">
-                <summary className="cursor-pointer text-xs font-bold uppercase tracking-wider text-ink-deep">
-                  {title}
-                </summary>
-                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-text-secondary">
-                  {content || "Informação ainda não cadastrada."}
-                </p>
-              </details>
-            ))}
+          <div id="product-details-panel" role="tabpanel" className="min-h-40 p-5 lg:p-7">
+            <h2 className="font-serif text-xl text-ink-deep">{activeDetailsTab}</h2>
+            <p className="mt-4 whitespace-pre-line text-sm leading-7 text-text-secondary">
+              {activeDetailsContent}
+            </p>
           </div>
         </section>
 

@@ -6,7 +6,11 @@ import { sendStoreShippingNotification } from "@/lib/notifications.server";
 
 const variantSchema = z.object({
   id: z.string().uuid().optional(),
-  sku: z.string().nullable().optional(),
+  sku: z
+    .string()
+    .regex(/^\d{6,10}$/, "O SKU deve conter somente de 6 a 10 números")
+    .nullable()
+    .optional(),
   title: z.string().min(1, "Título da variação é obrigatório"),
   color: z.string().nullable().optional(),
   colorHex: z.string().nullable().optional(),
@@ -122,6 +126,16 @@ function errorResponse(error: unknown) {
   }
   const message = error instanceof Error ? error.message : "Não foi possível concluir a operação.";
   return Response.json({ ok: false, message }, { status: 500 });
+}
+
+function createNumericSku(usedSkus: Set<string>) {
+  let sku = "";
+  do {
+    const digits = crypto.randomUUID().replace(/\D/g, "");
+    sku = digits.slice(0, 8).padEnd(8, "0");
+  } while (usedSkus.has(sku));
+  usedSkus.add(sku);
+  return sku;
 }
 
 export const Route = createFileRoute("/api/admin/store")({
@@ -555,6 +569,7 @@ export const Route = createFileRoute("/api/admin/store")({
                 if (normalizedSku) skus.add(normalizedSku);
               }
               for (const v of variants) {
+                const sku = v.sku || createNumericSku(skus);
                 if (v.id) {
                   retainedIds.push(v.id);
                   await client.query(
@@ -564,7 +579,7 @@ export const Route = createFileRoute("/api/admin/store")({
                             stock_quantity = $10, image_url = $11, images = $12::jsonb, status = $13, updated_at = now()
                       WHERE id = $14 AND product_id = $15`,
                     [
-                      v.sku || "",
+                      sku,
                       v.title,
                       v.color || null,
                       v.colorHex || null,
@@ -589,13 +604,7 @@ export const Route = createFileRoute("/api/admin/store")({
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14) RETURNING id`,
                     [
                       productId,
-                      v.sku ||
-                        `${slug}-${String(v.color || "opcao")
-                          .toLowerCase()
-                          .replace(
-                            /[^a-z0-9]+/g,
-                            "-",
-                          )}-${v.lengthCm || "unico"}-${crypto.randomUUID().slice(0, 8)}`,
+                      sku,
                       v.title,
                       v.color || null,
                       v.colorHex || null,
