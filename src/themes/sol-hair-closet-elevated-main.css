@@ -1,7 +1,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-serif: "Cormorant Garamond", "Bodoni Moda", "Playfair Display", serif;
+  --font-serif: "Cinzel", "Cormorant Garamond", serif;
   --font-sans: "Montserrat", "Poppins", ui-sans-serif, system-ui, sans-serif;
 
   --color-ink: var(--ink);
@@ -24,20 +24,20 @@
   --color-border: var(--line);
 }
 
-:root {
-  --ink: #160b04;
-  --ink-deep: #241208;
-  --ink-mid: #57301d;
-  --cream: #fcf5ee;
-  --blush: #f8ede5;
-  --warm-white: #fffdfc;
-  --rose-gold: #c9825c;
-  --copper: #b96e43;
-  --copper-light: #d89a70;
-  --gold-soft: #c89352;
-  --text-primary: #241711;
-  --text-secondary: #64524a;
-  --line: rgba(185, 110, 67, 0.2);
+.theme-sol {
+  --ink: #4b3628;
+  --ink-deep: #4b3628;
+  --ink-mid: #4b3628;
+  --cream: #faf7f2;
+  --blush: #f2e8dd;
+  --warm-white: #faf7f2;
+  --rose-gold: #cb9a7b;
+  --copper: #cb9a7b;
+  --copper-light: #e3bfa8;
+  --gold-soft: #cb9a7b;
+  --text-primary: #4b3628;
+  --text-secondary: #766257;
+  --line: rgba(75, 54, 40, 0.16);
   --whatsapp: #5d9b42;
 }
 
@@ -69,8 +69,28 @@
   padding-inline: 1.25rem;
 }
 
+@utility store-home-shell {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 0.875rem;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 @media (min-width: 1024px) {
   .container-shell {
+    padding-inline: 2rem;
+  }
+
+  .store-home-shell {
     padding-inline: 2rem;
   }
 }

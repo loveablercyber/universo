@@ -21,33 +21,32 @@ import { SearchDrawer } from "./SearchDrawer";
 import { CategoryDrawer } from "./CategoryDrawer";
 import { CheckoutModal } from "./CheckoutModal";
 import { UniverseSwitcher } from "@/components/UniverseSwitcher";
+import { MobileBottomNav } from "./MobileBottomNav";
 
 function Logo({ compact = false }: { compact?: boolean }) {
   const [logoUrl, setLogoUrl] = useState("");
-  useEffect(() => { void fetch("/api/store?action=store_settings").then((r) => r.json()).then((d) => { const value = d?.settings?.[0]?.value; if (typeof value === "string") setLogoUrl(value); }).catch(() => {}); }, []);
-  if (logoUrl) return <Link to="/sol-hair-closet" className="flex items-center justify-center"><img src={logoUrl} alt="Sol Hair Closet" className={compact ? "h-10 max-w-36 object-contain" : "h-14 max-w-52 object-contain"} /></Link>;
+  useEffect(() => {
+    void fetch("/api/store?action=store_settings")
+      .then((response) => response.json())
+      .then((payload) => {
+        const value = payload?.settings?.find(
+          (setting: { key?: string }) => setting.key === "brand_logo_url",
+        )?.value;
+        if (typeof value === "string" && value.trim()) setLogoUrl(value);
+      })
+      .catch(() => {});
+  }, []);
   return (
-    <Link to="/sol-hair-closet" className="flex flex-col items-center leading-none select-none group">
-      <div
-        className={`font-serif tracking-[0.15em] transition-transform group-hover:scale-105 ${
-          compact ? "text-2xl" : "text-3xl sm:text-4xl"
-        }`}
-        style={{ color: "var(--rose-gold, #C89352)" }}
-      >
-        S
-        <span className="relative inline-block">
-          O
-          <span aria-hidden className="absolute -top-1 -right-1 text-copper text-[0.55em]">
-            ❋
-          </span>
-        </span>
-        L
-      </div>
-      <div className="mt-1 flex items-center gap-2 text-[9px] sm:text-[10px] tracking-[0.35em] text-copper font-medium">
-        <span>✦</span>
-        <span>HAIR CLOSET</span>
-        <span>✦</span>
-      </div>
+    <Link to="/store" className="flex items-center justify-center">
+      <img
+        src={logoUrl || "/images/sol-hair-closet-logo-official.jpg"}
+        alt="Sol Hair Closet"
+        className={
+          compact
+            ? "h-10 max-w-36 object-contain"
+            : "h-11 max-w-40 object-contain sm:h-14 sm:max-w-52"
+        }
+      />
     </Link>
   );
 }
@@ -65,26 +64,26 @@ export function StoreLayout({
     <div className="theme-sol min-h-dvh bg-cream text-text-primary flex flex-col selection:bg-copper selection:text-warm-white">
       <UniverseSwitcher />
       {/* Top Banner de Benefícios */}
-      <div className="bg-ink text-copper-light">
-        <div className="container-shell grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-copper/20 text-[10px] sm:text-[11px] tracking-[0.15em] font-medium">
-          <div className="flex items-center justify-center gap-2 py-2.5">
+      <div className="bg-ink text-[#FAF7F2]">
+        <div className="mx-auto flex max-w-[1360px] snap-x snap-mandatory overflow-x-auto px-3 text-[9px] font-medium tracking-[0.08em] scrollbar-none sm:grid sm:grid-cols-3 sm:divide-x sm:divide-copper/25 sm:px-6 sm:text-[10px] sm:tracking-[0.13em]">
+          <div className="flex min-w-[72%] snap-center items-center justify-center gap-2 py-2 sm:min-w-0">
             <Truck size={14} strokeWidth={1.5} className="text-copper-light" />
-            <span>ENVIO RÁPIDO PARA TODO O BRASIL</span>
+            <span>ENVIO PARA TODO O BRASIL</span>
           </div>
-          <div className="flex items-center justify-center gap-2 py-2.5">
+          <div className="flex min-w-[72%] snap-center items-center justify-center gap-2 py-2 sm:min-w-0">
             <CreditCard size={14} strokeWidth={1.5} className="text-copper-light" />
-            <span>PARCELE EM ATÉ 12X OU 5% OFF NO PIX</span>
+            <span>ATÉ 10X NO CARTÃO</span>
           </div>
-          <div className="flex items-center justify-center gap-2 py-2.5">
-            <MessageCircle size={14} strokeWidth={1.5} className="text-copper-light" />
-            <span>ATENDIMENTO PERSONALIZADO</span>
+          <div className="flex min-w-[72%] snap-center items-center justify-center gap-2 py-2 sm:min-w-0">
+            <Sparkles size={14} strokeWidth={1.5} className="text-copper-light" />
+            <span>5% OFF NO PIX</span>
           </div>
         </div>
       </div>
 
       {/* Main Header */}
       <header className="sticky top-0 z-40 bg-warm-white/95 backdrop-blur-md border-b border-line shadow-sm">
-        <div className="container-shell grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-4 lg:py-5">
+        <div className="container-shell grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-2.5 sm:gap-4 sm:py-3.5">
           {/* Lado Esquerdo: Menu Categorias */}
           <div className="flex items-center gap-4">
             <button
@@ -99,6 +98,7 @@ export function StoreLayout({
             </button>
             <Link
               to="/sol-hair-closet/produtos"
+              search={{ category: undefined, sort: "best_selling" }}
               className="hidden md:inline-flex text-[11px] tracking-[0.2em] text-ink-mid hover:text-copper uppercase font-medium"
             >
               PRODUTOS
@@ -125,7 +125,7 @@ export function StoreLayout({
             >
               <Heart size={20} strokeWidth={1.5} />
               {store.favs.length > 0 && (
-                <span className="absolute 0 top-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B7476A] px-1 text-[9px] font-bold text-warm-white">
+                <span className="absolute 0 top-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#CB9A7B] px-1 text-[9px] font-bold text-[#4B3628]">
                   {store.favs.length}
                 </span>
               )}
@@ -153,21 +153,37 @@ export function StoreLayout({
             </button>
           </div>
         </div>
-        <nav aria-label="Menu da loja" className="border-t border-line/70 bg-warm-white px-4 py-2">
+        <nav
+          aria-label="Menu da loja"
+          className="hidden border-t border-line/70 bg-warm-white px-4 py-2 md:block"
+        >
           <div className="mx-auto flex max-w-6xl justify-center gap-5 overflow-x-auto text-[10px] font-semibold tracking-[0.16em] text-ink-mid">
-            <Link to="/sol-hair-closet">INÍCIO</Link><Link to="/sol-hair-closet/produtos">CATÁLOGO</Link><Link to="/sol-hair-closet/favoritos">FAVORITOS</Link><Link to="/sol-hair-closet/pedidos">PEDIDOS</Link><Link to="/sol-hair-closet/conta">MINHA CONTA</Link>
+            <Link to="/sol-hair-closet">INÍCIO</Link>
+            <Link
+              to="/sol-hair-closet/produtos"
+              search={{ category: undefined, sort: "best_selling" }}
+            >
+              CATÁLOGO
+            </Link>
+            <Link to="/sol-hair-closet/favoritos">FAVORITOS</Link>
+            <Link to="/sol-hair-closet/pedidos">PEDIDOS</Link>
+            <Link to="/sol-hair-closet/conta">MINHA CONTA</Link>
           </div>
         </nav>
       </header>
 
       {/* Conteúdo da Página */}
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pb-16 md:pb-0">{children}</main>
 
       {/* Benefícios do Rodapé */}
-      <section className="bg-ink text-cream mt-16 border-t border-copper/30">
-        <div className="container-shell grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-copper/20">
+      <section className="mt-10 border-t border-copper/30 bg-ink text-cream sm:mt-16">
+        <div className="container-shell grid grid-cols-2 divide-x divide-y divide-copper/20 lg:grid-cols-4 lg:divide-y-0">
           <div className="flex items-start gap-3 px-5 py-6">
-            <ShieldCheck size={26} strokeWidth={1.3} className="text-copper-light shrink-0 mt-0.5" />
+            <ShieldCheck
+              size={26}
+              strokeWidth={1.3}
+              className="text-copper-light shrink-0 mt-0.5"
+            />
             <div>
               <p className="text-[11px] tracking-[0.2em] font-semibold text-copper-light uppercase">
                 PAGAMENTO SEGURO
@@ -191,7 +207,11 @@ export function StoreLayout({
           </div>
 
           <div className="flex items-start gap-3 px-5 py-6">
-            <MessageCircle size={26} strokeWidth={1.3} className="text-copper-light shrink-0 mt-0.5" />
+            <MessageCircle
+              size={26}
+              strokeWidth={1.3}
+              className="text-copper-light shrink-0 mt-0.5"
+            />
             <div>
               <p className="text-[11px] tracking-[0.2em] font-semibold text-copper-light uppercase">
                 ATENDIMENTO HUMANIZADO
@@ -227,10 +247,17 @@ export function StoreLayout({
             <Link to="/sol-hair-closet" className="hover:text-warm-white transition-colors">
               INÍCIO
             </Link>
-            <Link to="/sol-hair-closet/produtos" className="hover:text-warm-white transition-colors">
+            <Link
+              to="/sol-hair-closet/produtos"
+              search={{ category: undefined, sort: "best_selling" }}
+              className="hover:text-warm-white transition-colors"
+            >
               CATÁLOGO
             </Link>
-            <Link to="/sol-hair-closet/favoritos" className="hover:text-warm-white transition-colors">
+            <Link
+              to="/sol-hair-closet/favoritos"
+              className="hover:text-warm-white transition-colors"
+            >
               FAVORITOS
             </Link>
             <Link to="/sol-hair-closet/pedidos" className="hover:text-warm-white transition-colors">
@@ -267,15 +294,20 @@ export function StoreLayout({
         </div>
 
         <div className="border-t border-copper/10 py-4 text-center text-[10px] text-cream/50 tracking-wider">
-          © {new Date().getFullYear()} Sol Hair Closet — Universo Carol Sol. Todos os direitos reservados.
+          © {new Date().getFullYear()} Sol Hair Closet — Universo Carol Sol. Todos os direitos
+          reservados.
         </div>
       </footer>
 
-      {/* Drawers e Modais */}
-      <CategoryDrawer
-        open={store.openDrawer === "cat"}
-        onClose={() => store.setOpenDrawer(null)}
+      <MobileBottomNav
+        cartCount={store.cartCount}
+        favoriteCount={store.favs.length}
+        onOpenCategories={() => store.setOpenDrawer("cat")}
+        onOpenCart={() => store.setOpenDrawer("cart")}
       />
+
+      {/* Drawers e Modais */}
+      <CategoryDrawer open={store.openDrawer === "cat"} onClose={() => store.setOpenDrawer(null)} />
 
       <SearchDrawer
         open={store.openDrawer === "search"}
@@ -304,7 +336,7 @@ export function StoreLayout({
 
       {/* Toast Alert */}
       {store.toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-full bg-ink-deep text-cream px-6 py-3 text-xs tracking-wider font-semibold shadow-2xl border border-copper/40 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-20 left-1/2 z-[80] flex -translate-x-1/2 animate-in items-center gap-2 whitespace-nowrap border border-copper/40 bg-ink-deep px-5 py-3 text-[10px] font-semibold tracking-wider text-cream shadow-2xl fade-in slide-in-from-bottom-4 md:bottom-6 md:text-xs">
           <Sparkles size={14} className="text-copper" />
           <span>{store.toastMessage}</span>
         </div>

@@ -77,7 +77,11 @@ export const Route = createFileRoute("/api/store")({
 
           if (action === "store_settings") {
             const { rows } = await query(
-              `SELECT key, value FROM universe.settings WHERE key = 'brand_logo_url' AND is_public = true`,
+              `SELECT key, value
+                 FROM universe.settings
+                WHERE key IN ('brand_logo_url', 'store_home_config')
+                  AND is_public = true
+                ORDER BY key`,
             );
             return Response.json({ ok: true, settings: rows });
           }
@@ -102,6 +106,15 @@ export const Route = createFileRoute("/api/store")({
           if (action === "products") {
             const categorySlug = url.searchParams.get("category");
             const search = url.searchParams.get("search");
+            const requestedIds = (url.searchParams.get("ids") || "")
+              .split(",")
+              .map((value) => value.trim())
+              .filter((value) =>
+                /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                  value,
+                ),
+              )
+              .slice(0, 8);
             const sort = url.searchParams.get("sort") || "best_selling";
             const limit = Math.min(Number(url.searchParams.get("limit") || 40), 100);
             const offset = Math.max(Number(url.searchParams.get("offset") || 0), 0);
@@ -120,11 +133,21 @@ export const Route = createFileRoute("/api/store")({
               whereClause += ` AND (p.name ILIKE $${params.length} OR p.info ILIKE $${params.length} OR p.description ILIKE $${params.length})`;
             }
 
+            let requestedIdsParam: number | null = null;
+            if (requestedIds.length > 0) {
+              params.push(requestedIds);
+              requestedIdsParam = params.length;
+              whereClause += ` AND p.id = ANY($${requestedIdsParam}::uuid[])`;
+            }
+
             let orderBy = "p.sold_count DESC, p.created_at DESC";
             if (sort === "price_asc") orderBy = "coalesce(p.promotional_price, p.price) ASC";
             else if (sort === "price_desc") orderBy = "coalesce(p.promotional_price, p.price) DESC";
             else if (sort === "newest") orderBy = "p.created_at DESC";
             else if (sort === "rating") orderBy = "p.rating DESC, p.reviews_count DESC";
+            if (requestedIdsParam) {
+              orderBy = `array_position($${requestedIdsParam}::uuid[], p.id)`;
+            }
 
             const countSql = `
               SELECT count(distinct p.id)::int as total

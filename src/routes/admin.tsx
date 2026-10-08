@@ -45,6 +45,7 @@ import { EloManager } from "@/components/admin/EloManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { StoreManager } from "@/components/admin/StoreManager";
 import { BrandLogoSetting } from "@/components/admin/BrandLogoSetting";
+import { StoreHomeSetting } from "@/components/admin/StoreHomeSetting";
 import { AcademyManager } from "@/components/admin/AcademyManager";
 import { NotificationManager } from "@/components/admin/NotificationManager";
 import { Image as ImageIcon, GraduationCap, Bell } from "lucide-react";
@@ -624,6 +625,12 @@ function SectionContent({
               key={setting.key}
               value={setting.value}
               onSave={(url) => save({ action: "save-setting", key: setting.key, value: url })}
+            />
+          ) : setting.key === "store_home_config" ? (
+            <StoreHomeSetting
+              key={setting.key}
+              value={setting.value}
+              onSave={(config) => save({ action: "save-setting", key: setting.key, value: config })}
             />
           ) : (
             <form
