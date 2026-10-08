@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const FALLBACK_LOGO = "/images/sol-hair-closet-logo-official.jpg";
+const FALLBACK_LOGO = "/images/sol-hair-closet-logo-transparent.png";
 
 let cachedLogoUrl = "";
 let logoRequest: Promise<string> | null = null;
