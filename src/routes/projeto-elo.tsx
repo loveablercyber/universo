@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { UniverseSwitcher } from "@/components/UniverseSwitcher";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
   Heart,
   ChevronLeft,
@@ -103,11 +104,9 @@ function TopUniverseBar() {
   return (
     <div className="w-full bg-beige">
       <div className="mx-auto flex h-10 max-w-[1440px] items-center justify-center gap-4 px-4">
-        <span className="h-px w-10 bg-copper/40" />
-        <p className="font-sans-brand text-[11px] tracking-[0.3em] text-copper">
-          UNIVERSO <span className="text-copper/70">✦</span> CAROL SOL
-        </p>
-        <span className="h-px w-10 bg-copper/40" />
+        <span className="h-px flex-1 bg-copper/25" />
+        <BrandLogo className="h-7 w-auto max-w-36 object-contain" />
+        <span className="h-px flex-1 bg-copper/25" />
       </div>
     </div>
   );
@@ -663,9 +662,7 @@ function BottomUniverseBar() {
   return (
     <div className="bg-cream">
       <div className="mx-auto flex max-w-[1440px] flex-col items-center gap-2 px-6 py-5 text-center">
-        <p className="font-sans-brand text-[11px] tracking-[0.3em] text-copper">
-          UNIVERSO <Sparkles className="mx-1 inline h-3 w-3" strokeWidth={1.5} /> CAROL SOL
-        </p>
+        <BrandLogo className="h-11 w-auto max-w-48 object-contain" />
         <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-sans-brand text-[10px] tracking-[0.25em] text-brown-mid">
           {universoNav.map((item, i) => (
             <span key={item} className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { UniverseSwitcher } from "@/components/UniverseSwitcher";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
   Sparkles,
   Award,
@@ -83,9 +84,7 @@ function TopUniverseBar() {
     <div className="bg-[#F5ECE5] border-b border-[rgba(201,121,69,0.15)]">
       <div className="container-max flex items-center justify-center gap-4 py-2.5">
         <div className="hidden sm:block h-px w-24 bg-[rgba(201,121,69,0.35)]" />
-        <div className="text-[10px] sm:text-[11px] tracking-[0.42em] text-[#C97945] font-medium">
-          UNIVERSO <span className="mx-2">✦</span> CAROL SOL
-        </div>
+        <BrandLogo className="h-7 w-auto max-w-36 object-contain" />
         <div className="hidden sm:block h-px w-24 bg-[rgba(201,121,69,0.35)]" />
       </div>
     </div>
@@ -705,9 +704,7 @@ function BottomUniverseBar() {
   return (
     <div className="bg-[#F5ECE5] border-t border-[rgba(201,121,69,0.15)]">
       <div className="container-max py-4">
-        <div className="text-center text-[10.5px] tracking-[0.42em] text-[#C97945] font-semibold">
-          UNIVERSO <span className="mx-2">✦</span> CAROL SOL
-        </div>
+        <BrandLogo className="mx-auto h-11 w-auto max-w-48 object-contain" />
         <div className="mt-3 flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-[9.5px] tracking-[0.28em] text-[#6B4A3A] font-medium">
           {universeBrands.map((b, i) => (
             <span key={b} className="inline-flex items-center gap-4">

@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useState } from "react";
+import React, { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Menu,
@@ -22,24 +22,12 @@ import { CategoryDrawer } from "./CategoryDrawer";
 import { CheckoutModal } from "./CheckoutModal";
 import { UniverseSwitcher } from "@/components/UniverseSwitcher";
 import { MobileBottomNav } from "./MobileBottomNav";
+import { BrandLogo } from "@/components/BrandLogo";
 
 function Logo({ compact = false }: { compact?: boolean }) {
-  const [logoUrl, setLogoUrl] = useState("");
-  useEffect(() => {
-    void fetch("/api/store?action=store_settings")
-      .then((response) => response.json())
-      .then((payload) => {
-        const value = payload?.settings?.find(
-          (setting: { key?: string }) => setting.key === "brand_logo_url",
-        )?.value;
-        if (typeof value === "string" && value.trim()) setLogoUrl(value);
-      })
-      .catch(() => {});
-  }, []);
   return (
     <Link to="/store" className="flex items-center justify-center">
-      <img
-        src={logoUrl || "/images/sol-hair-closet-logo-official.jpg"}
+      <BrandLogo
         alt="Sol Hair Closet"
         className={
           compact

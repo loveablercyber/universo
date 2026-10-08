@@ -17,8 +17,8 @@ export function BrandLogoSetting({
     try {
       const form = new FormData();
       form.append("file", file);
-      form.append("title", "Logo oficial Sól Hair Closet");
-      form.append("altText", "Logo oficial Sól Hair Closet");
+      form.append("title", "Logo oficial Universo Carol Sol");
+      form.append("altText", "Logo oficial Universo Carol Sol");
       const res = await fetch("/api/admin/media", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok || !data.publicUrl) throw new Error(data.message || "Falha no upload da logo.");
@@ -32,10 +32,10 @@ export function BrandLogoSetting({
   };
   return (
     <section className="rounded-2xl border border-copper/10 bg-white p-6">
-      <h3 className="font-serif text-xl">Logo oficial da Sól Hair Closet</h3>
+      <h3 className="font-serif text-xl">Logo oficial do Universo Carol Sol</h3>
       <p className="mt-1 text-xs text-brown/55">
-        Envie o arquivo original da marca. A loja usa esta configuração sem recriar ou alterar a
-        arte.
+        Envie o arquivo original da marca. Esta imagem será aplicada na página principal, na loja,
+        no Projeto Elo e na Invisible Academy.
       </p>
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
         {url ? (
