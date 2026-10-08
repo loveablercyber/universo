@@ -1,5 +1,12 @@
-const CACHE_NAME = "carol-sol-app-v1";
-const APP_SHELL = ["/app", "/manifest.webmanifest", "/app-icon.svg", "/images/aplicativo-carol-sol.jpg"];
+const CACHE_NAME = "carol-sol-app-v2";
+const APP_SHELL = [
+  "/",
+  "/manifest.webmanifest",
+  "/app-icon-192.png",
+  "/app-icon-512.png",
+  "/app-icon-maskable-512.png",
+  "/apple-touch-icon.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -25,6 +32,6 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/app"))),
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))),
   );
 });

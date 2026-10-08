@@ -37,7 +37,7 @@ function routeSubdomain(request: Request): Request | Response {
     if (url.pathname === "/academy") url.pathname = "/invisible-academy";
     else if (url.pathname === "/elo") url.pathname = "/projeto-elo";
     else if (url.pathname === "/store") url.pathname = "/sol-hair-closet";
-    else if (url.pathname === "/app") return Response.redirect("https://agenda.carolsol.com.br", 302);
+    else if (url.pathname === "/app") return Response.redirect(new URL("/", url), 302);
     else return request;
     return new Request(url, request);
   }

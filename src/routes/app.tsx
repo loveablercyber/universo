@@ -35,7 +35,7 @@ export const Route = createFileRoute("/app")({
     links: [
       { rel: "canonical", href: "https://carolsol.com.br/app" },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/app-icon.svg" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
     ],
   }),
   component: AppPage,
